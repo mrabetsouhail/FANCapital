@@ -1,0 +1,112 @@
+<div class="min-h-screen flex bg-secondary">
+  <!-- Left Side - Logo/Image -->
+  <div class="hidden lg:flex lg:w-1/2 items-center justify-center bg-primary p-12">
+    <div class="max-w-md">
+      <img 
+        [src]="logoPath" 
+        alt="Fan Capital Logo" 
+        class="w-full h-auto object-contain max-h-96"
+      />
+    </div>
+  </div>
+
+  <!-- Right Side - Login Form -->
+  <div class="w-full lg:w-1/2 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+      <!-- Logo for mobile -->
+      <div class="flex justify-center lg:hidden mb-8">
+        <img 
+          [src]="logoPath" 
+          alt="Fan Capital Logo" 
+          class="h-20 w-auto object-contain "
+        />
+      </div>
+
+      <!-- Title Section -->
+      <div class="text-center">
+        <h2 class="text-3xl font-bold text-primary">Connexion</h2>
+        <p class="mt-2 text-sm text-gray-600">Connectez-vous à votre compte</p>
+      </div>
+
+      <!-- Login Form -->
+      <form class="mt-8 space-y-6" (ngSubmit)="onSubmit()">
+        <div class="space-y-4">
+          <!-- Email Input -->
+          <div>
+            <label for="email" class="block text-sm font-medium text-primary mb-2">
+              Adresse email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              [(ngModel)]="email"
+              class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+              placeholder="votre@email.com"
+            />
+          </div>
+
+          <!-- Password Input -->
+          <div>
+            <label for="password" class="block text-sm font-medium text-primary mb-2">
+              Mot de passe
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              [(ngModel)]="password"
+              class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <!-- Forgot Password Link -->
+        <div class="flex items-center justify-end">
+          <div class="text-sm">
+            <a 
+              href="#" 
+              class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+            >
+              Mot de passe oublié ?
+            </a>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          <button
+            type="submit"
+            (click)="onSubmit()"
+            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-tertiary hover:bg-quaternary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tertiary transition duration-150 ease-in-out transform hover:scale-105"
+          >
+            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+              <svg class="h-5 w-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+            </span>
+            Se connecter
+          </button>
+        </div>
+
+        <!-- Sign Up Link -->
+        <div class="text-center">
+          <p class="text-sm text-gray-600">
+            Vous n'avez pas encore de compte ?
+            <a 
+              routerLink="/signin" 
+              class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+            >
+              Créer un compte
+            </a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

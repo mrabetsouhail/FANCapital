@@ -1,0 +1,328 @@
+<div class="min-h-screen bg-secondary">
+  <!-- Navbar Component -->
+  <app-navbar-client></app-navbar-client>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-primary mb-2">Avance sur Titres</h1>
+      <p class="text-gray-600">Transformez vos tokens en liquidités sans les vendre</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left Column: Loan Simulator -->
+      <div class="space-y-6">
+        <!-- Token Selection -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+          <h2 class="text-xl font-semibold text-primary mb-4">Sélection du Collatéral</h2>
+          
+          <div class="space-y-4">
+            <!-- Token Type Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Type de Token</label>
+              <div class="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                <button
+                  (click)="selectedTokenType.set('Alpha'); onTokenTypeChange()"
+                  [class]="selectedTokenType() === 'Alpha' 
+                    ? 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-[#00204A] transition duration-150 ease-in-out' 
+                    : 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
+                >
+                  Token Alpha
+                </button>
+                <button
+                  (click)="selectedTokenType.set('Beta'); onTokenTypeChange()"
+                  [class]="selectedTokenType() === 'Beta' 
+                    ? 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-[#00204A] transition duration-150 ease-in-out' 
+                    : 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
+                >
+                  Token Beta
+                </button>
+              </div>
+            </div>
+
+            <!-- Token Amount -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Nombre de tokens à mettre en collatéral
+              </label>
+              <input
+                type="number"
+                min="0"
+                [max]="getSelectedTokenAmount()"
+                [(ngModel)]="selectedTokenAmount"
+                (input)="onTokenAmountChange()"
+                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out text-lg"
+                placeholder="0"
+              />
+              <p class="text-xs text-gray-500 mt-1">
+                Disponible: {{ getSelectedTokenAmount() }} tokens
+              </p>
+            </div>
+
+            <!-- Collateral Value Display -->
+            @if (selectedTokenAmount() > 0) {
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Valeur du collatéral:</span>
+                  <span class="text-lg font-semibold text-primary">
+                    {{ getCollateralValue() | number:'1.2-2' }} TND
+                  </span>
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                  <span class="text-sm text-gray-600">Emprunt maximum (70% LTV):</span>
+                  <span class="text-lg font-semibold text-[#00204A]">
+                    {{ maxLoanAmount() | number:'1.2-2' }} TND
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Loan Amount Simulator -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+          <h2 class="text-xl font-semibold text-primary mb-4">Simulateur d'Emprunt</h2>
+          
+          <div class="space-y-6">
+            <!-- Slider -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-4">
+                Montant souhaité: <span class="font-bold text-primary text-lg">{{ loanAmount() | number:'1.2-2' }} TND</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                [max]="maxLoanAmount()"
+                step="10"
+                [(ngModel)]="loanAmount"
+                (input)="onLoanAmountChange()"
+                class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#00204A]"
+              />
+              <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0 TND</span>
+                <span>{{ maxLoanAmount() | number:'1.2-2' }} TND</span>
+              </div>
+            </div>
+
+            <!-- Loan Details -->
+            @if (loanAmount() > 0) {
+              <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Montant emprunté:</span>
+                  <span class="text-lg font-semibold text-primary">
+                    {{ loanAmount() | number:'1.2-2' }} TND
+                  </span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Ratio LTV actuel:</span>
+                  <span [class]="currentLTV() < 50 
+                    ? 'text-lg font-semibold text-green-600' 
+                    : currentLTV() < 75 
+                    ? 'text-lg font-semibold text-yellow-600' 
+                    : 'text-lg font-semibold text-red-600'">
+                    {{ currentLTV() | number:'1.1-1' }}%
+                  </span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Taux d'intérêt annuel:</span>
+                  <span class="text-lg font-semibold text-primary">
+                    {{ interestRate }}%
+                  </span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-gray-300">
+                  <span class="text-sm font-medium text-gray-700">Prix de liquidation:</span>
+                  <span class="text-lg font-bold text-red-600">
+                    {{ liquidationPrice() | number:'1.2-2' }} TND
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Risk Visualization & Repayment Schedule -->
+      <div class="space-y-6">
+        <!-- Risk Visualization -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+          <h2 class="text-xl font-semibold text-primary mb-4">Visualisation du Risque (LTV)</h2>
+          
+          @if (loanAmount() > 0 && selectedTokenAmount() > 0) {
+            <div class="space-y-4">
+              <!-- Chart -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <svg class="w-full" [attr.viewBox]="'0 0 600 200'" preserveAspectRatio="xMidYMid meet">
+                  <!-- Grid lines -->
+                  <defs>
+                    <pattern id="grid" width="60" height="40" patternUnits="userSpaceOnUse">
+                      <path d="M 60 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="0.5"/>
+                    </pattern>
+                  </defs>
+                  <rect width="600" height="200" fill="url(#grid)"/>
+                  
+                  <!-- Y-axis labels (LTV %) -->
+                  @for (label of [0, 25, 50, 75, 90, 100]; track label) {
+                    <text [attr.x]="10" [attr.y]="200 - (label / 100 * 180) + 5" style="font-size: 10px; fill: #6b7280;">
+                      {{ label }}%
+                    </text>
+                  }
+                  
+                  <!-- X-axis labels (Price) -->
+                  @if (riskDataPoints().length > 0) {
+                    <text [attr.x]="50" [attr.y]="195" style="font-size: 10px; fill: #6b7280;">
+                      {{ liquidationPrice() | number:'1.0-0' }} TND
+                    </text>
+                    <text [attr.x]="550" [attr.y]="195" style="font-size: 10px; fill: #6b7280;">
+                      {{ getSelectedTokenPrice() | number:'1.0-0' }} TND
+                    </text>
+                  }
+                  
+                  <!-- Risk area (above 90%) -->
+                  <polygon
+                    points="0,20 600,20 600,0 0,0"
+                    fill="#ef4444"
+                    opacity="0.2"
+                  />
+                  
+                  <!-- Warning area (75-90%) -->
+                  <polygon
+                    points="0,45 600,45 600,20 0,20"
+                    fill="#f59e0b"
+                    opacity="0.2"
+                  />
+                  
+                  <!-- Safe area (below 75%) -->
+                  <polygon
+                    points="0,200 600,200 600,45 0,45"
+                    fill="#22c55e"
+                    opacity="0.1"
+                  />
+                  
+                  <!-- LTV Line -->
+                  @if (riskDataPoints().length > 0) {
+                    @for (point of riskDataPoints(); track $index) {
+                      @if ($index < riskDataPoints().length - 1) {
+                        <line
+                          [attr.x1]="50 + ($index / (riskDataPoints().length - 1)) * 500"
+                          [attr.y1]="200 - (point.ltv / 100 * 180)"
+                          [attr.x2]="50 + (($index + 1) / (riskDataPoints().length - 1)) * 500"
+                          [attr.y2]="200 - (riskDataPoints()[$index + 1].ltv / 100 * 180)"
+                          stroke="#00204A"
+                          stroke-width="3"
+                          stroke-linecap="round"
+                        />
+                      }
+                    }
+                    
+                    <!-- Current price marker -->
+                    <circle
+                      cx="550"
+                      [attr.cy]="200 - (currentLTV() / 100 * 180)"
+                      r="6"
+                      fill="#00204A"
+                      stroke="white"
+                      stroke-width="2"
+                    />
+                    
+                    <!-- Liquidation price marker -->
+                    <circle
+                      cx="50"
+                      cy="20"
+                      r="6"
+                      fill="#ef4444"
+                      stroke="white"
+                      stroke-width="2"
+                    />
+                    
+                    <!-- Labels -->
+                    <text x="560" [attr.y]="200 - (currentLTV() / 100 * 180) - 10" style="font-size: 10px; fill: #00204A; font-weight: bold;">
+                      Prix actuel
+                    </text>
+                    <text x="60" y="15" style="font-size: 10px; fill: #ef4444; font-weight: bold;">
+                      Liquidation
+                    </text>
+                  }
+                </svg>
+              </div>
+
+              <!-- Risk Legend -->
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-green-500 opacity-30 rounded"></div>
+                  <span class="text-gray-600">Sécurisé (&lt;75%)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-yellow-500 opacity-30 rounded"></div>
+                  <span class="text-gray-600">Attention (75-90%)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 bg-red-500 opacity-30 rounded"></div>
+                  <span class="text-gray-600">Risque (&gt;90%)</span>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="text-center py-12 text-gray-500">
+              <p>Sélectionnez des tokens et un montant pour visualiser le risque</p>
+            </div>
+          }
+        </div>
+
+        <!-- Repayment Schedule -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+          <h2 class="text-xl font-semibold text-primary mb-4">Calendrier de Remboursement</h2>
+          
+          <div class="space-y-3">
+            @for (item of repaymentSchedule(); track item.id) {
+              <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-tertiary transition duration-150">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div [class]="item.type === 'coupon' 
+                      ? 'w-10 h-10 bg-green-100 rounded-full flex items-center justify-center' 
+                      : 'w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center'">
+                      @if (item.type === 'coupon') {
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      } @else {
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      }
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-primary">{{ getRepaymentTypeLabel(item.type) }}</h3>
+                      <p class="text-sm text-gray-600">{{ item.date | date:'short' }}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-lg font-bold text-primary">{{ item.amount | number:'1.2-2' }} TND</p>
+                    <span [class]="item.status === 'completed' 
+                      ? 'text-xs text-green-600 font-medium' 
+                      : 'text-xs text-gray-500'">
+                      {{ item.status === 'completed' ? 'Complété' : 'En attente' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Total Repayment -->
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+              <span class="text-base font-semibold text-primary">Total à rembourser:</span>
+              <span class="text-xl font-bold text-primary">
+                {{ getTotalRepayment() | number:'1.2-2' }} TND
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              Les coupons couvrent automatiquement le crédit
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

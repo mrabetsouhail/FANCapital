@@ -1,0 +1,149 @@
+<div class="min-h-screen bg-secondary ">
+  <!-- Navbar Component -->
+  <app-navbar-client></app-navbar-client>
+
+  <!-- Main Content: Token Cards -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Token Alpha Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900">Token ALPHA</h3>
+            <p class="text-sm text-gray-500">Haute Performance</p>
+          </div>
+          <div class="bg-gradient-to-r from-[#00204A] to-[#22c55e] text-white px-3 py-1 rounded-full text-sm font-semibold">
+            ALPHA
+          </div>
+        </div>
+
+        <!-- Sparkline Chart -->
+        <div class="mb-6 h-20 bg-gray-50 rounded-lg p-2 flex items-end justify-between">
+          @for (point of alphaSparkline(); track $index) {
+            <div 
+              class="bg-[#00204A] rounded-t flex-1 mx-0.5"
+              [style.height.%]="((point - 120) / (125.5 - 120)) * 100"
+            ></div>
+          }
+        </div>
+
+        <!-- Price and Change -->
+        <div class="mb-6">
+          <div class="flex items-baseline gap-3 mb-2">
+            <span class="text-3xl font-bold text-gray-900">{{ alphaPrice() | number:'1.2-2' }} TND</span>
+            <span [class]="alphaChange() >= 0 ? 'text-green-600' : 'text-red-600'" class="text-lg font-semibold">
+              {{ alphaChange() >= 0 ? '+' : '' }}{{ alphaChange() }}%
+            </span>
+          </div>
+          <p class="text-sm text-gray-600">Valeur totale: {{ (alphaPrice() * alphaOwned()) | number:'1.2-2' }} TND</p>
+          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ alphaOwned() }} tokens Alpha</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <button
+            (click)="onBuyAlpha()"
+            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
+          >
+            Acheter
+          </button>
+          <button
+            (click)="onSellAlpha()"
+            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
+          >
+            Vendre
+          </button>
+        </div>
+      </div>
+
+      <!-- Token Beta Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900">Token BETA</h3>
+            <p class="text-sm text-gray-500">Stabilité</p>
+          </div>
+          <div class="bg-gradient-to-r from-[#22c55e] to-[#00204A] text-white px-3 py-1 rounded-full text-sm font-semibold">
+            BETA
+          </div>
+        </div>
+
+        <!-- Sparkline Chart -->
+        <div class="mb-6 h-20 bg-gray-50 rounded-lg p-2 flex items-end justify-between">
+          @for (point of betaSparkline(); track $index) {
+            <div 
+              class="bg-[#22c55e] rounded-t flex-1 mx-0.5"
+              [style.height.%]="((point - 85) / (86 - 85)) * 100"
+            ></div>
+          }
+        </div>
+
+        <!-- Price and Change -->
+        <div class="mb-6">
+          <div class="flex items-baseline gap-3 mb-2">
+            <span class="text-3xl font-bold text-gray-900">{{ betaPrice() | number:'1.2-2' }} TND</span>
+            <span [class]="betaChange() >= 0 ? 'text-green-600' : 'text-red-600'" class="text-lg font-semibold">
+              {{ betaChange() >= 0 ? '+' : '' }}{{ betaChange() }}%
+            </span>
+          </div>
+          <p class="text-sm text-gray-600">Valeur totale: {{ (betaPrice() * betaOwned()) | number:'1.2-2' }} TND</p>
+          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ betaOwned() }} tokens Beta</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <button
+            (click)="onBuyBeta()"
+            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
+          >
+            Acheter
+          </button>
+          <button
+            (click)="onSellBeta()"
+            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
+          >
+            Vendre
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer: Recent Activity -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 mt-4">
+    <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Activité Récente</h3>
+      <div class="space-y-3">
+        @for (transaction of recentTransactions(); track transaction.id) {
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150">
+            <div class="flex items-center gap-3">
+              <div [class]="transaction.type === 'achat' || transaction.type === 'depot' 
+                ? 'bg-green-100 text-green-600' 
+                : 'bg-red-100 text-red-600'"
+                class="p-2 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getTransactionIcon(transaction.type)" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900">{{ getTransactionTypeLabel(transaction.type) }}</p>
+                @if (transaction.token) {
+                  <p class="text-sm text-gray-500">Token {{ transaction.token }}</p>
+                }
+                <p class="text-xs text-gray-400">{{ transaction.date | date:'short' }}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              @if (transaction.price) {
+                <p class="font-semibold text-gray-900">{{ transaction.amount }} × {{ transaction.price | number:'1.2-2' }} TND</p>
+                <p class="text-sm text-gray-600">{{ (transaction.amount * transaction.price) | number:'1.2-2' }} TND</p>
+              } @else {
+                <p class="font-semibold text-gray-900">{{ transaction.amount | number:'1.2-2' }} TND</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </footer>
+</div>

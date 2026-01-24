@@ -1,0 +1,395 @@
+<div class="min-h-screen flex items-center justify-center bg-secondary py-12 px-4 sm:px-6 lg:px-8">
+  <!-- Centered Signup Form -->
+  <div class="w-full max-w-2xl space-y-8">
+     
+
+      <!-- Title Section -->
+      <div class="text-center">
+        <h2 class="text-3xl font-bold text-primary">Créer un compte</h2>
+        <p class="mt-2 text-sm text-gray-600">Rejoignez Fan Capital aujourd'hui</p>
+      </div>
+
+      <!-- Client Type Selector -->
+      <div class="flex gap-4 p-1 bg-gray-100 rounded-lg">
+        <button
+          type="button"
+          (click)="selectClientType('particulier')"
+          [class]="clientType() === 'particulier' 
+            ? 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-secondary bg-tertiary transition duration-150 ease-in-out' 
+            : 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-primary bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
+        >
+          Particulier
+        </button>
+        <button
+          type="button"
+          (click)="selectClientType('entreprise')"
+          [class]="clientType() === 'entreprise' 
+            ? 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-secondary bg-tertiary transition duration-150 ease-in-out' 
+            : 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-primary bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
+        >
+          Entreprise
+        </button>
+      </div>
+
+      <!-- Formulaire Particulier -->
+      @if (clientType() === 'particulier') {
+        <form class="mt-8 space-y-6" (ngSubmit)="onSubmitParticulier()">
+          <!-- Identité -->
+          <div class="space-y-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Nom -->
+              <div>
+                <label for="nom" class="block text-sm font-medium text-primary mb-2">
+                  Nom <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="nom"
+                  name="nom"
+                  type="text"
+                  required
+                  minlength="2"
+                  [(ngModel)]="particulierForm.nom"
+                  class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                  placeholder="Votre nom"
+                />
+                @if (particulierForm.nom && particulierForm.nom.trim().length < 2) {
+                  <p class="mt-1 text-xs text-red-500">Le nom doit contenir au moins 2 caractères</p>
+                }
+              </div>
+
+              <!-- Prénom -->
+              <div>
+                <label for="prenom" class="block text-sm font-medium text-primary mb-2">
+                  Prénom <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="prenom"
+                  name="prenom"
+                  type="text"
+                  required
+                  minlength="2"
+                  [(ngModel)]="particulierForm.prenom"
+                  class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                  placeholder="Votre prénom"
+                />
+                @if (particulierForm.prenom && particulierForm.prenom.trim().length < 2) {
+                  <p class="mt-1 text-xs text-red-500">Le prénom doit contenir au moins 2 caractères</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Authentification -->
+          <div class="space-y-4">
+            
+            <!-- Email -->
+            <div>
+              <label for="email" class="block text-sm font-medium text-primary mb-2">
+                Adresse email <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                [(ngModel)]="particulierForm.email"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="votre@email.com"
+              />
+              @if (particulierForm.email && !validateEmail(particulierForm.email)) {
+                <p class="mt-1 text-xs text-red-500">Veuillez entrer une adresse email valide</p>
+              }
+            </div>
+
+            <!-- Mot de passe -->
+            <div>
+              <label for="password" class="block text-sm font-medium text-primary mb-2">
+                Mot de passe <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                required
+                minlength="8"
+                [(ngModel)]="particulierForm.password"
+                (input)="checkPasswordStrength(particulierForm.password)"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="••••••••"
+              />
+              @if (particulierForm.password && particulierForm.password.length < 8) {
+                <p class="mt-1 text-xs text-red-500">Le mot de passe doit contenir au moins 8 caractères</p>
+              }
+              @if (passwordStrength()) {
+                <p class="mt-1 text-xs font-medium" [ngClass]="passwordStrengthClass()">
+                  Force du mot de passe : {{ passwordStrength() }}
+                </p>
+              }
+            </div>
+
+            <!-- Confirmation mot de passe -->
+            <div>
+              <label for="confirmPassword" class="block text-sm font-medium text-primary mb-2">
+                Confirmation du mot de passe <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                required
+                [(ngModel)]="particulierForm.confirmPassword"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="••••••••"
+              />
+              @if (particulierForm.password && particulierForm.confirmPassword && particulierForm.password !== particulierForm.confirmPassword) {
+                <p class="mt-1 text-xs text-red-500">Les mots de passe ne correspondent pas</p>
+              }
+            </div>
+          </div>
+
+          <!-- Données KYC -->
+          <div class="space-y-4">
+            
+            <!-- Numéro CIN -->
+            <div>
+              <label for="cin" class="block text-sm font-medium text-primary mb-2">
+                Numéro de CIN <span class="text-red-500">*</span>
+                <span class="text-xs text-gray-500 font-normal">(8 chiffres)</span>
+              </label>
+              <input
+                id="cin"
+                name="cin"
+                type="text"
+                maxlength="8"
+                pattern="[0-9]{8}"
+                required
+                [(ngModel)]="particulierForm.cin"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="12345678"
+              />
+              @if (particulierForm.cin && !validateCIN(particulierForm.cin)) {
+                <p class="mt-1 text-xs text-red-500">Le CIN doit contenir exactement 8 chiffres</p>
+              }
+            </div>
+
+            <!-- Téléphone -->
+            <div>
+              <label for="telephone" class="block text-sm font-medium text-primary mb-2">
+                Numéro de téléphone <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="telephone"
+                name="telephone"
+                type="tel"
+                required
+                [(ngModel)]="particulierForm.telephone"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="Numéro de téléphone"
+              />
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div>
+            <button
+              type="submit"
+              [disabled]="!isParticulierFormValid()"
+              [class]="isParticulierFormValid() 
+                ? 'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-tertiary hover:bg-quaternary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tertiary transition duration-150 ease-in-out transform hover:scale-105'
+                : 'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-gray-400 cursor-not-allowed opacity-50'"
+            >
+              <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                
+              </span>
+              Créer mon compte
+            </button>
+          </div>
+
+          <!-- Login Link -->
+          <div class="text-center">
+            <p class="text-sm text-gray-600">
+              Vous avez déjà un compte ?
+              <a 
+                routerLink="/" 
+                class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+              >
+                Se connecter
+              </a>
+            </p>
+          </div>
+        </form>
+      }
+
+      <!-- Formulaire Entreprise -->
+      @if (clientType() === 'entreprise') {
+        <form class="mt-8 space-y-6" (ngSubmit)="onSubmitEntreprise()">
+          <!-- Société -->
+          <div class="space-y-4">
+            
+            <!-- Dénomination Sociale -->
+            <div>
+              <label for="denominationSociale" class="block text-sm font-medium text-primary mb-2">
+                Dénomination Sociale <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="denominationSociale"
+                name="denominationSociale"
+                type="text"
+                required
+                minlength="2"
+                [(ngModel)]="entrepriseForm.denominationSociale"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="Nom de votre entreprise"
+              />
+              @if (entrepriseForm.denominationSociale && entrepriseForm.denominationSociale.trim().length < 2) {
+                <p class="mt-1 text-xs text-red-500">La dénomination sociale doit contenir au moins 2 caractères</p>
+              }
+            </div>
+
+            <!-- Matricule Fiscal (NIF) -->
+            <div>
+              <label for="matriculeFiscal" class="block text-sm font-medium text-primary mb-2">
+                Matricule Fiscal (NIF) <span class="text-red-500">*</span>
+                <span class="text-xs text-gray-500 font-normal">(8 chiffres)</span>
+              </label>
+              <input
+                id="matriculeFiscal"
+                name="matriculeFiscal"
+                type="text"
+                maxlength="8"
+                pattern="[0-9]{8}"
+                required
+                [(ngModel)]="entrepriseForm.matriculeFiscal"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="12345678"
+              />
+              @if (entrepriseForm.matriculeFiscal && !validateNIF(entrepriseForm.matriculeFiscal)) {
+                <p class="mt-1 text-xs text-red-500">Le NIF doit contenir exactement 8 chiffres</p>
+              }
+            </div>
+          </div>
+
+          <!-- Gouvernance -->
+          <div class="space-y-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Nom du Gérant -->
+              <div>
+                <label for="nomGerant" class="block text-sm font-medium text-primary mb-2">
+                  Nom du Gérant <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="nomGerant"
+                  name="nomGerant"
+                  type="text"
+                  required
+                  minlength="2"
+                  [(ngModel)]="entrepriseForm.nomGerant"
+                  class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                  placeholder="Nom du représentant légal"
+                />
+                @if (entrepriseForm.nomGerant && entrepriseForm.nomGerant.trim().length < 2) {
+                  <p class="mt-1 text-xs text-red-500">Le nom doit contenir au moins 2 caractères</p>
+                }
+              </div>
+
+              <!-- Prénom du Gérant -->
+              <div>
+                <label for="prenomGerant" class="block text-sm font-medium text-primary mb-2">
+                  Prénom du Gérant <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="prenomGerant"
+                  name="prenomGerant"
+                  type="text"
+                  required
+                  minlength="2"
+                  [(ngModel)]="entrepriseForm.prenomGerant"
+                  class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                  placeholder="Prénom du représentant légal"
+                />
+                @if (entrepriseForm.prenomGerant && entrepriseForm.prenomGerant.trim().length < 2) {
+                  <p class="mt-1 text-xs text-red-500">Le prénom doit contenir au moins 2 caractères</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div class="space-y-4">
+            
+            <!-- Email Professionnel -->
+            <div>
+              <label for="emailProfessionnel" class="block text-sm font-medium text-primary mb-2">
+                Email de l'entreprise <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="emailProfessionnel"
+                name="emailProfessionnel"
+                type="email"
+                autocomplete="email"
+                required
+                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                [(ngModel)]="entrepriseForm.emailProfessionnel"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="contact@entreprise.com"
+              />
+              @if (entrepriseForm.emailProfessionnel && !validateEmail(entrepriseForm.emailProfessionnel)) {
+                <p class="mt-1 text-xs text-red-500">Veuillez entrer une adresse email valide</p>
+              }
+            </div>
+
+            <!-- Téléphone -->
+            <div>
+              <label for="telephoneEntreprise" class="block text-sm font-medium text-primary mb-2">
+                Téléphone de l'entreprise <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="telephoneEntreprise"
+                name="telephoneEntreprise"
+                type="tel"
+                required
+                [(ngModel)]="entrepriseForm.telephone"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="Numéro de téléphone"
+              />
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div>
+            <button
+              type="submit"
+              [disabled]="!isEntrepriseFormValid()"
+              [class]="isEntrepriseFormValid() 
+                ? 'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-tertiary hover:bg-quaternary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tertiary transition duration-150 ease-in-out transform hover:scale-105'
+                : 'group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-gray-400 cursor-not-allowed opacity-50'"
+            >
+              <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+               
+              </span>
+              Créer le compte entreprise
+            </button>
+          </div>
+
+          <!-- Login Link -->
+          <div class="text-center">
+            <p class="text-sm text-gray-600">
+              Vous avez déjà un compte ?
+              <a 
+                routerLink="/" 
+                class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+              >
+                Se connecter
+              </a>
+            </p>
+          </div>
+        </form>
+      }
+  </div>
+</div>
