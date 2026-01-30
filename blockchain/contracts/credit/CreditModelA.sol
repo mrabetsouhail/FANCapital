@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -12,8 +12,11 @@ import {EscrowRegistry} from "./EscrowRegistry.sol";
 
 /// @notice Credit Lombard - Model A (fixed rate) gated by Silver/Gold+ and active subscription.
 /// @dev Cash settlement is off-chain; on-chain stores the loan state + collateral lock.
-contract CreditModelA is Ownable, ReentrancyGuard {
+contract CreditModelA is AccessControl, ReentrancyGuard {
     using Math for uint256;
+
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     uint256 internal constant PRICE_SCALE = 1e8; // TND
     uint256 internal constant LTV_BPS = 5_000; // 50%
@@ -50,24 +53,27 @@ contract CreditModelA is Ownable, ReentrancyGuard {
     event LoanClosed(uint256 indexed loanId);
     event LoanCancelled(uint256 indexed loanId);
 
-    constructor(address owner_, address oracle_, address escrow_) Ownable(owner_) {
+    constructor(address admin_, address oracle_, address escrow_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, admin_);
         oracle = IPriceOracle(oracle_);
         escrow = EscrowRegistry(escrow_);
     }
 
-    function setKYCRegistry(address kyc) external onlyOwner {
+    function setKYCRegistry(address kyc) external onlyRole(GOVERNANCE_ROLE) {
         kycRegistry = IKYCRegistry(kyc);
     }
 
-    function setInvestorRegistry(address reg) external onlyOwner {
+    function setInvestorRegistry(address reg) external onlyRole(GOVERNANCE_ROLE) {
         investorRegistry = IInvestorRegistry(reg);
     }
 
-    function setOracle(address newOracle) external onlyOwner {
+    function setOracle(address newOracle) external onlyRole(GOVERNANCE_ROLE) {
         oracle = IPriceOracle(newOracle);
     }
 
-    function setEscrow(address newEscrow) external onlyOwner {
+    function setEscrow(address newEscrow) external onlyRole(GOVERNANCE_ROLE) {
         escrow = EscrowRegistry(newEscrow);
     }
 
@@ -107,7 +113,7 @@ contract CreditModelA is Ownable, ReentrancyGuard {
     }
 
     /// @notice Platform activates and locks collateral AFTER cash is disbursed off-chain.
-    function activateAdvance(uint256 loanId) external onlyOwner {
+    function activateAdvance(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Requested, "A: not requested");
         l.status = Status.Active;
@@ -118,7 +124,7 @@ contract CreditModelA is Ownable, ReentrancyGuard {
     }
 
     /// @notice Platform closes loan after full repayment off-chain.
-    function closeAdvance(uint256 loanId) external onlyOwner {
+    function closeAdvance(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Active, "A: not active");
         l.status = Status.Closed;
@@ -127,7 +133,7 @@ contract CreditModelA is Ownable, ReentrancyGuard {
     }
 
     /// @notice Platform cancels a request (no disbursement) and does not lock collateral.
-    function cancelRequest(uint256 loanId) external onlyOwner {
+    function cancelRequest(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Requested, "A: not requested");
         l.status = Status.Cancelled;

@@ -1,28 +1,41 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {CPEFToken} from "../core/CPEFToken.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+import {IKYCRegistry} from "../interfaces/IKYCRegistry.sol";
 import {IInvestorRegistry} from "../interfaces/IInvestorRegistry.sol";
 import {CashTokenTND} from "./CashTokenTND.sol";
+import {TaxVault} from "./TaxVault.sol";
+import {CircuitBreaker} from "../governance/CircuitBreaker.sol";
 
 /// @notice Minimal liquidity pool “execution” contract.
 /// @dev In this repo we model cash settlement off-chain; on-chain we mint/burn and emit events.
-contract LiquidityPool is Ownable, ReentrancyGuard {
+contract LiquidityPool is AccessControl, ReentrancyGuard {
     using Math for uint256;
     uint256 internal constant PRICE_SCALE = 1e8; // TND scale
     uint256 internal constant BPS = 10_000;
     uint256 public constant VAT_BPS = 1_900; // 19%
+    uint256 public constant MAX_PRICE_AGE_SEC = 24 hours;
+
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 
     IPriceOracle public oracle;
+    IKYCRegistry public kycRegistry;
     IInvestorRegistry public investorRegistry;
     CashTokenTND public cashToken;
+    TaxVault public taxVault;
+    CircuitBreaker public circuitBreaker;
 
     address public treasury;
+
+    uint256 public constant RAS_RESIDENT_BPS = 1_000; // 10%
+    uint256 public constant RAS_NON_RESIDENT_BPS = 1_500; // 15%
 
     // Inventory reserved for ReservationOption (per token)
     mapping(address => uint256) public reservedInventory;
@@ -65,14 +78,21 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event InvestorRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event CashTokenUpdated(address indexed oldToken, address indexed newToken);
+    event KYCRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
+    event TaxVaultUpdated(address indexed oldVault, address indexed newVault);
+    event CircuitBreakerUpdated(address indexed oldBreaker, address indexed newBreaker);
     event PoolFeeUpdated(uint8 indexed feeLevel, uint256 feeBps);
     event SpreadDiscountUpdated(uint8 indexed feeLevel, uint256 discountBps);
     event BaseSpreadUpdated(uint256 oldBps, uint256 newBps);
     event SpreadParamsUpdated(uint256 alphaVolBps, uint256 betaReserveBps, uint256 minReserveRatioBps);
 
-    constructor(address owner_, address oracle_) Ownable(owner_) {
+    constructor(address admin_, address oracle_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+
         oracle = IPriceOracle(oracle_);
-        treasury = owner_;
+        treasury = admin_;
 
         // Default pool fees (before VAT), aligned with PRICING.md
         poolFeeBps[0] = 100; // Bronze 1.00%
@@ -90,54 +110,72 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
     }
 
     modifier onlyReservationOptionOrOwner() {
-        require(msg.sender == reservationOption || msg.sender == owner(), "LP: not authorized");
+        require(msg.sender == reservationOption || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "LP: not authorized");
         _;
     }
 
-    function setOracle(address newOracle) external onlyOwner {
+    function setOracle(address newOracle) external onlyRole(GOVERNANCE_ROLE) {
         oracle = IPriceOracle(newOracle);
     }
 
-    function setInvestorRegistry(address newRegistry) external onlyOwner {
+    function setInvestorRegistry(address newRegistry) external onlyRole(GOVERNANCE_ROLE) {
         address old = address(investorRegistry);
         investorRegistry = IInvestorRegistry(newRegistry);
         emit InvestorRegistryUpdated(old, newRegistry);
     }
 
-    function setCashToken(address newToken) external onlyOwner {
+    function setKYCRegistry(address newRegistry) external onlyRole(GOVERNANCE_ROLE) {
+        address old = address(kycRegistry);
+        kycRegistry = IKYCRegistry(newRegistry);
+        emit KYCRegistryUpdated(old, newRegistry);
+    }
+
+    function setCashToken(address newToken) external onlyRole(GOVERNANCE_ROLE) {
         address old = address(cashToken);
         cashToken = CashTokenTND(newToken);
         emit CashTokenUpdated(old, newToken);
     }
 
-    function setTreasury(address newTreasury) external onlyOwner {
+    function setTaxVault(address newVault) external onlyRole(GOVERNANCE_ROLE) {
+        address old = address(taxVault);
+        taxVault = TaxVault(newVault);
+        emit TaxVaultUpdated(old, newVault);
+    }
+
+    function setCircuitBreaker(address newBreaker) external onlyRole(GOVERNANCE_ROLE) {
+        address old = address(circuitBreaker);
+        circuitBreaker = CircuitBreaker(newBreaker);
+        emit CircuitBreakerUpdated(old, newBreaker);
+    }
+
+    function setTreasury(address newTreasury) external onlyRole(GOVERNANCE_ROLE) {
         address old = treasury;
         treasury = newTreasury;
         emit TreasuryUpdated(old, newTreasury);
     }
 
-    function setPoolFeeBps(uint8 feeLevel, uint256 feeBps) external onlyOwner {
+    function setPoolFeeBps(uint8 feeLevel, uint256 feeBps) external onlyRole(GOVERNANCE_ROLE) {
         require(feeLevel <= 4, "LP: bad level");
         require(feeBps <= 500, "LP: fee too high");
         poolFeeBps[feeLevel] = feeBps;
         emit PoolFeeUpdated(feeLevel, feeBps);
     }
 
-    function setSpreadDiscountBps(uint8 feeLevel, uint256 discountBps) external onlyOwner {
+    function setSpreadDiscountBps(uint8 feeLevel, uint256 discountBps) external onlyRole(GOVERNANCE_ROLE) {
         require(feeLevel <= 4, "LP: bad level");
         require(discountBps <= BPS, "LP: bad discount");
         spreadDiscountBps[feeLevel] = discountBps;
         emit SpreadDiscountUpdated(feeLevel, discountBps);
     }
 
-    function setBaseSpreadBps(uint256 newBps) external onlyOwner {
+    function setBaseSpreadBps(uint256 newBps) external onlyRole(GOVERNANCE_ROLE) {
         require(newBps <= 500, "LP: spread too high");
         uint256 old = baseSpreadBps;
         baseSpreadBps = newBps;
         emit BaseSpreadUpdated(old, newBps);
     }
 
-    function setSpreadParams(uint256 newAlphaVolBps, uint256 newBetaReserveBps, uint256 newMinReserveRatioBps) external onlyOwner {
+    function setSpreadParams(uint256 newAlphaVolBps, uint256 newBetaReserveBps, uint256 newMinReserveRatioBps) external onlyRole(GOVERNANCE_ROLE) {
         require(newMinReserveRatioBps <= BPS, "LP: bad min reserve");
         alphaVolBps = newAlphaVolBps;
         betaReserveBps = newBetaReserveBps;
@@ -145,7 +183,7 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         emit SpreadParamsUpdated(newAlphaVolBps, newBetaReserveBps, newMinReserveRatioBps);
     }
 
-    function setReservationOption(address newOption) external onlyOwner {
+    function setReservationOption(address newOption) external onlyRole(GOVERNANCE_ROLE) {
         address old = reservationOption;
         reservationOption = newOption;
         emit ReservationOptionUpdated(old, newOption);
@@ -153,11 +191,13 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
 
     /// @notice Buy CPEF using on-chain TND. User must `approve` the pool on `cashToken` first.
     function buy(address token, uint256 tndIn) external nonReentrant returns (uint256 minted) {
+        _requireFreshPrice(token);
         return _buyFor(token, msg.sender, tndIn);
     }
 
     /// @notice Buy on behalf of a user (platform-driven).
-    function buyFor(address token, address user, uint256 tndIn) external onlyOwner nonReentrant returns (uint256 minted) {
+    function buyFor(address token, address user, uint256 tndIn) external onlyRole(OPERATOR_ROLE) nonReentrant returns (uint256 minted) {
+        _requireFreshPrice(token);
         return _buyFor(token, user, tndIn);
     }
 
@@ -198,11 +238,13 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
 
     /// @notice Sell CPEF for on-chain TND. Pool burns tokens from the user and pays out net TND.
     function sell(address token, uint256 tokenAmount) external nonReentrant returns (uint256 tndOut) {
+        _requireFreshPrice(token);
         return _sellFor(token, msg.sender, tokenAmount);
     }
 
     /// @notice Sell on behalf of a user (platform-driven).
-    function sellFor(address token, address user, uint256 tokenAmount) external onlyOwner nonReentrant returns (uint256 tndOut) {
+    function sellFor(address token, address user, uint256 tokenAmount) external onlyRole(OPERATOR_ROLE) nonReentrant returns (uint256 tndOut) {
+        _requireFreshPrice(token);
         return _sellFor(token, user, tokenAmount);
     }
 
@@ -226,7 +268,26 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         uint256 totalFee = feeBase + vat;
         require(totalFee < grossTnd, "LP: fees exceed");
 
-        tndOut = grossTnd - totalFee;
+        (uint256 tax, uint256 gainTnd, bool resident) = _computeRAS(token, user, tokenAmount, vni);
+
+        require(totalFee + tax < grossTnd, "LP: fees+tax exceed");
+
+        tndOut = grossTnd - totalFee - tax;
+
+        // Circuit breaker: pause redemptions when reserve ratio is too low.
+        // We keep buys enabled to allow replenishing liquidity.
+        if (address(circuitBreaker) != address(0)) {
+            if (circuitBreaker.redemptionsPaused(address(this))) {
+                revert("LP: redemptions paused");
+            }
+            uint256 reserveRatioBps = _reserveRatioBps(token, vni);
+            if (reserveRatioBps < circuitBreaker.thresholdBps()) {
+                // NOTE: we do NOT trip-and-revert here because revert would roll back the trip.
+                // A separate keeper / backend should call `checkAndTripRedemptions()` to persist the pause.
+                revert("LP: reserve too low");
+            }
+        }
+
         require(cashToken.balanceOf(address(this)) >= grossTnd, "LP: insufficient liquidity");
 
         // Burn first (platform-only burn)
@@ -236,6 +297,11 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         require(cashToken.transfer(user, tndOut), "LP: payout transfer failed");
         if (totalFee > 0) {
             require(cashToken.transfer(treasury, totalFee), "LP: fee transfer failed");
+        }
+        if (tax > 0) {
+            require(address(taxVault) != address(0), "LP: tax vault not set");
+            require(cashToken.transfer(address(taxVault), tax), "LP: tax transfer failed");
+            taxVault.recordRAS(user, token, gainTnd, tax, resident);
         }
 
         emit Sold(token, user, tokenAmount, priceClient, tndOut, feeBase, vat, totalFee);
@@ -247,6 +313,7 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         view
         returns (uint256 priceClient, uint256 minted, uint256 feeBase, uint256 vat, uint256 totalFee)
     {
+        _requireFreshPriceView(token);
         uint8 feeLevel = investorRegistry.getFeeLevel(user);
         feeBase = (tndIn * poolFeeBps[feeLevel]) / BPS;
         vat = (feeBase * VAT_BPS) / BPS;
@@ -262,8 +329,9 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
     function quoteSell(address token, address user, uint256 tokenAmount)
         external
         view
-        returns (uint256 priceClient, uint256 tndOut, uint256 feeBase, uint256 vat, uint256 totalFee)
+        returns (uint256 priceClient, uint256 tndOut, uint256 feeBase, uint256 vat, uint256 totalFee, uint256 tax)
     {
+        _requireFreshPriceView(token);
         uint8 feeLevel = investorRegistry.getFeeLevel(user);
         uint256 vni = oracle.getVNI(token);
         uint256 spreadBps = _effectiveSpreadBps(token, feeLevel);
@@ -272,7 +340,25 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         feeBase = (grossTnd * poolFeeBps[feeLevel]) / BPS;
         vat = (feeBase * VAT_BPS) / BPS;
         totalFee = feeBase + vat;
-        tndOut = grossTnd - totalFee;
+        (tax, , ) = _computeRAS(token, user, tokenAmount, vni);
+        tndOut = grossTnd - totalFee - tax;
+    }
+
+    function _computeRAS(address token, address user, uint256 tokenAmount, uint256 vni)
+        internal
+        view
+        returns (uint256 tax, uint256 gainTnd, bool resident)
+    {
+        if (address(kycRegistry) == address(0)) return (0, 0, false);
+        resident = kycRegistry.isResident(user);
+
+        uint256 prm = CPEFToken(token).getPRM(user); // TND per token (1e8)
+        if (vni <= prm) return (0, 0, resident);
+
+        uint256 gainPerToken = vni - prm;
+        gainTnd = Math.mulDiv(tokenAmount, gainPerToken, PRICE_SCALE);
+        uint256 rate = resident ? RAS_RESIDENT_BPS : RAS_NON_RESIDENT_BPS;
+        tax = (gainTnd * rate) / BPS;
     }
 
     function _effectiveSpreadBps(address token, uint8 feeLevel) internal view returns (uint256) {
@@ -310,6 +396,40 @@ contract LiquidityPool is Ownable, ReentrancyGuard {
         uint256 denom = cash + liability;
         if (denom == 0) return BPS;
         return (cash * BPS) / denom;
+    }
+
+    /// @notice Expose current reserve ratio (bps) for a given token.
+    function getReserveRatioBps(address token) external view returns (uint256) {
+        _requireFreshPriceView(token);
+        uint256 vni = oracle.getVNI(token);
+        if (vni == 0) return 0;
+        return _reserveRatioBps(token, vni);
+    }
+
+    /// @notice Check reserve ratio and, if below threshold, trip the circuit breaker persistently.
+    /// @dev This call must NOT revert for the trip to persist.
+    function checkAndTripRedemptions(address token) external returns (bool tripped, uint256 reserveRatioBps) {
+        require(address(circuitBreaker) != address(0), "LP: circuit breaker not set");
+        _requireFreshPrice(token);
+        uint256 vni = oracle.getVNI(token);
+        reserveRatioBps = _reserveRatioBps(token, vni);
+        if (reserveRatioBps < circuitBreaker.thresholdBps()) {
+            circuitBreaker.tripRedemptions(address(this), reserveRatioBps);
+            return (true, reserveRatioBps);
+        }
+        return (false, reserveRatioBps);
+    }
+
+    function _requireFreshPrice(address token) internal view {
+        (, uint64 updatedAt) = oracle.getVNIData(token);
+        require(updatedAt != 0, "LP: price not set");
+        require(block.timestamp - uint256(updatedAt) <= MAX_PRICE_AGE_SEC, "LP: price stale");
+    }
+
+    function _requireFreshPriceView(address token) internal view {
+        (, uint64 updatedAt) = oracle.getVNIData(token);
+        require(updatedAt != 0, "LP: price not set");
+        require(block.timestamp - uint256(updatedAt) <= MAX_PRICE_AGE_SEC, "LP: price stale");
     }
 
     /// @notice Reserve inventory for an option. MVP uses accounting only.

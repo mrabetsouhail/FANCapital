@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {CPEFToken} from "../core/CPEFToken.sol";
 
 /// @notice Collateral escrow registry for credit products.
 /// @dev MVP model locks at the USER level (cannot transfer/burn while any loan is active).
-contract EscrowRegistry is Ownable {
+contract EscrowRegistry is AccessControl {
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+
     struct LockInfo {
         address token;
         uint256 amount; // token units (8 decimals)
@@ -25,14 +27,17 @@ contract EscrowRegistry is Ownable {
     event CollateralUnlocked(uint256 indexed loanId, address indexed user, address indexed token, uint256 amount);
     event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
-    constructor(address owner_) Ownable(owner_) {}
+    constructor(address admin_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+    }
 
     modifier onlyAuthorized() {
-        require(isAuthorizedCaller[msg.sender] || msg.sender == owner(), "ESCROW: not authorized");
+        require(isAuthorizedCaller[msg.sender] || hasRole(GOVERNANCE_ROLE, msg.sender), "ESCROW: not authorized");
         _;
     }
 
-    function setAuthorizedCaller(address caller, bool authorized) external onlyOwner {
+    function setAuthorizedCaller(address caller, bool authorized) external onlyRole(GOVERNANCE_ROLE) {
         isAuthorizedCaller[caller] = authorized;
         emit AuthorizedCallerUpdated(caller, authorized);
     }

@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {IInvestorRegistry} from "../interfaces/IInvestorRegistry.sol";
 
 /// @notice On-chain registry for investor score, tier and premium subscription flag.
 /// @dev Score calculation is off-chain (oracle) and pushed by the platform periodically.
-contract InvestorRegistry is IInvestorRegistry, Ownable {
+contract InvestorRegistry is IInvestorRegistry, AccessControl {
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
     // Tier groups aligned with the doc:
     // Bronze (0-20), Silver/Gold (21-50), Platinum/Diamond (51+)
     uint8 public constant TIER_BRONZE = 0;
@@ -29,10 +32,19 @@ contract InvestorRegistry is IInvestorRegistry, Ownable {
     event SubscriptionUpdated(address indexed user, bool active);
     event FeeLevelUpdated(address indexed user, uint8 feeLevel);
 
-    constructor(address owner_) Ownable(owner_) {}
+    constructor(address admin_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, admin_);
+    }
+
+    modifier onlyOperatorOrGov() {
+        require(hasRole(OPERATOR_ROLE, msg.sender) || hasRole(GOVERNANCE_ROLE, msg.sender), "INV: not authorized");
+        _;
+    }
 
     /// @notice Upsert score (oracle push). Recommended cadence: quarterly.
-    function setScore(address user, uint16 score) external onlyOwner {
+    function setScore(address user, uint16 score) external onlyOperatorOrGov {
         _investors[user].score = score;
         _investors[user].lastUpdatedAt = uint64(block.timestamp);
         emit ScoreUpdated(user, score, _investors[user].lastUpdatedAt);
@@ -40,12 +52,12 @@ contract InvestorRegistry is IInvestorRegistry, Ownable {
 
     /// @notice Toggle premium subscription status.
     /// @dev In production, this might be driven by a billing system + backend proof.
-    function setSubscriptionActive(address user, bool active) external onlyOwner {
+    function setSubscriptionActive(address user, bool active) external onlyOperatorOrGov {
         _investors[user].subscriptionActive = active;
         emit SubscriptionUpdated(user, active);
     }
 
-    function setFeeLevel(address user, uint8 feeLevel) external onlyOwner {
+    function setFeeLevel(address user, uint8 feeLevel) external onlyOperatorOrGov {
         require(feeLevel <= 4, "INV: bad fee level");
         _investors[user].feeLevel = feeLevel;
         emit FeeLevelUpdated(user, feeLevel);

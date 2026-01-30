@@ -1,0 +1,54 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+app:
+  cors:
+    allowed-origins:
+      - "http://127.0.0.1:*"
+      - "http://localhost:*"
+
+spring:
+  datasource:
+    url: "jdbc:h2:file:./data/fancapital;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE"
+    driverClassName: "org.h2.Driver"
+    username: "sa"
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+blockchain:
+  rpc-url: "http://127.0.0.1:8545"
+  # If not set, backend will try (in order):
+  # ../blockchain/deployments/localhost.council-funds.json
+  # ../blockchain/deployments/localhost.factory-funds.json
+  deployments-path: ""
+
+security:
+  jwt:
+    # OWASP: never hardcode secrets. Provide via environment variable.
+    # Example (PowerShell):
+    #   $env:JWT_SECRET="your-48+chars-secret"
+    #   $env:JWT_TTL_SECONDS="86400"
+    secret: ${JWT_SECRET:}
+    ttl-seconds: ${JWT_TTL_SECONDS:86400}
+
+backoffice:
+  tax:
+    # Optional overrides (otherwise read from deployments json "infra")
+    tax-vault-address: ${TAX_VAULT_ADDRESS:}
+    cash-token-address: ${CASH_TOKEN_ADDRESS:}
+    # Private key used to sign withdrawToFisc tx (must have GOVERNANCE_ROLE on TaxVault)
+    governance-private-key: ${GOV_PRIVATE_KEY:}
+    # Comma-separated list of emails allowed to use back-office actions
+    admin-emails: ${ADMIN_EMAILS:}
+

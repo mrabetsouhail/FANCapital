@@ -7,6 +7,8 @@ import { TransactionPage } from './components/frontoffice/transaction-page/trans
 import { ProfilePage } from './components/frontoffice/profile-page/profile-page';
 import { CreditPage } from './components/frontoffice/credit-page/credit-page';
 import { AvanceSurTitrePage } from './components/frontoffice/avance-sur-titre-page/avance-sur-titre-page';
+import { KycPage } from './components/frontoffice/kyc-page/kyc-page';
+import { FiscalDashboardPage } from './components/backoffice/fiscal-dashboard-page/fiscal-dashboard-page';
 export const routes: Routes = [
   {
     path: '',
@@ -39,5 +41,13 @@ export const routes: Routes = [
   {
     path: 'avance-sur-titre',
     component: AvanceSurTitrePage,
+  },
+  {
+    path: 'kyc',
+    component: KycPage,
+  },
+  {
+    path: 'backoffice/fiscal',
+    component: FiscalDashboardPage,
   },
 ];

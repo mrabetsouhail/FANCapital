@@ -1,7 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AuthApiService } from '../../auth/services/auth-api.service';
 
 type ClientType = 'particulier' | 'entreprise';
 
@@ -14,6 +16,7 @@ type ClientType = 'particulier' | 'entreprise';
 export class SigninPage {
   clientType = signal<ClientType>('particulier');
   logoPath: string = '/fancapital_logo.jpg';
+  errorMessage = signal<string>('');
 
   // Formulaire Particulier
   particulierForm = {
@@ -23,6 +26,8 @@ export class SigninPage {
     password: '',
     confirmPassword: '',
     cin: '',
+    passportNumber: '',
+    resident: true,
     telephone: ''
   };
 
@@ -33,13 +38,19 @@ export class SigninPage {
     nomGerant: '',
     prenomGerant: '',
     emailProfessionnel: '',
+    password: '',
+    confirmPassword: '',
     telephone: ''
   };
 
   passwordStrength = signal<string>('');
   passwordStrengthClass = signal<string>('');
+  showKycPrompt = signal<boolean>(false);
+
+  constructor(private authApi: AuthApiService, private router: Router) {}
 
   selectClientType(type: ClientType) {
+    this.errorMessage.set('');
     this.clientType.set(type);
   }
 
@@ -86,6 +97,11 @@ export class SigninPage {
     return /^\d{8}$/.test(cin);
   }
 
+  validatePassport(passport: string): boolean {
+    // MVP: 6-20 alphanum (passport formats vary by country)
+    return /^[A-Za-z0-9]{6,20}$/.test(passport);
+  }
+
   validateNIF(nif: string): boolean {
     return /^\d{8}$/.test(nif);
   }
@@ -102,7 +118,7 @@ export class SigninPage {
       this.validateEmail(f.email) &&
       f.password.length >= 8 &&
       f.password === f.confirmPassword &&
-      this.validateCIN(f.cin) &&
+      (f.resident ? this.validateCIN(f.cin) : this.validatePassport(f.passportNumber)) &&
       f.telephone.trim()
     );
   }
@@ -115,19 +131,80 @@ export class SigninPage {
       f.nomGerant.trim() &&
       f.prenomGerant.trim() &&
       this.validateEmail(f.emailProfessionnel) &&
+      f.password.length >= 8 &&
+      f.password === f.confirmPassword &&
       f.telephone.trim()
     );
   }
 
   onSubmitParticulier() {
     if (!this.isParticulierFormValid()) return;
-    // TODO: Implement signup logic for particulier
-    console.log('Particulier Form:', this.particulierForm);
+    this.errorMessage.set('');
+    const f = this.particulierForm;
+    const req = {
+      nom: f.nom.trim(),
+      prenom: f.prenom.trim(),
+      email: f.email.trim(),
+      password: f.password,
+      confirmPassword: f.confirmPassword,
+      cin: f.cin.trim(),
+      passportNumber: f.passportNumber.trim(),
+      resident: !!f.resident,
+      telephone: f.telephone.trim(),
+    };
+    this.authApi.registerParticulier(req).subscribe({
+      next: (res) => {
+        localStorage.setItem('authToken', res.token);
+        localStorage.setItem('userEmail', res.user.email);
+        this.showKycPrompt.set(true);
+      },
+      error: (err: unknown) => {
+        const msg =
+          err instanceof HttpErrorResponse
+            ? (err.error?.message ?? err.message)
+            : 'Erreur inscription';
+        this.errorMessage.set(String(msg));
+      },
+    });
   }
 
   onSubmitEntreprise() {
     if (!this.isEntrepriseFormValid()) return;
-    // TODO: Implement signup logic for entreprise
-    console.log('Entreprise Form:', this.entrepriseForm);
+    this.errorMessage.set('');
+    const f = this.entrepriseForm;
+    const req = {
+      denominationSociale: f.denominationSociale.trim(),
+      matriculeFiscal: f.matriculeFiscal.trim(),
+      nomGerant: f.nomGerant.trim(),
+      prenomGerant: f.prenomGerant.trim(),
+      emailProfessionnel: f.emailProfessionnel.trim(),
+      password: f.password,
+      confirmPassword: f.confirmPassword,
+      telephone: f.telephone.trim(),
+    };
+    this.authApi.registerEntreprise(req).subscribe({
+      next: (res) => {
+        localStorage.setItem('authToken', res.token);
+        localStorage.setItem('userEmail', res.user.email);
+        this.showKycPrompt.set(true);
+      },
+      error: (err: unknown) => {
+        const msg =
+          err instanceof HttpErrorResponse
+            ? (err.error?.message ?? err.message)
+            : 'Erreur inscription';
+        this.errorMessage.set(String(msg));
+      },
+    });
+  }
+
+  onKycNow() {
+    this.showKycPrompt.set(false);
+    this.router.navigate(['/kyc']);
+  }
+
+  onKycLater() {
+    this.showKycPrompt.set(false);
+    this.router.navigate(['/acceuil-client']);
   }
 }

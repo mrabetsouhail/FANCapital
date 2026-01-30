@@ -112,7 +112,7 @@ Ce document définit l'intégralité des frais et commissions applicables aux op
 
 ### 5.1 Retenue à la Source (RAS)
 
-**Moment** : Prélevée lors du rachat (Burn)
+**Moment** : Prélevée lors du rachat via la Piscine (Burn)
 
 **Calcul** :
 ```
@@ -125,6 +125,11 @@ RAS = Plus-value × Taux_RAS
 - **Non-Résident** : 15% (sauf convention bilatérale)
 
 **Base imposable** : Uniquement sur la plus-value réelle
+
+**Important (P2P)** :
+- **Aucune RAS n’est prélevée lors des transactions P2P**.
+- La fiscalité (RAS) est **différée** et appliquée uniquement lors du **rachat final via la Piscine**.
+- Objectif : maximiser la liquidité du marché secondaire et éviter la complexité de calcul du gain vendeur en temps réel.
 
 ### 5.2 TVA sur Commissions
 

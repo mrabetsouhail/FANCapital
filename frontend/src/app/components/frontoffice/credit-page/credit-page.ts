@@ -1,7 +1,9 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import type { Fund } from '../../../blockchain/models/fund.models';
 
 interface CollateralToken {
   id: number;
@@ -18,7 +20,9 @@ interface CollateralToken {
   templateUrl: './credit-page.html',
   styleUrl: './credit-page.css',
 })
-export class CreditPage {
+export class CreditPage implements OnInit {
+  private readonly api = inject(BlockchainApiService);
+
   // Credit data
   totalCreditUsed = signal<number>(5000.00);
   totalCreditLimit = signal<number>(10000.00);
@@ -28,6 +32,9 @@ export class CreditPage {
     { id: 1, type: 'Alpha', amount: 150, lockedAmount: 40, price: 125.50, value: 5020.00 },
     { id: 2, type: 'Beta', amount: 75, lockedAmount: 20, price: 85.25, value: 1705.00 },
   ]);
+
+  fundAlpha = signal<Fund | null>(null);
+  fundBeta = signal<Fund | null>(null);
   
   // LTV (Loan-to-Value) calculation
   totalCollateralValue = computed(() => {
@@ -62,6 +69,45 @@ export class CreditPage {
   });
 
   constructor() {}
+
+  ngOnInit(): void {
+    this.api.listFunds().subscribe({
+      next: (res) => {
+        this.fundAlpha.set(res.funds.find((f) => f.name.toLowerCase().includes('atlas')) ?? res.funds[0] ?? null);
+        this.fundBeta.set(res.funds.find((f) => f.name.toLowerCase().includes('didon')) ?? res.funds[1] ?? null);
+        this.refreshPrices();
+      },
+      error: () => {},
+    });
+  }
+
+  private refreshPrices() {
+    const alpha = this.fundAlpha();
+    const beta = this.fundBeta();
+
+    if (alpha?.token) {
+      this.api.getVni(alpha.token).subscribe({
+        next: (v) => this.applyPrice('Alpha', Number(v.vni) / 1e8),
+        error: () => {},
+      });
+    }
+    if (beta?.token) {
+      this.api.getVni(beta.token).subscribe({
+        next: (v) => this.applyPrice('Beta', Number(v.vni) / 1e8),
+        error: () => {},
+      });
+    }
+  }
+
+  private applyPrice(type: 'Alpha' | 'Beta', price: number) {
+    this.collateralTokens.update((list) =>
+      list.map((t) => {
+        if (t.type !== type) return t;
+        const value = t.lockedAmount * price;
+        return { ...t, price, value };
+      })
+    );
+  }
 
   getLTVPercentage(): number {
     return Math.min(this.ltvRatio(), 100);

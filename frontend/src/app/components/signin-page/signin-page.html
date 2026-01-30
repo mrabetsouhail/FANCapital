@@ -1,4 +1,32 @@
 <div class="min-h-screen flex items-center justify-center bg-secondary py-12 px-4 sm:px-6 lg:px-8">
+  @if (showKycPrompt()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" (click)="onKycLater()"></div>
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-6 mx-4">
+        <h3 class="text-xl font-bold text-primary mb-2">Compléter la phase de KYC</h3>
+        <p class="text-sm text-gray-600 mb-5">
+          Votre compte est créé. Pour débloquer toutes les fonctionnalités, veuillez compléter votre KYC.
+        </p>
+
+        <div class="flex gap-3 justify-end">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
+            (click)="onKycLater()"
+          >
+            Ultérieur
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
+            (click)="onKycNow()"
+          >
+            Maintenant
+          </button>
+        </div>
+      </div>
+    </div>
+  }
   <!-- Centered Signup Form -->
   <div class="w-full max-w-2xl space-y-8">
      
@@ -34,6 +62,11 @@
       <!-- Formulaire Particulier -->
       @if (clientType() === 'particulier') {
         <form class="mt-8 space-y-6" (ngSubmit)="onSubmitParticulier()">
+          @if (errorMessage()) {
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {{ errorMessage() }}
+            </div>
+          }
           <!-- Identité -->
           <div class="space-y-4">
             
@@ -154,8 +187,26 @@
 
           <!-- Données KYC -->
           <div class="space-y-4">
+
+            <!-- Résidence -->
+            <div>
+              <label class="block text-sm font-medium text-primary mb-2">
+                Résidence <span class="text-red-500">*</span>
+              </label>
+              <div class="flex gap-4">
+                <label class="inline-flex items-center gap-2 text-sm text-primary">
+                  <input type="radio" name="resident" [value]="true" [(ngModel)]="particulierForm.resident" />
+                  Résident tunisien
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-primary">
+                  <input type="radio" name="resident" [value]="false" [(ngModel)]="particulierForm.resident" />
+                  Non-résident (étranger)
+                </label>
+              </div>
+            </div>
             
             <!-- Numéro CIN -->
+            @if (particulierForm.resident) {
             <div>
               <label for="cin" class="block text-sm font-medium text-primary mb-2">
                 Numéro de CIN <span class="text-red-500">*</span>
@@ -176,6 +227,26 @@
                 <p class="mt-1 text-xs text-red-500">Le CIN doit contenir exactement 8 chiffres</p>
               }
             </div>
+            } @else {
+            <!-- Numéro Passeport -->
+            <div>
+              <label for="passportNumber" class="block text-sm font-medium text-primary mb-2">
+                Numéro de passeport <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="passportNumber"
+                name="passportNumber"
+                type="text"
+                required
+                [(ngModel)]="particulierForm.passportNumber"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="AA123456"
+              />
+              @if (particulierForm.passportNumber && !validatePassport(particulierForm.passportNumber)) {
+                <p class="mt-1 text-xs text-red-500">Veuillez entrer un numéro de passeport valide</p>
+              }
+            </div>
+            }
 
             <!-- Téléphone -->
             <div>
@@ -228,6 +299,11 @@
       <!-- Formulaire Entreprise -->
       @if (clientType() === 'entreprise') {
         <form class="mt-8 space-y-6" (ngSubmit)="onSubmitEntreprise()">
+          @if (errorMessage()) {
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {{ errorMessage() }}
+            </div>
+          }
           <!-- Société -->
           <div class="space-y-4">
             
@@ -341,6 +417,53 @@
               />
               @if (entrepriseForm.emailProfessionnel && !validateEmail(entrepriseForm.emailProfessionnel)) {
                 <p class="mt-1 text-xs text-red-500">Veuillez entrer une adresse email valide</p>
+              }
+            </div>
+
+            <!-- Mot de passe -->
+            <div>
+              <label for="passwordEntreprise" class="block text-sm font-medium text-primary mb-2">
+                Mot de passe <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="passwordEntreprise"
+                name="passwordEntreprise"
+                type="password"
+                autocomplete="new-password"
+                required
+                minlength="8"
+                [(ngModel)]="entrepriseForm.password"
+                (input)="checkPasswordStrength(entrepriseForm.password)"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="••••••••"
+              />
+              @if (entrepriseForm.password && entrepriseForm.password.length < 8) {
+                <p class="mt-1 text-xs text-red-500">Le mot de passe doit contenir au moins 8 caractères</p>
+              }
+              @if (passwordStrength()) {
+                <p class="mt-1 text-xs font-medium" [ngClass]="passwordStrengthClass()">
+                  Force du mot de passe : {{ passwordStrength() }}
+                </p>
+              }
+            </div>
+
+            <!-- Confirmation mot de passe -->
+            <div>
+              <label for="confirmPasswordEntreprise" class="block text-sm font-medium text-primary mb-2">
+                Confirmation du mot de passe <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="confirmPasswordEntreprise"
+                name="confirmPasswordEntreprise"
+                type="password"
+                autocomplete="new-password"
+                required
+                [(ngModel)]="entrepriseForm.confirmPassword"
+                class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="••••••••"
+              />
+              @if (entrepriseForm.password && entrepriseForm.confirmPassword && entrepriseForm.password !== entrepriseForm.confirmPassword) {
+                <p class="mt-1 text-xs text-red-500">Les mots de passe ne correspondent pas</p>
               }
             </div>
 

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {IKYCRegistry} from "../interfaces/IKYCRegistry.sol";
 
 /// @notice Minimal KYC registry with Green/White list levels.
-contract KYCRegistry is IKYCRegistry, Ownable {
+contract KYCRegistry is IKYCRegistry, AccessControl {
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant KYC_VALIDATOR_ROLE = keccak256("KYC_VALIDATOR_ROLE");
+
     struct UserKyc {
         bool whitelisted;
         uint8 level; // 1 = Green, 2 = White
@@ -17,23 +20,37 @@ contract KYCRegistry is IKYCRegistry, Ownable {
 
     event WhitelistUpdated(address indexed user, bool whitelisted, uint8 level);
     event ResidencyUpdated(address indexed user, bool resident);
+    event ValidatorUpdated(address indexed validator, bool enabled);
 
-    constructor(address owner_) Ownable(owner_) {}
+    constructor(address admin_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+        _grantRole(KYC_VALIDATOR_ROLE, admin_);
+    }
 
-    function addToWhitelist(address user, uint8 level, bool resident) external onlyOwner {
+    function setValidator(address validator, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (enabled) {
+            _grantRole(KYC_VALIDATOR_ROLE, validator);
+        } else {
+            _revokeRole(KYC_VALIDATOR_ROLE, validator);
+        }
+        emit ValidatorUpdated(validator, enabled);
+    }
+
+    function addToWhitelist(address user, uint8 level, bool resident) external onlyRole(KYC_VALIDATOR_ROLE) {
         require(level == 1 || level == 2, "KYC: invalid level");
         _users[user] = UserKyc({whitelisted: true, level: level, resident: resident});
         emit WhitelistUpdated(user, true, level);
         emit ResidencyUpdated(user, resident);
     }
 
-    function removeFromWhitelist(address user) external onlyOwner {
+    function removeFromWhitelist(address user) external onlyRole(KYC_VALIDATOR_ROLE) {
         _users[user].whitelisted = false;
         _users[user].level = 0;
         emit WhitelistUpdated(user, false, 0);
     }
 
-    function setUserResidency(address user, bool resident) external onlyOwner {
+    function setUserResidency(address user, bool resident) external onlyRole(KYC_VALIDATOR_ROLE) {
         _users[user].resident = resident;
         emit ResidencyUpdated(user, resident);
     }

@@ -1,4 +1,6 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
+import fs from "node:fs";
+import path from "node:path";
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -23,8 +25,16 @@ async function main() {
   const tnd = await CashTokenTND.deploy(deployer.address);
   await tnd.waitForDeployment();
 
+  const TaxVault = await ethers.getContractFactory("TaxVault");
+  const taxVault = await TaxVault.deploy(deployer.address, await tnd.getAddress());
+  await taxVault.waitForDeployment();
+
+  const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
+  const cb = await CircuitBreaker.deploy(deployer.address);
+  await cb.waitForDeployment();
+
   const P2PExchange = await ethers.getContractFactory("P2PExchange");
-  const p2p = await P2PExchange.deploy(deployer.address, await tnd.getAddress(), await investors.getAddress());
+  const p2p = await P2PExchange.deploy(deployer.address, await tnd.getAddress(), await investors.getAddress(), deployer.address);
   await p2p.waitForDeployment();
   await (await p2p.setKYCRegistry(await kyc.getAddress())).wait();
 
@@ -42,7 +52,12 @@ async function main() {
 
   // Wire dependencies
   await (await pool.setInvestorRegistry(await investors.getAddress())).wait();
+  await (await pool.setKYCRegistry(await kyc.getAddress())).wait();
   await (await pool.setCashToken(await tnd.getAddress())).wait();
+  await (await pool.setTaxVault(await taxVault.getAddress())).wait();
+  await (await pool.setCircuitBreaker(await cb.getAddress())).wait();
+  await (await taxVault.setAuthorizedCaller(await pool.getAddress(), true)).wait();
+  await (await cb.registerPool(await pool.getAddress())).wait();
 
   await (await eqHigh.setLiquidityPool(await pool.getAddress())).wait();
   await (await eqMed.setLiquidityPool(await pool.getAddress())).wait();
@@ -81,6 +96,8 @@ async function main() {
   console.log("KYCRegistry:", await kyc.getAddress());
   console.log("InvestorRegistry:", await investors.getAddress());
   console.log("CashTokenTND:", await tnd.getAddress());
+  console.log("TaxVault:", await taxVault.getAddress());
+  console.log("CircuitBreaker:", await cb.getAddress());
   console.log("P2PExchange:", await p2p.getAddress());
   console.log("PriceOracle:", await oracle.getAddress());
   console.log("LiquidityPool:", await pool.getAddress());
@@ -90,6 +107,34 @@ async function main() {
   console.log("ReservationOption:", await opt.getAddress());
   console.log("CreditModelA:", await creditA.getAddress());
   console.log("CreditModelBPGP:", await creditB.getAddress());
+
+  const deployment = {
+    network: network.name,
+    deployer: deployer.address,
+    contracts: {
+      KYCRegistry: await kyc.getAddress(),
+      InvestorRegistry: await investors.getAddress(),
+      CashTokenTND: await tnd.getAddress(),
+      TaxVault: await taxVault.getAddress(),
+      CircuitBreaker: await cb.getAddress(),
+      P2PExchange: await p2p.getAddress(),
+      PriceOracle: await oracle.getAddress(),
+      LiquidityPool: await pool.getAddress(),
+      EscrowRegistry: await escrow.getAddress(),
+      CPEFEquityHigh: await eqHigh.getAddress(),
+      CPEFEquityMedium: await eqMed.getAddress(),
+      ReservationOption: await opt.getAddress(),
+      CreditModelA: await creditA.getAddress(),
+      CreditModelBPGP: await creditB.getAddress(),
+    },
+    generatedAt: new Date().toISOString(),
+  };
+
+  const outDir = path.join(__dirname, "..", "deployments");
+  fs.mkdirSync(outDir, { recursive: true });
+  const outPath = path.join(outDir, `${network.name}.json`);
+  fs.writeFileSync(outPath, JSON.stringify(deployment, null, 2), { encoding: "utf-8" });
+  console.log("Saved deployments to:", outPath);
 }
 
 main().catch((err) => {

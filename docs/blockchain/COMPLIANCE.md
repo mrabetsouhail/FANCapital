@@ -193,6 +193,11 @@ RAS = Plus-value × Taux_RAS
 
 **Destination** : TaxVault → Reversement au fisc
 
+**Règle P2P (décision de design)** :
+- **Aucune RAS n’est prélevée au moment d’un transfert ou d’un règlement P2P**.
+- La RAS est **prélevée uniquement lors du rachat via la Piscine** (sortie en TND), conformément au modèle “différé”.
+- Justification : liquidité du P2P + complexité PRM/plus-value en temps réel côté vendeur.
+
 ### 6.2 TVA sur Commissions
 
 **Taux** : 19%

@@ -1,4 +1,4 @@
-﻿{
+{
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["./hardhat.config.ts", "./scripts", "./test"]
+  "include": ["./hardhat.config.ts", "./scripts", "./test", "./keepers"]
 }

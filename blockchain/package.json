@@ -9,7 +9,16 @@
     "test": "hardhat test",
     "clean": "hardhat clean",
     "node": "hardhat node",
-    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat"
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:factory-funds:local": "hardhat run scripts/deploy-factory-funds.ts --network hardhat",
+    "deploy:factory-funds:localhost": "hardhat run scripts/deploy-factory-funds.ts --network localhost",
+    "deploy:council:local": "hardhat run scripts/deploy-multisig-council.ts --network hardhat",
+    "deploy:council:localhost": "hardhat run scripts/deploy-multisig-council.ts --network localhost",
+    "deploy:council-funds:localhost": "hardhat run scripts/council-deploy-funds.ts --network localhost",
+    "keeper:price": "ts-node keepers/price-bot.ts --config keepers/price-bot.example.json",
+    "keeper:watchdog": "ts-node keepers/circuit-breaker-watchdog.ts --config keepers/circuit-breaker-watchdog.example.json",
+    "keeper:subscriptions": "ts-node keepers/subscription-manager.ts --config keepers/subscription-manager.example.json"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",

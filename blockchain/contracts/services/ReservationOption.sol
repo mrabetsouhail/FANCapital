@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IKYCRegistry} from "../interfaces/IKYCRegistry.sol";
@@ -11,7 +11,9 @@ import {LiquidityPool} from "./LiquidityPool.sol";
 
 /// @notice Option de réservation sur stock CPEF.
 /// @dev MVP: cash settlement is modeled off-chain; this contract stores state and emits events.
-contract ReservationOption is Ownable, ReentrancyGuard {
+contract ReservationOption is AccessControl, ReentrancyGuard {
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     uint256 internal constant BPS = 10_000;
     uint256 internal constant PRICE_SCALE = 1e8; // TND scale
 
@@ -47,24 +49,27 @@ contract ReservationOption is Ownable, ReentrancyGuard {
     event Cancelled(uint256 indexed reservationId);
     event Purged(uint256 indexed reservationId);
 
-    constructor(address owner_, address oracle_, address liquidityPool_) Ownable(owner_) {
+    constructor(address admin_, address oracle_, address liquidityPool_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, admin_);
         oracle = IPriceOracle(oracle_);
         liquidityPool = LiquidityPool(liquidityPool_);
     }
 
-    function setOracle(address newOracle) external onlyOwner {
+    function setOracle(address newOracle) external onlyRole(GOVERNANCE_ROLE) {
         oracle = IPriceOracle(newOracle);
     }
 
-    function setLiquidityPool(address newPool) external onlyOwner {
+    function setLiquidityPool(address newPool) external onlyRole(GOVERNANCE_ROLE) {
         liquidityPool = LiquidityPool(newPool);
     }
 
-    function setKYCRegistry(address newKyc) external onlyOwner {
+    function setKYCRegistry(address newKyc) external onlyRole(GOVERNANCE_ROLE) {
         kycRegistry = IKYCRegistry(newKyc);
     }
 
-    function setInvestorRegistry(address newRegistry) external onlyOwner {
+    function setInvestorRegistry(address newRegistry) external onlyRole(GOVERNANCE_ROLE) {
         investorRegistry = IInvestorRegistry(newRegistry);
     }
 

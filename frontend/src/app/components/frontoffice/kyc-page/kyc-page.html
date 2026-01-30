@@ -1,0 +1,38 @@
+<div class="min-h-screen bg-secondary flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-xl bg-white rounded-xl shadow-md border border-gray-200 p-6">
+    <h1 class="text-2xl font-bold text-primary mb-2">Phase KYC</h1>
+    <p class="text-gray-600 text-sm mb-6">
+      Merci. Pour activer toutes les fonctionnalités (P2P, limites plus élevées, services premium), veuillez compléter
+      votre KYC.
+    </p>
+
+    <div class="space-y-3 text-sm text-primary">
+      <div class="p-4 rounded-lg bg-gray-50 border border-gray-200">
+        <div class="font-semibold mb-1">Étapes (MVP)</div>
+        <ul class="list-disc pl-5 space-y-1 text-gray-700">
+          <li>Vérification identité (CIN / Passeport)</li>
+          <li>Justificatif de domicile</li>
+          <li>Origine des fonds</li>
+        </ul>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <a
+          routerLink="/acceuil-client"
+          class="inline-flex justify-center px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
+        >
+          Revenir
+        </a>
+        <button
+          type="button"
+          class="inline-flex justify-center px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
+          disabled
+          title="À intégrer avec le backend KYC"
+        >
+          Démarrer KYC (bientôt)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+

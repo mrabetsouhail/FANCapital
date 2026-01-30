@@ -187,7 +187,8 @@ describe("FAN-Capital blockchain (smoke)", function () {
     const txB = await creditB.connect(alice).requestAdvance(await token.getAddress(), 1n * 10n ** 8n, 30);
     await txB.wait();
     await (await creditB.activateAdvance(1)).wait();
-    await (await oracle.updateVNI(await token.getAddress(), 120n * 10n ** 8n)).wait(); // simulate gain
+    // Oracle guard: update within 10%
+    await (await oracle.updateVNI(await token.getAddress(), 109n * 10n ** 8n)).wait(); // simulate gain (+9%)
     await (await creditB.closeAdvance(1)).wait();
   });
 
@@ -210,11 +211,18 @@ describe("FAN-Capital blockchain (smoke)", function () {
     const tnd = await CashTokenTND.deploy(owner.address);
     await tnd.waitForDeployment();
 
+    const TaxVault = await ethers.getContractFactory("TaxVault");
+    const taxVault = await TaxVault.deploy(owner.address, await tnd.getAddress());
+    await taxVault.waitForDeployment();
+
     const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
     const pool = await LiquidityPool.deploy(owner.address, await oracle.getAddress());
     await pool.waitForDeployment();
     await (await pool.setInvestorRegistry(await investors.getAddress())).wait();
+    await (await pool.setKYCRegistry(await kyc.getAddress())).wait();
     await (await pool.setCashToken(await tnd.getAddress())).wait();
+    await (await pool.setTaxVault(await taxVault.getAddress())).wait();
+    await (await taxVault.setAuthorizedCaller(await pool.getAddress(), true)).wait();
 
     const CPEFEquityMedium = await ethers.getContractFactory("CPEFEquityMedium");
     const token = await CPEFEquityMedium.deploy(owner.address);
@@ -258,6 +266,157 @@ describe("FAN-Capital blockchain (smoke)", function () {
     expect(await token.balanceOf(alice.address)).to.equal(0n);
   });
 
+  it("sell with profit withholds RAS to TaxVault (resident)", async () => {
+    const [owner, alice] = await ethers.getSigners();
+
+    const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
+    const kyc = await KYCRegistry.deploy(owner.address);
+    await kyc.waitForDeployment();
+
+    const InvestorRegistry = await ethers.getContractFactory("InvestorRegistry");
+    const investors = await InvestorRegistry.deploy(owner.address);
+    await investors.waitForDeployment();
+
+    const PriceOracle = await ethers.getContractFactory("PriceOracle");
+    const oracle = await PriceOracle.deploy(owner.address);
+    await oracle.waitForDeployment();
+
+    const CashTokenTND = await ethers.getContractFactory("CashTokenTND");
+    const tnd = await CashTokenTND.deploy(owner.address);
+    await tnd.waitForDeployment();
+
+    const TaxVault = await ethers.getContractFactory("TaxVault");
+    const taxVault = await TaxVault.deploy(owner.address, await tnd.getAddress());
+    await taxVault.waitForDeployment();
+
+    const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
+    const pool = await LiquidityPool.deploy(owner.address, await oracle.getAddress());
+    await pool.waitForDeployment();
+    await (await pool.setInvestorRegistry(await investors.getAddress())).wait();
+    await (await pool.setKYCRegistry(await kyc.getAddress())).wait();
+    await (await pool.setCashToken(await tnd.getAddress())).wait();
+    await (await pool.setTaxVault(await taxVault.getAddress())).wait();
+    await (await taxVault.setAuthorizedCaller(await pool.getAddress(), true)).wait();
+
+    const CPEFEquityMedium = await ethers.getContractFactory("CPEFEquityMedium");
+    const token = await CPEFEquityMedium.deploy(owner.address);
+    await token.waitForDeployment();
+    await (await token.setLiquidityPool(await pool.getAddress())).wait();
+    await (await token.setKYCRegistry(await kyc.getAddress())).wait();
+    await (await token.setPriceOracle(await oracle.getAddress())).wait();
+
+    // Alice resident, KYC level 2, Bronze fee level
+    await (await kyc.addToWhitelist(alice.address, 2, true)).wait();
+    await (await investors.setFeeLevel(alice.address, 0)).wait();
+
+    // Buy at VNI=100 (with spread/fees), then increase VNI to create a positive gain vs PRM.
+    await (await oracle.updateVNI(await token.getAddress(), 100n * 10n ** 8n)).wait();
+    const buyTnd = 1_000n * 10n ** 8n;
+    await (await tnd.mint(alice.address, buyTnd)).wait();
+    await (await tnd.connect(alice).approve(await pool.getAddress(), buyTnd)).wait();
+    await (await pool.connect(alice).buy(await token.getAddress(), buyTnd)).wait();
+
+    // Provide liquidity for redemption
+    await (await tnd.mint(await pool.getAddress(), 2_000n * 10n ** 8n)).wait();
+
+    // Pump VNI
+    // Use governance override for a large move (force update)
+    await (await oracle.forceUpdateVNI(await token.getAddress(), 140n * 10n ** 8n)).wait();
+
+    const tokenBal = await token.balanceOf(alice.address);
+
+    const taxBefore = await tnd.balanceOf(await taxVault.getAddress());
+    await (await pool.connect(alice).sell(await token.getAddress(), tokenBal)).wait();
+    const taxAfter = await tnd.balanceOf(await taxVault.getAddress());
+
+    // Tax should be > 0 (profit exists when VNI > PRM)
+    expect(taxAfter).to.be.greaterThan(taxBefore);
+  });
+
+  it("circuit breaker pauses redemptions when reserve ratio < 20%", async () => {
+    const [owner, alice] = await ethers.getSigners();
+
+    const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
+    const kyc = await KYCRegistry.deploy(owner.address);
+    await kyc.waitForDeployment();
+
+    const InvestorRegistry = await ethers.getContractFactory("InvestorRegistry");
+    const investors = await InvestorRegistry.deploy(owner.address);
+    await investors.waitForDeployment();
+
+    const PriceOracle = await ethers.getContractFactory("PriceOracle");
+    const oracle = await PriceOracle.deploy(owner.address);
+    await oracle.waitForDeployment();
+
+    const CashTokenTND = await ethers.getContractFactory("CashTokenTND");
+    const tnd = await CashTokenTND.deploy(owner.address);
+    await tnd.waitForDeployment();
+
+    const TaxVault = await ethers.getContractFactory("TaxVault");
+    const taxVault = await TaxVault.deploy(owner.address, await tnd.getAddress());
+    await taxVault.waitForDeployment();
+
+    const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
+    const cb = await CircuitBreaker.deploy(owner.address);
+    await cb.waitForDeployment();
+
+    const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
+    const pool = await LiquidityPool.deploy(owner.address, await oracle.getAddress());
+    await pool.waitForDeployment();
+    await (await pool.setInvestorRegistry(await investors.getAddress())).wait();
+    await (await pool.setKYCRegistry(await kyc.getAddress())).wait();
+    await (await pool.setCashToken(await tnd.getAddress())).wait();
+    await (await pool.setTaxVault(await taxVault.getAddress())).wait();
+    await (await pool.setCircuitBreaker(await cb.getAddress())).wait();
+    await (await taxVault.setAuthorizedCaller(await pool.getAddress(), true)).wait();
+
+    const CPEFEquityHigh = await ethers.getContractFactory("CPEFEquityHigh");
+    const token = await CPEFEquityHigh.deploy(owner.address);
+    await token.waitForDeployment();
+    await (await token.setLiquidityPool(await pool.getAddress())).wait();
+    await (await token.setKYCRegistry(await kyc.getAddress())).wait();
+    await (await token.setPriceOracle(await oracle.getAddress())).wait();
+
+    // Alice resident, level 2, Bronze fee level
+    await (await kyc.addToWhitelist(alice.address, 2, true)).wait();
+    await (await investors.setFeeLevel(alice.address, 0)).wait();
+
+    // VNI=100
+    await (await oracle.updateVNI(await token.getAddress(), 100n * 10n ** 8n)).wait();
+
+    // Seed pool with low cash and create token liability by minting to Alice via buy().
+    // Give Alice 1000 TND, but only seed pool with 100 TND after buy to simulate low reserve.
+    const buyTnd = 1_000n * 10n ** 8n;
+    await (await tnd.mint(alice.address, buyTnd)).wait();
+    await (await tnd.connect(alice).approve(await pool.getAddress(), buyTnd)).wait();
+    await (await pool.connect(alice).buy(await token.getAddress(), buyTnd)).wait();
+
+    // Drain pool cash to force reserve ratio < 20%:
+    // Move almost all pool cash to owner (simulating external withdrawal / liquidity stress)
+    const poolCash = await tnd.balanceOf(await pool.getAddress());
+    // transfer out 90% of pool cash to owner
+    const drain = (poolCash * 9n) / 10n;
+    await (await tnd.connect(owner).mint(await pool.getAddress(), 0n)).wait(); // no-op to keep pattern
+    // owner can move funds only if it controls pool; in this MVP we simulate by direct transfer from pool using owner-only call:
+    // easiest in test: mint cash to pool then burn? instead, just set pool cash very low by burning from pool via owner
+    await (await tnd.burn(await pool.getAddress(), drain)).wait();
+
+    const tokenBal = await token.balanceOf(alice.address);
+    await expect(pool.connect(alice).sell(await token.getAddress(), tokenBal)).to.be.revertedWith("LP: reserve too low");
+
+    // Trip persistently via a separate call (keeper/backend), then redemptions are paused
+    await (await pool.checkAndTripRedemptions(await token.getAddress())).wait();
+    expect(await cb.redemptionsPaused(await pool.getAddress())).to.equal(true);
+    await expect(pool.connect(alice).sell(await token.getAddress(), tokenBal)).to.be.revertedWith("LP: redemptions paused");
+
+    // Replenish cash and resume by owner
+    await (await tnd.mint(await pool.getAddress(), 10_000n * 10n ** 8n)).wait();
+    await (await cb.resumeRedemptions(await pool.getAddress())).wait();
+
+    // Now sell should go through (pool has liquidity)
+    await (await pool.connect(alice).sell(await token.getAddress(), tokenBal)).wait();
+  });
+
   it("P2P exchange charges P2P fee + VAT and settles atomically", async () => {
     const [owner, seller, buyer] = await ethers.getSigners();
 
@@ -274,7 +433,7 @@ describe("FAN-Capital blockchain (smoke)", function () {
     await tnd.waitForDeployment();
 
     const P2PExchange = await ethers.getContractFactory("P2PExchange");
-    const p2p = await P2PExchange.deploy(owner.address, await tnd.getAddress(), await investors.getAddress());
+    const p2p = await P2PExchange.deploy(owner.address, await tnd.getAddress(), await investors.getAddress(), owner.address);
     await p2p.waitForDeployment();
     await (await p2p.setKYCRegistry(await kyc.getAddress())).wait();
 
@@ -333,6 +492,93 @@ describe("FAN-Capital blockchain (smoke)", function () {
 
     // Silence "unused" (pool created to reuse token pattern)
     expect(await pool.getAddress()).to.be.a("string");
+  });
+
+  it("CPEFFactory deployFund deploys token/pool/oracle and wires shared infra", async () => {
+    const [owner] = await ethers.getSigners();
+
+    const KYCRegistry = await ethers.getContractFactory("KYCRegistry");
+    const kyc = await KYCRegistry.deploy(owner.address);
+    await kyc.waitForDeployment();
+
+    const InvestorRegistry = await ethers.getContractFactory("InvestorRegistry");
+    const investors = await InvestorRegistry.deploy(owner.address);
+    await investors.waitForDeployment();
+
+    const CashTokenTND = await ethers.getContractFactory("CashTokenTND");
+    const tnd = await CashTokenTND.deploy(owner.address);
+    await tnd.waitForDeployment();
+
+    const TaxVault = await ethers.getContractFactory("TaxVault");
+    const taxVault = await TaxVault.deploy(owner.address, await tnd.getAddress());
+    await taxVault.waitForDeployment();
+
+    const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
+    const cb = await CircuitBreaker.deploy(owner.address);
+    await cb.waitForDeployment();
+
+    const OracleDeployer = await ethers.getContractFactory("OracleDeployer");
+    const oracleDeployer = await OracleDeployer.deploy();
+    await oracleDeployer.waitForDeployment();
+
+    const PoolDeployer = await ethers.getContractFactory("PoolDeployer");
+    const poolDeployer = await PoolDeployer.deploy();
+    await poolDeployer.waitForDeployment();
+
+    const TokenDeployer = await ethers.getContractFactory("TokenDeployer");
+    const tokenDeployer = await TokenDeployer.deploy();
+    await tokenDeployer.waitForDeployment();
+
+    const CPEFFactory = await ethers.getContractFactory("CPEFFactory");
+    const factory = await CPEFFactory.deploy(
+      owner.address,
+      await kyc.getAddress(),
+      await investors.getAddress(),
+      await tnd.getAddress(),
+      await taxVault.getAddress(),
+      await cb.getAddress(),
+      await oracleDeployer.getAddress(),
+      await poolDeployer.getAddress(),
+      await tokenDeployer.getAddress(),
+      owner.address, // treasury
+      owner.address, // oracleUpdater
+      owner.address // poolOperator
+    );
+    await factory.waitForDeployment();
+
+    // Allow factory to link funds into shared infra
+    await (await taxVault.grantRole(await taxVault.GOVERNANCE_ROLE(), await factory.getAddress())).wait();
+    await (await cb.grantRole(await cb.GOVERNANCE_ROLE(), await factory.getAddress())).wait();
+
+    // Deploy one fund atomically
+    const tx = await factory.deployFund("CPEF Fund Alpha", "CPEF-ALPHA");
+    await tx.wait();
+
+    expect(await factory.fundsCount()).to.equal(1n);
+    const fund = await factory.getFund(0);
+    expect(fund.token).to.not.equal(ethers.ZeroAddress);
+    expect(fund.pool).to.not.equal(ethers.ZeroAddress);
+    expect(fund.oracle).to.not.equal(ethers.ZeroAddress);
+
+    // Token wiring
+    const token = await ethers.getContractAt("CPEFToken", fund.token);
+    expect(await token.liquidityPool()).to.equal(fund.pool);
+    expect(await token.hasRole(await token.DEFAULT_ADMIN_ROLE(), owner.address)).to.equal(true);
+    expect(await token.kycRegistry()).to.equal(await kyc.getAddress());
+    expect(await token.priceOracle()).to.equal(fund.oracle);
+
+    // Pool wiring
+    const pool = await ethers.getContractAt("LiquidityPool", fund.pool);
+    expect(await pool.oracle()).to.equal(fund.oracle);
+    expect(await pool.investorRegistry()).to.equal(await investors.getAddress());
+    expect(await pool.kycRegistry()).to.equal(await kyc.getAddress());
+    expect(await pool.cashToken()).to.equal(await tnd.getAddress());
+    expect(await pool.taxVault()).to.equal(await taxVault.getAddress());
+    expect(await pool.circuitBreaker()).to.equal(await cb.getAddress());
+
+    // Shared infra linkage
+    expect(await taxVault.isAuthorizedCaller(fund.pool)).to.equal(true);
+    expect(await cb.isPoolRegistered(fund.pool)).to.equal(true);
   });
 });
 

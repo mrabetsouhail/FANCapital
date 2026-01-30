@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {CashTokenTND} from "./CashTokenTND.sol";
@@ -10,7 +10,9 @@ import {IInvestorRegistry} from "../interfaces/IInvestorRegistry.sol";
 
 /// @notice Atomic P2P settlement: buyer pays TND, seller delivers CPEF (via allowance).
 /// @dev Fees (P2P) + VAT are charged on notional and sent to treasury.
-contract P2PExchange is Ownable, ReentrancyGuard {
+contract P2PExchange is AccessControl, ReentrancyGuard {
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+
     uint256 internal constant BPS = 10_000;
     uint256 internal constant PRICE_SCALE = 1e8;
     uint256 public constant VAT_BPS = 1_900;
@@ -35,10 +37,12 @@ contract P2PExchange is Ownable, ReentrancyGuard {
         uint256 totalFee
     );
 
-    constructor(address owner_, address cashToken_, address investorRegistry_) Ownable(owner_) {
+    constructor(address admin_, address cashToken_, address investorRegistry_, address treasury_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
         cashToken = CashTokenTND(cashToken_);
         investorRegistry = IInvestorRegistry(investorRegistry_);
-        treasury = owner_;
+        treasury = treasury_;
 
         // Default P2P fees (before VAT), aligned with PRICING.md
         p2pFeeBps[0] = 80; // Bronze 0.80%
@@ -48,23 +52,23 @@ contract P2PExchange is Ownable, ReentrancyGuard {
         p2pFeeBps[4] = 50; // Platinum 0.50%
     }
 
-    function setTreasury(address newTreasury) external onlyOwner {
+    function setTreasury(address newTreasury) external onlyRole(GOVERNANCE_ROLE) {
         treasury = newTreasury;
     }
 
-    function setCashToken(address newToken) external onlyOwner {
+    function setCashToken(address newToken) external onlyRole(GOVERNANCE_ROLE) {
         cashToken = CashTokenTND(newToken);
     }
 
-    function setKYCRegistry(address newKyc) external onlyOwner {
+    function setKYCRegistry(address newKyc) external onlyRole(GOVERNANCE_ROLE) {
         kycRegistry = IKYCRegistry(newKyc);
     }
 
-    function setInvestorRegistry(address newRegistry) external onlyOwner {
+    function setInvestorRegistry(address newRegistry) external onlyRole(GOVERNANCE_ROLE) {
         investorRegistry = IInvestorRegistry(newRegistry);
     }
 
-    function setP2PFeeBps(uint8 feeLevel, uint256 feeBps) external onlyOwner {
+    function setP2PFeeBps(uint8 feeLevel, uint256 feeBps) external onlyRole(GOVERNANCE_ROLE) {
         require(feeLevel <= 4, "P2P: bad level");
         require(feeBps <= 500, "P2P: fee too high");
         p2pFeeBps[feeLevel] = feeBps;

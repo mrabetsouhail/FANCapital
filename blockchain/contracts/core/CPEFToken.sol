@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -12,8 +12,10 @@ import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
 /// @notice Base CPEF token implementing ERC-1404 style transfer restrictions.
 /// @dev Token decimals are 8 to match the CPEF spec.
-contract CPEFToken is ERC20, IERC1404, Ownable, ReentrancyGuard {
+contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     using Math for uint256;
+
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 
     uint8 public constant KYC_LEVEL_NONE = 0;
     uint8 public constant KYC_LEVEL_GREEN = 1;
@@ -58,39 +60,42 @@ contract CPEFToken is ERC20, IERC1404, Ownable, ReentrancyGuard {
     }
 
     modifier onlyEscrowManagerOrOwner() {
-        require(msg.sender == escrowManager || msg.sender == owner(), "CPEF: only escrow manager");
+        require(msg.sender == escrowManager || hasRole(GOVERNANCE_ROLE, msg.sender), "CPEF: only escrow manager");
         _;
     }
 
     constructor(
         string memory name_,
         string memory symbol_,
-        address owner_
-    ) ERC20(name_, symbol_) Ownable(owner_) {}
+        address admin_
+    ) ERC20(name_, symbol_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+    }
 
     function decimals() public pure override returns (uint8) {
         return 8;
     }
 
-    function setLiquidityPool(address newPool) external onlyOwner {
+    function setLiquidityPool(address newPool) external onlyRole(GOVERNANCE_ROLE) {
         address old = liquidityPool;
         liquidityPool = newPool;
         emit LiquidityPoolUpdated(old, newPool);
     }
 
-    function setEscrowManager(address newManager) external onlyOwner {
+    function setEscrowManager(address newManager) external onlyRole(GOVERNANCE_ROLE) {
         address old = escrowManager;
         escrowManager = newManager;
         emit EscrowManagerUpdated(old, newManager);
     }
 
-    function setKYCRegistry(address newRegistry) external onlyOwner {
+    function setKYCRegistry(address newRegistry) external onlyRole(GOVERNANCE_ROLE) {
         address old = address(kycRegistry);
         kycRegistry = IKYCRegistry(newRegistry);
         emit KYCRegistryUpdated(old, newRegistry);
     }
 
-    function setPriceOracle(address newOracle) external onlyOwner {
+    function setPriceOracle(address newOracle) external onlyRole(GOVERNANCE_ROLE) {
         address old = address(priceOracle);
         priceOracle = IPriceOracle(newOracle);
         emit PriceOracleUpdated(old, newOracle);

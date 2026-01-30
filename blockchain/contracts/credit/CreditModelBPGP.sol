@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -12,8 +12,11 @@ import {EscrowRegistry} from "./EscrowRegistry.sol";
 
 /// @notice Credit Model B (PGP - profit sharing), gated by Platinum/Diamond+ with active subscription.
 /// @dev MVP: stores start/end VNI and computes a performance reference; cash distribution is off-chain.
-contract CreditModelBPGP is Ownable, ReentrancyGuard {
+contract CreditModelBPGP is AccessControl, ReentrancyGuard {
     using Math for uint256;
+
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     uint256 internal constant PRICE_SCALE = 1e8; // TND
     uint256 internal constant LTV_BPS = 5_000; // 50%
@@ -56,28 +59,31 @@ contract CreditModelBPGP is Ownable, ReentrancyGuard {
     event LoanCancelled(uint256 indexed loanId);
     event ParamsUpdated(uint256 hurdleRateBps, uint256 fanShareBps);
 
-    constructor(address owner_, address oracle_, address escrow_) Ownable(owner_) {
+    constructor(address admin_, address oracle_, address escrow_) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(GOVERNANCE_ROLE, admin_);
+        _grantRole(OPERATOR_ROLE, admin_);
         oracle = IPriceOracle(oracle_);
         escrow = EscrowRegistry(escrow_);
     }
 
-    function setKYCRegistry(address kyc) external onlyOwner {
+    function setKYCRegistry(address kyc) external onlyRole(GOVERNANCE_ROLE) {
         kycRegistry = IKYCRegistry(kyc);
     }
 
-    function setInvestorRegistry(address reg) external onlyOwner {
+    function setInvestorRegistry(address reg) external onlyRole(GOVERNANCE_ROLE) {
         investorRegistry = IInvestorRegistry(reg);
     }
 
-    function setOracle(address newOracle) external onlyOwner {
+    function setOracle(address newOracle) external onlyRole(GOVERNANCE_ROLE) {
         oracle = IPriceOracle(newOracle);
     }
 
-    function setEscrow(address newEscrow) external onlyOwner {
+    function setEscrow(address newEscrow) external onlyRole(GOVERNANCE_ROLE) {
         escrow = EscrowRegistry(newEscrow);
     }
 
-    function setParams(uint256 newHurdleRateBps, uint256 newFanShareBps) external onlyOwner {
+    function setParams(uint256 newHurdleRateBps, uint256 newFanShareBps) external onlyRole(GOVERNANCE_ROLE) {
         require(newHurdleRateBps <= 2_000, "B: hurdle too high"); // sanity
         require(newFanShareBps <= BPS, "B: bad share");
         hurdleRateBps = newHurdleRateBps;
@@ -119,7 +125,7 @@ contract CreditModelBPGP is Ownable, ReentrancyGuard {
         emit LoanRequested(loanId, msg.sender, token, collateralAmount, principalTnd);
     }
 
-    function activateAdvance(uint256 loanId) external onlyOwner {
+    function activateAdvance(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Requested, "B: not requested");
         l.status = Status.Active;
@@ -130,7 +136,7 @@ contract CreditModelBPGP is Ownable, ReentrancyGuard {
 
     /// @notice Close and compute a performance reference.
     /// @dev Performance is based on VNI variation of the collateral lot: (VNI_close - VNI_start) * amount.
-    function closeAdvance(uint256 loanId) external onlyOwner {
+    function closeAdvance(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Active, "B: not active");
 
@@ -163,7 +169,7 @@ contract CreditModelBPGP is Ownable, ReentrancyGuard {
         emit LoanClosed(loanId, perfTnd, fanShareTnd, clientShareTnd);
     }
 
-    function cancelRequest(uint256 loanId) external onlyOwner {
+    function cancelRequest(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Requested, "B: not requested");
         l.status = Status.Cancelled;

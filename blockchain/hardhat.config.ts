@@ -6,6 +6,7 @@ const config: HardhatUserConfig = {
     version: "0.8.24",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      viaIR: true,
     },
   },
   paths: {
@@ -15,8 +16,9 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   },
   networks: {
+    localhost: { url: "http://127.0.0.1:8545" },
     // Example Besu/Quorum JSON-RPC network (fill via env when needed)
-    // besu: { url: process.env.BESU_RPC_URL ?? "", accounts: [process.env.DEPLOYER_PRIVATE_KEY ?? ""] }
+    // besu: { url: process.env.BESU_RPC_URL ?? "", accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [] }
   },
 };
 

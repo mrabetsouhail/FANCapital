@@ -1,0 +1,40 @@
+{
+  "network": "localhost",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "council": {
+    "address": "0x21dF544947ba3E8b3c32561399E88B52Dc8b2823",
+    "owners": [
+      "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+    ],
+    "threshold": 3
+  },
+  "actors": {
+    "treasury": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "oracleUpdater": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "poolOperator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "kycValidator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "cashMinter": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "cashBurner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "fisc": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "infra": {
+    "KYCRegistry": "0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2",
+    "InvestorRegistry": "0xD8a5a9b31c3C0232E196d518E89Fd8bF83AcAd43",
+    "CashTokenTND": "0xDC11f7E700A4c898AE5CAddB1082cFfa76512aDD",
+    "TaxVault": "0x51A1ceB83B83F1985a81C295d1fF28Afef186E02",
+    "CircuitBreaker": "0x36b58F5C1969B7b6591D752ea6F5486D069010AB"
+  },
+  "deployers": {
+    "OracleDeployer": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
+    "PoolDeployer": "0x0355B7B8cb128fA5692729Ab3AAa199C1753f726",
+    "TokenDeployer": "0x202CCe504e04bEd6fC0521238dDf04Bc9E8E15aB"
+  },
+  "factory": {
+    "CPEFFactory": "0xf4B146FbA71F41E0592668ffbF264F1D186b2Ca8"
+  },
+  "generatedAt": "2026-01-30T15:54:09.556Z"
+}

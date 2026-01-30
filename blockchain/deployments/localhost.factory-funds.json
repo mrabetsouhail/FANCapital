@@ -1,0 +1,41 @@
+{
+  "network": "localhost",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "infra": {
+    "KYCRegistry": "0x5067457698Fd6Fa1C6964e416b3f42713513B3dD",
+    "InvestorRegistry": "0x18E317A7D70d8fBf8e6E893616b52390EbBdb629",
+    "CashTokenTND": "0x4b6aB5F819A515382B0dEB6935D793817bB4af28",
+    "TaxVault": "0xCace1b78160AE76398F486c8a18044da0d66d86D",
+    "CircuitBreaker": "0xD5ac451B0c50B9476107823Af206eD814a2e2580"
+  },
+  "deployers": {
+    "OracleDeployer": "0xF8e31cb472bc70500f08Cd84917E5A1912Ec8397",
+    "PoolDeployer": "0xc0F115A19107322cFBf1cDBC7ea011C19EbDB4F8",
+    "TokenDeployer": "0xc96304e3c037f81dA488ed9dEa1D8F2a48278a75"
+  },
+  "factory": {
+    "CPEFFactory": "0x34B40BA116d5Dec75548a9e9A8f15411461E8c70",
+    "treasury": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "oracleUpdater": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "poolOperator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "funds": [
+    {
+      "id": 0,
+      "name": "CPEF Atlas",
+      "symbol": "$ATLAS$",
+      "token": "0x8e0BfED44D5B63812d0693FB248AfA1892dDc036",
+      "pool": "0x1D39e79c59b7705ec57F65aCb6420E43a3495f84",
+      "oracle": "0xA1Ee49A7156D264f4F6f886c03726b296A0A3dbD"
+    },
+    {
+      "id": 1,
+      "name": "CPEF Didon",
+      "symbol": "$DIDON$",
+      "token": "0x0Fa25a25af5f831d3d66A59CF9e5AdE1018bC9e3",
+      "pool": "0x40CFa95C804feaF1d0eEf82072e143F424CE0030",
+      "oracle": "0x66A17eC6720cF120bA9F6512B529D8D80E5cd1D7"
+    }
+  ],
+  "generatedAt": "2026-01-30T15:55:51.107Z"
+}
