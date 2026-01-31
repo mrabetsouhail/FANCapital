@@ -65,6 +65,25 @@ public class AppUser {
   @Column(nullable = false)
   private Instant createdAt = Instant.now();
 
+  // ---- KYC ----
+  @Column(nullable = false)
+  private int kycLevel = 0; // 0=none, 1=green, 2=white
+
+  private Instant kycValidatedAt;
+
+  // ---- Wallet (non-custodial link) ----
+  @Column(length = 42)
+  private String walletAddress;
+
+  @Column(length = 80)
+  private String walletLinkNonce;
+
+  private Instant walletLinkedAt;
+
+  // ---- WaaS (custodial) wallet material (encrypted) ----
+  @Column(length = 500)
+  private String walletPrivateKeyEnc;
+
   public String getId() {
     return id;
   }
@@ -183,6 +202,54 @@ public class AppUser {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public int getKycLevel() {
+    return kycLevel;
+  }
+
+  public void setKycLevel(int kycLevel) {
+    this.kycLevel = kycLevel;
+  }
+
+  public Instant getKycValidatedAt() {
+    return kycValidatedAt;
+  }
+
+  public void setKycValidatedAt(Instant kycValidatedAt) {
+    this.kycValidatedAt = kycValidatedAt;
+  }
+
+  public String getWalletAddress() {
+    return walletAddress;
+  }
+
+  public void setWalletAddress(String walletAddress) {
+    this.walletAddress = walletAddress;
+  }
+
+  public String getWalletLinkNonce() {
+    return walletLinkNonce;
+  }
+
+  public void setWalletLinkNonce(String walletLinkNonce) {
+    this.walletLinkNonce = walletLinkNonce;
+  }
+
+  public Instant getWalletLinkedAt() {
+    return walletLinkedAt;
+  }
+
+  public void setWalletLinkedAt(Instant walletLinkedAt) {
+    this.walletLinkedAt = walletLinkedAt;
+  }
+
+  public String getWalletPrivateKeyEnc() {
+    return walletPrivateKeyEnc;
+  }
+
+  public void setWalletPrivateKeyEnc(String walletPrivateKeyEnc) {
+    this.walletPrivateKeyEnc = walletPrivateKeyEnc;
   }
 }
 

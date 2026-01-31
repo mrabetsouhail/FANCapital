@@ -3,10 +3,12 @@ package com.fancapital.backend.auth.controller;
 import com.fancapital.backend.auth.dto.AuthDtos;
 import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.auth.service.AuthService;
+import com.fancapital.backend.auth.service.WalletLinkService;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,11 +22,13 @@ public class AuthController {
   private final AuthService authService;
   private final com.fancapital.backend.auth.service.JwtService jwtService;
   private final AppUserRepository repo;
+  private final WalletLinkService walletLinkService;
 
-  public AuthController(AuthService authService, com.fancapital.backend.auth.service.JwtService jwtService, AppUserRepository repo) {
+  public AuthController(AuthService authService, com.fancapital.backend.auth.service.JwtService jwtService, AppUserRepository repo, WalletLinkService walletLinkService) {
     this.authService = authService;
     this.jwtService = jwtService;
     this.repo = repo;
+    this.walletLinkService = walletLinkService;
   }
 
   @PostMapping("/register/particulier")
@@ -61,6 +65,35 @@ public class AuthController {
       return ResponseEntity.status(401).body(Map.of("message", "Unknown user"));
     }
     return ResponseEntity.ok(authService.toUserResponse(user));
+  }
+
+  @PostMapping("/wallet/challenge")
+  public AuthDtos.WalletChallengeResponse walletChallenge() {
+    String userId = currentUserIdOrThrow();
+    return walletLinkService.challenge(userId);
+  }
+
+  @PostMapping("/wallet/confirm")
+  public ResponseEntity<?> walletConfirm(@Valid @RequestBody AuthDtos.WalletConfirmRequest req) {
+    String userId = currentUserIdOrThrow();
+    String addr = walletLinkService.confirmAndStore(userId, req.signature());
+    var user = repo.findById(userId).orElse(null);
+    return ResponseEntity.ok(Map.of(
+        "walletAddress", addr,
+        "user", user == null ? null : authService.toUserResponse(user)
+    ));
+  }
+
+  private static String currentUserIdOrThrow() {
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || auth.getPrincipal() == null) {
+      throw new IllegalArgumentException("Unauthorized");
+    }
+    String userId = String.valueOf(auth.getPrincipal());
+    if (userId.isBlank() || "anonymousUser".equalsIgnoreCase(userId)) {
+      throw new IllegalArgumentException("Unauthorized");
+    }
+    return userId;
   }
 }
 

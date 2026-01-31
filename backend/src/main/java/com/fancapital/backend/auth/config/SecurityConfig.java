@@ -43,7 +43,8 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/api/auth/login", "/api/auth/register/**").permitAll()
+            .requestMatchers("/api/auth/**").authenticated()
             .requestMatchers("/api/blockchain/**").permitAll()
             // Dev-only: H2 console
             .requestMatchers("/h2-console", "/h2-console/**").permitAll()

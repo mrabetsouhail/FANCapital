@@ -2,17 +2,22 @@ package com.fancapital.backend.blockchain.controller;
 
 import com.fancapital.backend.blockchain.model.FundDto;
 import com.fancapital.backend.blockchain.model.FundsListResponse;
+import com.fancapital.backend.blockchain.model.InvestorProfileDtos.InvestorProfileResponse;
 import com.fancapital.backend.blockchain.model.OracleVniResponse;
+import com.fancapital.backend.blockchain.model.PortfolioDtos.PortfolioResponse;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteBuyRequest;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteBuyResponse;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteSellRequest;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteSellResponse;
+import com.fancapital.backend.blockchain.model.TxHistoryDtos.TxHistoryResponse;
 import com.fancapital.backend.blockchain.model.TxDtos.BuyRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.P2PSettleRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.SellRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.TxResponse;
 import com.fancapital.backend.blockchain.service.BlockchainReadService;
 import com.fancapital.backend.blockchain.service.DeploymentRegistry;
+import com.fancapital.backend.blockchain.service.LiquidityPoolWriteService;
+import com.fancapital.backend.blockchain.service.OperatorDiagnosticsService;
 import java.util.Map;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
@@ -31,10 +36,19 @@ public class BlockchainController {
   private static final String ETH_ADDRESS_RX = "^0x[a-fA-F0-9]{40}$";
   private final DeploymentRegistry registry;
   private final BlockchainReadService readService;
+  private final LiquidityPoolWriteService poolWriteService;
+  private final OperatorDiagnosticsService operatorDiagnostics;
 
-  public BlockchainController(DeploymentRegistry registry, BlockchainReadService readService) {
+  public BlockchainController(
+      DeploymentRegistry registry,
+      BlockchainReadService readService,
+      LiquidityPoolWriteService poolWriteService,
+      OperatorDiagnosticsService operatorDiagnostics
+  ) {
     this.registry = registry;
     this.readService = readService;
+    this.poolWriteService = poolWriteService;
+    this.operatorDiagnostics = operatorDiagnostics;
   }
 
   @GetMapping("/funds")
@@ -56,9 +70,32 @@ public class BlockchainController {
     );
   }
 
+  @GetMapping("/_operator")
+  public Object operator() {
+    return operatorDiagnostics.info();
+  }
+
   @GetMapping("/oracle/vni")
   public OracleVniResponse getVni(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String token) {
     return readService.getVni(token);
+  }
+
+  @GetMapping("/portfolio")
+  public PortfolioResponse portfolio(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user) {
+    return readService.portfolio(user);
+  }
+
+  @GetMapping("/investor/profile")
+  public InvestorProfileResponse investorProfile(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user) {
+    return readService.investorProfile(user);
+  }
+
+  @GetMapping("/tx/history")
+  public TxHistoryResponse txHistory(
+      @RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user,
+      @RequestParam(required = false, defaultValue = "150") int limit
+  ) {
+    return readService.txHistory(user, limit);
   }
 
   @PostMapping("/pool/quote-buy")
@@ -74,12 +111,14 @@ public class BlockchainController {
   // ---- Execution endpoints (stubs until we implement signing + role separation) ----
   @PostMapping("/pool/buy")
   public TxResponse buy(@Valid @RequestBody BuyRequest req) {
-    return new TxResponse("submitted", "0xmocked", "Spring Boot MVP: buy() not wired to signer yet");
+    String txHash = poolWriteService.buyFor(req);
+    return new TxResponse("submitted", txHash, "LiquidityPool.buyFor submitted");
   }
 
   @PostMapping("/pool/sell")
   public TxResponse sell(@Valid @RequestBody SellRequest req) {
-    return new TxResponse("submitted", "0xmocked", "Spring Boot MVP: sell() not wired to signer yet");
+    String txHash = poolWriteService.sellFor(req);
+    return new TxResponse("submitted", txHash, "LiquidityPool.sellFor submitted");
   }
 
   @PostMapping("/p2p/settle")

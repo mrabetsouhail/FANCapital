@@ -27,6 +27,42 @@
       </div>
     </div>
   }
+  @if (showWalletPrompt()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40" (click)="onWalletLater()"></div>
+      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-6 mx-4">
+        <h3 class="text-xl font-bold text-primary mb-2">Connecter votre wallet</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Pour consulter votre portefeuille (Atlas/Didon) et signer des opérations, connectez un wallet (MetaMask).
+        </p>
+
+        @if (walletError()) {
+          <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ walletError() }}
+          </div>
+        }
+
+        <div class="flex gap-3 justify-end">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
+            (click)="onWalletLater()"
+            [disabled]="isWalletLinking()"
+          >
+            Plus tard
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
+            (click)="onConnectWallet()"
+            [disabled]="isWalletLinking()"
+          >
+            @if (isWalletLinking()) { Connexion... } @else { Connecter }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
   <!-- Centered Signup Form -->
   <div class="w-full max-w-2xl space-y-8">
      

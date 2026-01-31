@@ -36,6 +36,14 @@ public class DeploymentInfraService {
     return load().infra().get("CashTokenTND");
   }
 
+  public String kycRegistryAddress() {
+    return load().infra().get("KYCRegistry");
+  }
+
+  public String investorRegistryAddress() {
+    return load().infra().get("InvestorRegistry");
+  }
+
   public String deploymentsPathUsed() {
     return load().pathUsed();
   }

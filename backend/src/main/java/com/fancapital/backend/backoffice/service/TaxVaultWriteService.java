@@ -10,6 +10,7 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.methods.response.EthGasPrice;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
@@ -41,8 +42,7 @@ public class TaxVaultWriteService {
     Function fn = new Function("withdrawToFisc", List.of(new Uint256(amount)), List.of());
     String data = FunctionEncoder.encode(fn);
 
-    // Hardhat/Besu often accept 0 gasPrice. Adjust if needed.
-    BigInteger gasPrice = BigInteger.ZERO;
+    BigInteger gasPrice = suggestedGasPrice();
     BigInteger gasLimit = BigInteger.valueOf(500_000);
 
     try {
@@ -62,6 +62,19 @@ public class TaxVaultWriteService {
     } catch (IOException e) {
       // default hardhat
       return BigInteger.valueOf(31337);
+    }
+  }
+
+  private BigInteger suggestedGasPrice() {
+    try {
+      EthGasPrice gp = web3j.ethGasPrice().send();
+      if (gp.hasError()) {
+        throw new IllegalStateException("eth_gasPrice error: " + gp.getError().getMessage());
+      }
+      BigInteger v = gp.getGasPrice();
+      return v.multiply(BigInteger.valueOf(12)).divide(BigInteger.TEN);
+    } catch (IOException e) {
+      return BigInteger.valueOf(1_000_000_000L); // 1 gwei
     }
   }
 }

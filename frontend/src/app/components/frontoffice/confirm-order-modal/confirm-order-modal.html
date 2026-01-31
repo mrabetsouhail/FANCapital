@@ -1,0 +1,108 @@
+@if (open && summary) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+    (click)="onBackdropClick($event)"
+  >
+    <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
+      <div class="px-6 py-5 border-b border-gray-200">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-gray-900">
+              Confirmer l'ordre
+            </h3>
+            <p class="text-sm text-gray-600 mt-1">
+              {{ summary.orderType === 'buy' ? 'Achat' : 'Vente' }} ·
+              {{ summary.tokenLabel }} ·
+              <span class="font-semibold">{{ summary.tokenSymbol }}</span>
+              ·
+              {{ summary.orderMode === 'piscine' ? 'Piscine' : 'P2P' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg px-3 py-2 text-gray-600 hover:bg-gray-100"
+            (click)="close.emit()"
+            [disabled]="isSubmitting"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+
+      <div class="px-6 py-5 space-y-3">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500">Prix (VNI)</p>
+            <p class="font-semibold text-gray-900">{{ summary.price | number:'1.2-2' }} TND</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500">Montant</p>
+            <p class="font-semibold text-gray-900">
+              @if (summary.amountType === 'tnd') {
+                {{ summary.amount | number:'1.2-2' }} TND
+              } @else {
+                {{ summary.amount | number:'1.4-4' }} tokens
+              }
+            </p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500">Frais + TVA</p>
+            <p class="font-semibold text-gray-900">-{{ summary.fees | number:'1.2-2' }} TND</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500">
+              {{ summary.orderType === 'buy' ? 'Total à débiter' : 'Total à créditer' }}
+            </p>
+            <p class="font-bold" [class]="summary.orderType === 'buy' ? 'text-red-600' : 'text-green-600'">
+              {{ summary.orderType === 'buy' ? '-' : '+' }}{{ summary.totalCost | number:'1.2-2' }} TND
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">Solde après</span>
+            <span class="font-semibold text-gray-900">{{ summary.cashAfter | number:'1.2-2' }} TND</span>
+          </div>
+        </div>
+
+        @if (summary.orderMode === 'p2p') {
+          <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            Mode P2P: une signature wallet peut être requise pour soumettre un ordre atomique.
+          </div>
+        }
+
+        @if (error) {
+          <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {{ error }}
+          </div>
+        }
+      </div>
+
+      <div class="px-6 py-5 border-t border-gray-200 flex gap-3">
+        <button
+          type="button"
+          class="flex-1 px-6 py-3 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 disabled:opacity-60"
+          (click)="close.emit()"
+          [disabled]="isSubmitting"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          class="flex-1 px-6 py-3 rounded-lg font-medium text-white disabled:opacity-60"
+          [class]="summary.orderType === 'buy' ? 'bg-[#22c55e] hover:bg-green-600' : 'bg-[#00204A] hover:bg-blue-900'"
+          (click)="confirm.emit()"
+          [disabled]="isSubmitting"
+        >
+          @if (isSubmitting) {
+            Envoi...
+          } @else {
+            Confirmer
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+

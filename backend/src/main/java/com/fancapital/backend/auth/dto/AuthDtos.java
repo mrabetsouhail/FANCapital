@@ -12,6 +12,7 @@ public class AuthDtos {
   private static final String PHONE_RX = "^[0-9+][0-9 ]{6,20}$";
   private static final String PASSPORT_RX = "^[A-Za-z0-9]{6,20}$";
   private static final String ETH_ADDRESS_RX = "^0x[a-fA-F0-9]{40}$";
+  private static final String SIG_RX = "^0x[a-fA-F0-9]{130}$"; // 65 bytes
 
   public record LoginRequest(
       @Email @NotBlank @Size(max = 200) String email,
@@ -27,6 +28,9 @@ public class AuthDtos {
       String id,
       String type,
       String email,
+      String walletAddress,
+      Integer kycLevel,
+      Boolean isBackofficeAdmin,
       String nom,
       String prenom,
       Boolean resident,
@@ -38,6 +42,14 @@ public class AuthDtos {
       String nomGerant,
       String prenomGerant,
       String emailProfessionnel
+  ) {}
+
+  public record WalletChallengeResponse(
+      String message
+  ) {}
+
+  public record WalletConfirmRequest(
+      @NotBlank @Pattern(regexp = SIG_RX) String signature
   ) {}
 
   // Signup Particulier: keep same attribute names as in SigninPage.particulierForm

@@ -4,6 +4,7 @@ import com.fancapital.backend.auth.dto.AuthDtos;
 import com.fancapital.backend.auth.model.AppUser;
 import com.fancapital.backend.auth.model.UserType;
 import com.fancapital.backend.auth.repo.AppUserRepository;
+import com.fancapital.backend.backoffice.service.BackofficeAuthzService;
 import com.fancapital.backend.security.InputSanitizer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,13 @@ public class AuthService {
   private final AppUserRepository repo;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
+  private final BackofficeAuthzService backofficeAuthz;
 
-  public AuthService(AppUserRepository repo, PasswordEncoder passwordEncoder, JwtService jwtService) {
+  public AuthService(AppUserRepository repo, PasswordEncoder passwordEncoder, JwtService jwtService, BackofficeAuthzService backofficeAuthz) {
     this.repo = repo;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
+    this.backofficeAuthz = backofficeAuthz;
   }
 
   @Transactional
@@ -114,6 +117,9 @@ public class AuthService {
         u.getId(),
         u.getType().name(),
         u.getEmail(),
+        u.getWalletAddress(),
+        u.getKycLevel(),
+        backofficeAuthz.isAdminEmail(u.getEmail()),
         u.getNom(),
         u.getPrenom(),
         u.isResident(),

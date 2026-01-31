@@ -1,0 +1,5 @@
+/* Minimal, consistent modal styling (Tailwind handles most) */
+:host {
+  display: contents;
+}
+

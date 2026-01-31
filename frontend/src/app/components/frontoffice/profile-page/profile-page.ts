@@ -1,13 +1,18 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { AuthApiService } from '../../../auth/services/auth-api.service';
+import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import type { UserResponse } from '../../../auth/models/auth.models';
+import type { InvestorProfileResponse } from '../../../blockchain/models/investor.models';
+import type { TxHistoryResponse, TxKind } from '../../../blockchain/models/tx-history.models';
 
 interface Transaction {
   id: number;
   date: Date;
   type: 'achat' | 'vente' | 'depot' | 'retrait';
-  tokenType?: 'Alpha' | 'Beta';
+  tokenType?: 'Atlas' | 'Didon';
   amount: number;
   status: 'completed' | 'pending' | 'failed';
 }
@@ -20,12 +25,23 @@ type MemberLevel = 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.css',
 })
-export class ProfilePage {
-  // User Profile
-  firstName = signal<string>('Ahmed');
-  lastName = signal<string>('Ben Ali');
+export class ProfilePage implements OnInit {
+  // User Profile (server-truth)
+  user = signal<UserResponse | null>(null);
+  investor = signal<InvestorProfileResponse | null>(null);
+  loading = signal<boolean>(false);
+  error = signal<string>('');
+
+  firstName = signal<string>(''); // particulier prenom
+  lastName = signal<string>(''); // particulier nom
+  companyName = signal<string>(''); // entreprise denomination
   memberLevel = signal<MemberLevel>('Gold');
-  email = signal<string>('ahmed.benali@example.com');
+  email = signal<string>('');
+  wallet = signal<string>('');
+
+  // On-chain history (LiquidityPool Bought/Sold + CashToken mint/burn)
+  historyLoading = signal<boolean>(false);
+  historyError = signal<string>('');
   
   // Progress Tracker
   currentVolume = signal<number>(45000); // TND
@@ -56,15 +72,7 @@ export class ProfilePage {
   });
 
   // Transaction History
-  allTransactions = signal<Transaction[]>([
-    { id: 1, date: new Date(Date.now() - 2 * 60 * 60 * 1000), type: 'achat', tokenType: 'Alpha', amount: 1250, status: 'completed' },
-    { id: 2, date: new Date(Date.now() - 5 * 60 * 60 * 1000), type: 'vente', tokenType: 'Beta', amount: 850, status: 'completed' },
-    { id: 3, date: new Date(Date.now() - 24 * 60 * 60 * 1000), type: 'depot', amount: 5000, status: 'completed' },
-    { id: 4, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), type: 'achat', tokenType: 'Alpha', amount: 2000, status: 'completed' },
-    { id: 5, date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), type: 'retrait', amount: 3000, status: 'completed' },
-    { id: 6, date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), type: 'achat', tokenType: 'Beta', amount: 1500, status: 'pending' },
-    { id: 7, date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), type: 'vente', tokenType: 'Alpha', amount: 1000, status: 'failed' },
-  ]);
+  allTransactions = signal<Transaction[]>([]);
 
   // Filters
   filterType = signal<string>('all');
@@ -99,13 +107,127 @@ export class ProfilePage {
     return transactions;
   });
 
-  // Security
+  // Security (UI placeholder)
   twoFactorEnabled = signal<boolean>(false);
   currentPassword = signal<string>('');
   newPassword = signal<string>('');
   confirmPassword = signal<string>('');
 
-  constructor() {}
+  constructor(private authApi: AuthApiService, private blockchainApi: BlockchainApiService) {}
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.authApi.me().subscribe({
+      next: (u) => {
+        this.user.set(u);
+        const displayEmail = u.emailProfessionnel ?? u.email ?? '';
+        this.email.set(displayEmail);
+
+        if (u.type === 'ENTREPRISE') {
+          this.companyName.set(u.denominationSociale ?? '');
+          this.firstName.set(u.prenomGerant ?? '');
+          this.lastName.set(u.nomGerant ?? '');
+        } else {
+          this.firstName.set(u.prenom ?? '');
+          this.lastName.set(u.nom ?? '');
+        }
+
+        const w = (u.walletAddress as any as string) ?? localStorage.getItem('walletAddress') ?? '';
+        this.wallet.set(w);
+        if (w && w.startsWith('0x') && w.length === 42) {
+          this.loadHistory(w);
+          this.blockchainApi.getInvestorProfile(w).subscribe({
+            next: (p) => {
+              this.investor.set(p);
+              this.memberLevel.set(this.feeLevelToMemberLevel(p.feeLevel));
+              this.loading.set(false);
+            },
+            error: () => {
+              // Don't block profile rendering if chain read fails
+              this.loading.set(false);
+            },
+          });
+        } else {
+          this.loading.set(false);
+        }
+      },
+      error: (e: any) => {
+        this.loading.set(false);
+        this.error.set(e?.error?.message ?? e?.message ?? 'Erreur chargement profil');
+      },
+    });
+  }
+
+  private loadHistory(userWallet: string) {
+    this.historyLoading.set(true);
+    this.historyError.set('');
+    this.blockchainApi.getTxHistory(userWallet, 200).subscribe({
+      next: (res: TxHistoryResponse) => {
+        const items = (res.items ?? []).map((x, idx) => this.mapTx(x.kind, x.fundSymbol, x.amountTnd1e8, x.timestampSec, idx));
+        this.allTransactions.set(items);
+        this.historyLoading.set(false);
+      },
+      error: (e: any) => {
+        this.historyLoading.set(false);
+        this.historyError.set(e?.error?.message ?? e?.message ?? 'Erreur chargement historique');
+      },
+    });
+  }
+
+  private mapTx(kind: TxKind, fundSymbol: string, amountTnd1e8: string, timestampSec: number, idx: number): Transaction {
+    const date = new Date((timestampSec || Math.floor(Date.now() / 1000)) * 1000);
+    const amount = this.from1e8(amountTnd1e8);
+    if (kind === 'BUY') return { id: idx + 1, date, type: 'achat', tokenType: this.symbolToTokenType(fundSymbol), amount, status: 'completed' };
+    if (kind === 'SELL') return { id: idx + 1, date, type: 'vente', tokenType: this.symbolToTokenType(fundSymbol), amount, status: 'completed' };
+    if (kind === 'DEPOSIT') return { id: idx + 1, date, type: 'depot', amount, status: 'completed' };
+    return { id: idx + 1, date, type: 'retrait', amount, status: 'completed' };
+  }
+
+  private symbolToTokenType(symbol: string | null | undefined): 'Atlas' | 'Didon' {
+    const s = (symbol ?? '').toLowerCase();
+    if (s.includes('didon')) return 'Didon';
+    return 'Atlas';
+  }
+
+  private from1e8(v: string): number {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    return n / 1e8;
+  }
+
+  kycLabel(): string {
+    const p = this.investor();
+    if (!p) return this.user()?.kycLevel ? `KYC niveau ${this.user()!.kycLevel}` : 'KYC: inconnu';
+    if (!p.whitelisted || p.kycLevel === 0) return 'Non vérifié';
+    if (p.kycLevel === 1) return 'Green (N1)';
+    if (p.kycLevel === 2) return 'White (N2)';
+    return `Niveau ${p.kycLevel}`;
+  }
+
+  kycBadgeClass(): string {
+    const p = this.investor();
+    if (!p || !p.whitelisted || p.kycLevel === 0) return 'bg-gray-100 text-gray-700 border-gray-200';
+    if (p.kycLevel === 1) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    return 'bg-green-100 text-green-700 border-green-200';
+  }
+
+  investorTierLabel(): string {
+    const p = this.investor();
+    if (!p) return '-';
+    if (p.tier === 0) return 'Bronze';
+    if (p.tier === 1) return 'Silver/Gold';
+    if (p.tier === 2) return 'Platinum/Diamond';
+    return `Tier ${p.tier}`;
+  }
+
+  private feeLevelToMemberLevel(feeLevel: number): MemberLevel {
+    // InvestorRegistry: 0=BRONZE, 1=SILVER, 2=GOLD, 3=DIAMOND, 4=PLATINUM
+    if (feeLevel === 3) return 'Diamond';
+    if (feeLevel === 4) return 'Platinum';
+    if (feeLevel === 2) return 'Gold';
+    return 'Silver';
+  }
 
   getMemberLevelColor(): string {
     const level = this.memberLevel();

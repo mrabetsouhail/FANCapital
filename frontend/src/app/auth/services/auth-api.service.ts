@@ -8,6 +8,9 @@ import type {
   RegisterEntrepriseRequest,
   RegisterParticulierRequest,
   UserResponse,
+  WalletChallengeResponse,
+  WalletConfirmRequest,
+  WalletConfirmResponse,
 } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
@@ -29,6 +32,14 @@ export class AuthApiService {
 
   me() {
     return this.http.get<UserResponse>(`${this.baseUrl}/me`);
+  }
+
+  walletChallenge() {
+    return this.http.post<WalletChallengeResponse>(`${this.baseUrl}/wallet/challenge`, {});
+  }
+
+  walletConfirm(req: WalletConfirmRequest) {
+    return this.http.post<WalletConfirmResponse>(`${this.baseUrl}/wallet/confirm`, req);
   }
 }
 

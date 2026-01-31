@@ -1,6 +1,10 @@
-import { Component, signal, HostListener } from '@angular/core';
+import { Component, signal, HostListener, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { AuthApiService } from '../../../auth/services/auth-api.service';
+import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import type { PortfolioPosition } from '../../../blockchain/models/portfolio.models';
+import { SessionService } from '../../../auth/services/session.service';
 
 interface Notification {
   id: number;
@@ -18,7 +22,7 @@ interface Notification {
   templateUrl: './navbar-client.html',
   styleUrl: './navbar-client.css',
 })
-export class NavbarClient {
+export class NavbarClient implements OnInit {
   // Wallets Data
   tokensAlpha = signal<number>(0);
   tokensBeta = signal<number>(0);
@@ -27,6 +31,7 @@ export class NavbarClient {
   
   // Profile Data
   memberLevel = signal<string>('Gold'); // Silver, Gold, Platinum, etc.
+  isBackofficeAdmin = signal<boolean>(false);
   
   // Logo
   logoPath: string = '/fancapital_logo.jpg';
@@ -94,17 +99,57 @@ export class NavbarClient {
   isMenuOpen = signal<boolean>(false);
   isNotificationsSubmenuOpen = signal<boolean>(false);
 
-  constructor(private router: Router) {
-    // TODO: Load data from service
-    // For now, using default values
-    this.tokensAlpha.set(150);
-    this.tokensBeta.set(75);
-    this.cashAmount.set(5000.00);
-    this.creditAmount.set(10000.00);
-    this.hasNotifications.set(this.notifications().some(n => !n.read));
+  constructor(
+    private router: Router,
+    private authApi: AuthApiService,
+    private blockchainApi: BlockchainApiService,
+    private session: SessionService
+  ) {
+    // credit remains off-chain for now (UI placeholder)
+    this.creditAmount.set(10000.0);
+    this.hasNotifications.set(this.notifications().some((n) => !n.read));
   }
 
   unreadCount = signal<number>(this.notifications().filter(n => !n.read).length);
+
+  ngOnInit(): void {
+    // Best-effort: if user is logged in and has a WaaS wallet, load on-chain balances.
+    this.authApi.me().subscribe({
+      next: (u) => {
+        this.isBackofficeAdmin.set(!!(u as any)?.isBackofficeAdmin);
+        const wallet = (u as any)?.walletAddress as string | undefined;
+        if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) return;
+        localStorage.setItem('walletAddress', wallet);
+        this.refreshWallet(wallet);
+      },
+      error: () => {},
+    });
+  }
+
+  private refreshWallet(wallet: string) {
+    this.blockchainApi.getPortfolio(wallet as any).subscribe({
+      next: (p) => {
+        const atlas = this.pickFund(p.positions, 'atlas', 0);
+        const didon = this.pickFund(p.positions, 'didon', 1);
+        this.tokensAlpha.set(atlas ? this.from1e8(atlas.balanceTokens) : 0);
+        this.tokensBeta.set(didon ? this.from1e8(didon.balanceTokens) : 0);
+        this.cashAmount.set(p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0);
+      },
+      error: () => {},
+    });
+  }
+
+  private pickFund(positions: PortfolioPosition[], nameHint: string, idHint: number): PortfolioPosition | null {
+    const byName =
+      positions.find((x) => (x.name ?? '').toLowerCase().includes(nameHint)) ??
+      positions.find((x) => (x.symbol ?? '').toLowerCase().includes(nameHint));
+    if (byName) return byName;
+    return positions.find((x) => x.fundId === idHint) ?? null;
+  }
+
+  private from1e8(v: string): number {
+    return Number(v) / 1e8;
+  }
 
   getNotificationIcon(type: string): string {
     if (type === 'price') return 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6';
@@ -193,7 +238,7 @@ export class NavbarClient {
   }
 
   onLogout() {
-    this.router.navigate(['']);
+    this.session.clearSession(true);
     this.isMenuOpen.set(false);
   }
 

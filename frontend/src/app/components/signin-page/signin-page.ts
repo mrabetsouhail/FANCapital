@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../auth/services/auth-api.service';
+import { SessionService } from '../../auth/services/session.service';
 
 type ClientType = 'particulier' | 'entreprise';
+type PostSignupRoute = '/kyc' | '/acceuil-client';
 
 @Component({
   selector: 'app-signin-page',
@@ -46,8 +48,12 @@ export class SigninPage {
   passwordStrength = signal<string>('');
   passwordStrengthClass = signal<string>('');
   showKycPrompt = signal<boolean>(false);
+  showWalletPrompt = signal<boolean>(false);
+  walletError = signal<string>('');
+  isWalletLinking = signal<boolean>(false);
+  nextRouteAfterSignup = signal<PostSignupRoute>('/acceuil-client');
 
-  constructor(private authApi: AuthApiService, private router: Router) {}
+  constructor(private authApi: AuthApiService, private router: Router, private session: SessionService) {}
 
   selectClientType(type: ClientType) {
     this.errorMessage.set('');
@@ -154,8 +160,7 @@ export class SigninPage {
     };
     this.authApi.registerParticulier(req).subscribe({
       next: (res) => {
-        localStorage.setItem('authToken', res.token);
-        localStorage.setItem('userEmail', res.user.email);
+        this.session.setSession(res.token, res.user.email, (res.user as any)?.walletAddress ?? null);
         this.showKycPrompt.set(true);
       },
       error: (err: unknown) => {
@@ -184,8 +189,7 @@ export class SigninPage {
     };
     this.authApi.registerEntreprise(req).subscribe({
       next: (res) => {
-        localStorage.setItem('authToken', res.token);
-        localStorage.setItem('userEmail', res.user.email);
+        this.session.setSession(res.token, res.user.email, (res.user as any)?.walletAddress ?? null);
         this.showKycPrompt.set(true);
       },
       error: (err: unknown) => {
@@ -200,11 +204,66 @@ export class SigninPage {
 
   onKycNow() {
     this.showKycPrompt.set(false);
-    this.router.navigate(['/kyc']);
+    this.nextRouteAfterSignup.set('/kyc');
+    this.showWalletPrompt.set(true);
   }
 
   onKycLater() {
     this.showKycPrompt.set(false);
-    this.router.navigate(['/acceuil-client']);
+    this.nextRouteAfterSignup.set('/acceuil-client');
+    this.showWalletPrompt.set(true);
+  }
+
+  onWalletLater() {
+    this.showWalletPrompt.set(false);
+    this.router.navigate([this.nextRouteAfterSignup()]);
+  }
+
+  async onConnectWallet() {
+    this.walletError.set('');
+    this.isWalletLinking.set(true);
+
+    try {
+      // 1) Ask backend for message to sign (authenticated via authTokenInterceptor)
+      const challenge = await new Promise<{ message: string }>((resolve, reject) => {
+        this.authApi.walletChallenge().subscribe({ next: resolve, error: reject });
+      });
+
+      const w = (globalThis as any).window;
+      const eth = w?.ethereum;
+      if (!eth?.request) {
+        throw new Error("Wallet non détecté. Installe MetaMask puis réessaie.");
+      }
+
+      // 2) Request wallet address
+      const accounts: string[] = await eth.request({ method: 'eth_requestAccounts', params: [] });
+      const addr = accounts?.[0];
+      if (!addr || !addr.startsWith('0x') || addr.length !== 42) {
+        throw new Error('Adresse wallet invalide.');
+      }
+
+      // 3) personal_sign the challenge message
+      const signature: string = await eth.request({ method: 'personal_sign', params: [challenge.message, addr] });
+      if (!signature || !signature.startsWith('0x')) throw new Error('Signature invalide.');
+
+      // 4) Send signature to backend for verification + storage
+      const confirm = await new Promise<{ walletAddress: string }>((resolve, reject) => {
+        this.authApi.walletConfirm({ signature }).subscribe({ next: resolve, error: reject });
+      });
+
+      localStorage.setItem('walletAddress', confirm.walletAddress);
+      this.session.scheduleAutoLogout();
+
+      this.showWalletPrompt.set(false);
+      this.router.navigate([this.nextRouteAfterSignup()]);
+    } catch (err: any) {
+      const msg =
+        err instanceof HttpErrorResponse
+          ? (err.error?.message ?? err.message)
+          : (err?.message ?? 'Erreur connexion wallet');
+      this.walletError.set(String(msg));
+    } finally {
+      this.isWalletLinking.set(false);
+    }
   }
 }

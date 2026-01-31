@@ -11,28 +11,59 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <a 
-          routerLink="/credit" 
-          class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
-        >
-          Crédit
-        </a>
-        <a 
-          routerLink="/avance-sur-titre" 
-          class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
-        >
-          Avance sur Titres
-        </a>
-        <a 
-          routerLink="/profil" 
-          class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
-        >
-          Profil
-        </a>
+        @if (isBackofficeAdmin()) {
+          <a 
+            routerLink="/backoffice/fiscal" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Dashboard Fiscal
+          </a>
+          <a 
+            routerLink="/backoffice/kyc" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            KYC
+          </a>
+        } @else {
+          <a 
+            routerLink="/portefeuille" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Portefeuille
+          </a>
+          <a 
+            routerLink="/credit" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Crédit
+          </a>
+          <a 
+            routerLink="/avance-sur-titre" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Avance sur Titres
+          </a>
+          <a 
+            routerLink="/profil" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Profil
+          </a>
+        }
       </div>
 
       <!-- Profile Menu -->
-      <div class="relative menu-container">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="onLogout()"
+          class="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 transition text-sm font-medium"
+          title="Déconnexion"
+        >
+          Déconnexion
+        </button>
+
+        <div class="relative menu-container">
         <button
           (click)="toggleMenu()"
           class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition duration-150 ease-in-out relative flex items-center justify-center"
@@ -149,10 +180,12 @@
           </div>
         }
       </div>
+      </div>
     </div>
   </div>
 
   <!-- Wallets and Actions Bar -->
+  @if (!isBackofficeAdmin()) {
   <div class="max-w-6xl mx-auto px-3 sm:px-4 lg:px-5">
     <!-- Wallets and Actions Bar -->
     <div class="flex items-center justify-between h-20 py-1">
@@ -164,10 +197,10 @@
             <div>
               <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">Tokens Wallet</p>
               <p class="text-base font-bold text-primary">
-                {{ tokensAlpha() + tokensBeta() }}
+                {{ (tokensAlpha() + tokensBeta()) | number:'1.4-4' }}
               </p>
               <p class="text-[9px] text-primary opacity-75 mt-0.5">
-                Alpha: {{ tokensAlpha() }} | Beta: {{ tokensBeta() }}
+                Atlas: {{ tokensAlpha() | number:'1.4-4' }} | Didon: {{ tokensBeta() | number:'1.4-4' }}
               </p>
             </div>
             <div class="ml-1.5">
@@ -257,4 +290,5 @@
       </div>
     </div>
   </div>
+  }
 </nav>

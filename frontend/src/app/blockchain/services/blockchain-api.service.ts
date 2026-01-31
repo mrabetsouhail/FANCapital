@@ -14,6 +14,9 @@ import type {
 } from '../models/pricing.models';
 import type { VniResponse } from '../models/oracle.models';
 import type { P2PSettleRequest, P2PSettleResponse } from '../models/p2p.models';
+import type { PortfolioResponse } from '../models/portfolio.models';
+import type { InvestorProfileResponse } from '../models/investor.models';
+import type { TxHistoryResponse } from '../models/tx-history.models';
 
 @Injectable({ providedIn: 'root' })
 export class BlockchainApiService {
@@ -32,6 +35,21 @@ export class BlockchainApiService {
   // ---------- Oracle ----------
   getVni(token: string) {
     return this.http.get<VniResponse>(`${this.baseUrl}/oracle/vni`, { params: { token } });
+  }
+
+  // ---------- Portfolio ----------
+  getPortfolio(user: string) {
+    return this.http.get<PortfolioResponse>(`${this.baseUrl}/portfolio`, { params: { user } });
+  }
+
+  // ---------- Investor / KYC ----------
+  getInvestorProfile(user: string) {
+    return this.http.get<InvestorProfileResponse>(`${this.baseUrl}/investor/profile`, { params: { user } });
+  }
+
+  // ---------- Tx History ----------
+  getTxHistory(user: string, limit: number = 150) {
+    return this.http.get<TxHistoryResponse>(`${this.baseUrl}/tx/history`, { params: { user, limit } as any });
   }
 
   // ---------- Liquidity Pool ----------

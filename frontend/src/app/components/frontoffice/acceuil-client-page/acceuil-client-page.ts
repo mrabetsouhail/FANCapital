@@ -1,7 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import type { Fund } from '../../../blockchain/models/fund.models';
 
 interface Transaction {
   id: number;
@@ -14,11 +16,11 @@ interface Transaction {
 
 @Component({
   selector: 'app-acceuil-client-page',
-  imports: [CommonModule, NavbarClient],
+  imports: [CommonModule, NavbarClient, RouterModule],
   templateUrl: './acceuil-client-page.html',
   styleUrl: './acceuil-client-page.css',
 })
-export class AcceuilClientPage {
+export class AcceuilClientPage implements OnInit {
   // Wallets Data
   tokensAlpha = signal<number>(150);
   tokensBeta = signal<number>(75);
@@ -40,6 +42,10 @@ export class AcceuilClientPage {
   betaOwned = signal<number>(75);
   betaSparkline = signal<number[]>([86, 85.5, 85, 85.5, 85.2, 85.3, 85.25]);
 
+  // Funds mapping: legacy Alpha/Beta UI -> Atlas/Didon (blockchain)
+  fundAlpha = signal<Fund | null>(null); // Atlas
+  fundBeta = signal<Fund | null>(null);  // Didon
+
   // Recent Transactions
   recentTransactions = signal<Transaction[]>([
     { id: 1, type: 'achat', token: 'Alpha', amount: 10, price: 124.50, date: new Date(Date.now() - 2 * 60 * 60 * 1000) },
@@ -48,7 +54,23 @@ export class AcceuilClientPage {
     { id: 4, type: 'achat', token: 'Alpha', amount: 15, price: 123.00, date: new Date(Date.now() - 48 * 60 * 60 * 1000) },
   ]);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private api: BlockchainApiService) {}
+
+  ngOnInit() {
+    // Load funds then fetch VNIs (Atlas/Didon)
+    this.api.listFunds().subscribe({
+      next: (res) => {
+        const atlas = res.funds.find((f) => f.name.toLowerCase().includes('atlas')) ?? res.funds[0] ?? null;
+        const didon = res.funds.find((f) => f.name.toLowerCase().includes('didon')) ?? res.funds[1] ?? null;
+        this.fundAlpha.set(atlas ?? null);
+        this.fundBeta.set(didon ?? null);
+        this.refreshVni();
+      },
+      error: () => {
+        // keep UI usable even if API not available
+      },
+    });
+  }
 
   onDeposit() {
    
@@ -93,5 +115,36 @@ export class AcceuilClientPage {
     if (type === 'vente') return 'M20 12H4';
     if (type === 'depot') return 'M12 4v16m8-8H4';
     return 'M20 12H4';
+  }
+
+  private refreshVni() {
+    const atlas = this.fundAlpha();
+    const didon = this.fundBeta();
+
+    if (atlas?.token) {
+      const prev = this.alphaPrice();
+      this.api.getVni(atlas.token).subscribe({
+        next: (v) => {
+          const price = Number(v.vni) / 1e8;
+          this.alphaPrice.set(price);
+          this.alphaChange.set(prev > 0 ? Number((((price - prev) / prev) * 100).toFixed(2)) : 0);
+          this.alphaSparkline.set([...this.alphaSparkline().slice(-6), price]);
+        },
+        error: () => {},
+      });
+    }
+
+    if (didon?.token) {
+      const prev = this.betaPrice();
+      this.api.getVni(didon.token).subscribe({
+        next: (v) => {
+          const price = Number(v.vni) / 1e8;
+          this.betaPrice.set(price);
+          this.betaChange.set(prev > 0 ? Number((((price - prev) / prev) * 100).toFixed(2)) : 0);
+          this.betaSparkline.set([...this.betaSparkline().slice(-6), price]);
+        },
+        error: () => {},
+      });
+    }
   }
 }

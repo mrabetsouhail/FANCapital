@@ -9,11 +9,11 @@
       <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-2xl font-bold text-gray-900">Token ALPHA</h3>
-            <p class="text-sm text-gray-500">Haute Performance</p>
+            <h3 class="text-2xl font-bold text-gray-900">CPEF Atlas</h3>
+            <p class="text-sm text-gray-500">Rendement élevé (High Yield)</p>
           </div>
           <div class="bg-gradient-to-r from-[#00204A] to-[#22c55e] text-white px-3 py-1 rounded-full text-sm font-semibold">
-            ALPHA
+            ATLAS
           </div>
         </div>
 
@@ -41,18 +41,20 @@
 
         <!-- Action Buttons -->
         <div class="flex gap-3">
-          <button
-            (click)="onBuyAlpha()"
+          <a
+            [routerLink]="['/passer-ordre']"
+            [queryParams]="{ token: 'Atlas', action: 'buy' }"
             class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
           >
             Acheter
-          </button>
-          <button
-            (click)="onSellAlpha()"
+          </a>
+          <a
+            [routerLink]="['/passer-ordre']"
+            [queryParams]="{ token: 'Atlas', action: 'sell' }"
             class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
           >
             Vendre
-          </button>
+          </a>
         </div>
       </div>
 
@@ -60,11 +62,11 @@
       <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-2xl font-bold text-gray-900">Token BETA</h3>
-            <p class="text-sm text-gray-500">Stabilité</p>
+            <h3 class="text-2xl font-bold text-gray-900">CPEF Didon</h3>
+            <p class="text-sm text-gray-500">Rendement modéré (Stable)</p>
           </div>
           <div class="bg-gradient-to-r from-[#22c55e] to-[#00204A] text-white px-3 py-1 rounded-full text-sm font-semibold">
-            BETA
+            DIDON
           </div>
         </div>
 
@@ -92,18 +94,20 @@
 
         <!-- Action Buttons -->
         <div class="flex gap-3">
-          <button
-            (click)="onBuyBeta()"
+          <a
+            [routerLink]="['/passer-ordre']"
+            [queryParams]="{ token: 'Didon', action: 'buy' }"
             class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
           >
             Acheter
-          </button>
-          <button
-            (click)="onSellBeta()"
+          </a>
+          <a
+            [routerLink]="['/passer-ordre']"
+            [queryParams]="{ token: 'Didon', action: 'sell' }"
             class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
           >
             Vendre
-          </button>
+          </a>
         </div>
       </div>
     </div>

@@ -6,6 +6,9 @@ export interface UserResponse {
   id: string;
   type: UserType;
   email: string;
+  walletAddress?: Address;
+  kycLevel?: number;
+  isBackofficeAdmin?: boolean;
 
   // Particulier
   nom?: string;
@@ -26,6 +29,19 @@ export interface UserResponse {
 export interface AuthResponse {
   token: string;
   user: UserResponse;
+}
+
+export interface WalletChallengeResponse {
+  message: string;
+}
+
+export interface WalletConfirmRequest {
+  signature: string; // 0x... (65 bytes)
+}
+
+export interface WalletConfirmResponse {
+  walletAddress: Address;
+  user?: UserResponse | null;
 }
 
 export interface LoginRequest {

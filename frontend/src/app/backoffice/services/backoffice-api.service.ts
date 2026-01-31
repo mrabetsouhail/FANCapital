@@ -1,7 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 
 import type { FiscalDashboardResponse, TxResponse, WithdrawRequest } from '../models/fiscal.models';
+import type { KycUserRow, SetKycLevelRequest } from '../models/kyc.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -13,6 +14,17 @@ export class BackofficeApiService {
 
   withdrawToFisc(req: WithdrawRequest) {
     return this.http.post<TxResponse>('/api/backoffice/fiscal/withdraw', req);
+  }
+
+  listKycUsers(q?: string) {
+    let params = new HttpParams();
+    const needle = q?.trim();
+    if (needle) params = params.set('q', needle);
+    return this.http.get<KycUserRow[]>('/api/backoffice/kyc/users', { params });
+  }
+
+  setKycLevel(req: SetKycLevelRequest) {
+    return this.http.post<any>('/api/backoffice/kyc/set-level', req);
   }
 }
 

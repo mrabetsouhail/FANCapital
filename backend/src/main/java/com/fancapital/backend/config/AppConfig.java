@@ -13,7 +13,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.http.HttpService;
 
 @Configuration
-@EnableConfigurationProperties({AppProperties.class, BlockchainProperties.class, SecurityJwtProperties.class, BackofficeProperties.class})
+@EnableConfigurationProperties({AppProperties.class, BlockchainProperties.class, WalletProperties.class, SecurityJwtProperties.class, BackofficeProperties.class})
 public class AppConfig {
 
   @Bean

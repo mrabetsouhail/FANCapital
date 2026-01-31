@@ -1,0 +1,125 @@
+<div class="min-h-screen bg-secondary">
+  <app-navbar-client></app-navbar-client>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Portefeuille</h1>
+        <p class="text-gray-600 mt-1">
+          Soldes Atlas/Didon + performance via PRM (on-chain).
+        </p>
+        <div class="mt-3 flex flex-col gap-2">
+          <label class="text-xs text-gray-600">Wallet (adresse complète 0x...)</label>
+          <div class="flex gap-2 items-center">
+            <input
+              class="w-[520px] max-w-full px-3 py-2 rounded-lg border border-gray-300 font-mono text-xs bg-white"
+              [value]="userAddress()"
+              (input)="userAddress.set(($any($event.target)).value)"
+              placeholder="0x..."
+            />
+            <button
+              (click)="saveAddress()"
+              class="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button
+          (click)="connectWallet()"
+          class="px-4 py-2 rounded-lg bg-[#22c55e] text-white font-medium hover:bg-green-600 transition"
+        >
+          Connecter wallet
+        </button>
+        <button
+          (click)="refresh()"
+          class="px-4 py-2 rounded-lg bg-[#00204A] text-white font-medium hover:bg-blue-900 transition"
+        >
+          Rafraîchir
+        </button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        {{ error() }}
+      </div>
+    }
+
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Positions</h2>
+        @if (loading()) {
+          <span class="text-sm text-gray-500">Chargement...</span>
+        } @else {
+          <span class="text-sm text-gray-500">{{ positions().length }} fonds</span>
+        }
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600">
+            <tr>
+              <th class="px-6 py-3 text-left font-semibold">Fonds</th>
+              <th class="px-6 py-3 text-right font-semibold">Solde (tokens)</th>
+              <th class="px-6 py-3 text-right font-semibold">PRM (TND)</th>
+              <th class="px-6 py-3 text-right font-semibold">VNI (TND)</th>
+              <th class="px-6 py-3 text-right font-semibold">Valeur (TND)</th>
+              <th class="px-6 py-3 text-right font-semibold">+/- latent (TND)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            @for (pos of positions(); track pos.token) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-gray-900">{{ pos.name }}</div>
+                  <div class="text-xs text-gray-500">{{ cleanSymbol(pos.symbol) }}</div>
+                </td>
+                <td class="px-6 py-4 text-right font-mono">
+                  {{ from1e8(pos.balanceTokens) | number:'1.4-4' }}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  {{ from1e8(pos.prm) | number:'1.2-2' }}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  {{ from1e8(pos.vni) | number:'1.2-2' }}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold">
+                  {{ from1e8(pos.positionValueTnd) | number:'1.2-2' }}
+                </td>
+                <td class="px-6 py-4 text-right font-semibold" [class]="from1e8(pos.unrealizedGainTnd) >= 0 ? 'text-green-700' : 'text-red-700'">
+                  {{ from1e8(pos.unrealizedGainTnd) | number:'1.2-2' }}
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="px-6 py-10 text-center text-gray-500" colspan="6">
+                  Aucune position. (Aucun fund trouvé ou wallet vide)
+                </td>
+              </tr>
+            }
+          </tbody>
+          @if (portfolio()) {
+            <tfoot class="bg-gray-50">
+              <tr>
+                <td class="px-6 py-4 font-semibold text-gray-900">Total</td>
+                <td class="px-6 py-4"></td>
+                <td class="px-6 py-4"></td>
+                <td class="px-6 py-4"></td>
+                <td class="px-6 py-4 text-right font-bold text-gray-900">
+                  {{ from1e8(portfolio()!.totalValueTnd) | number:'1.2-2' }}
+                </td>
+                <td class="px-6 py-4 text-right font-bold" [class]="from1e8(portfolio()!.totalUnrealizedGainTnd) >= 0 ? 'text-green-700' : 'text-red-700'">
+                  {{ from1e8(portfolio()!.totalUnrealizedGainTnd) | number:'1.2-2' }}
+                </td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+

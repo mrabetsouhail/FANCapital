@@ -32,6 +32,16 @@ blockchain:
   # ../blockchain/deployments/localhost.council-funds.json
   # ../blockchain/deployments/localhost.factory-funds.json
   deployments-path: ""
+  # Private key used to sign LiquidityPool.buyFor/sellFor tx (must have OPERATOR_ROLE on each pool)
+  operator-private-key: ${OPERATOR_PRIVATE_KEY:}
+  # Dev helper: fixed prices to unblock UI testing (until oracle/API is wired)
+  price-overrides:
+    enabled: ${FIXED_VNI_ENABLED:true}
+    atlas-tnd: ${FIXED_VNI_ATLAS_TND:10}
+    didon-tnd: ${FIXED_VNI_DIDON_TND:5}
+    spread-bps: ${FIXED_SPREAD_BPS:20}
+    fee-bps: ${FIXED_FEE_BPS:100}
+    vat-bps: ${FIXED_VAT_BPS:1900}
 
 security:
   jwt:
@@ -41,6 +51,13 @@ security:
     #   $env:JWT_TTL_SECONDS="86400"
     secret: ${JWT_SECRET:}
     ttl-seconds: ${JWT_TTL_SECONDS:86400}
+
+wallet:
+  # 32-byte base64 key for AES-GCM encryption of WaaS private keys (OWASP).
+  # Example PowerShell:
+  #   $bytes = New-Object byte[] 32; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes); [Convert]::ToBase64String($bytes)
+  #   $env:WALLET_ENC_KEY="<base64>"
+  enc-key: ${WALLET_ENC_KEY:}
 
 backoffice:
   tax:

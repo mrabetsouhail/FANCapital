@@ -8,7 +8,11 @@ import { ProfilePage } from './components/frontoffice/profile-page/profile-page'
 import { CreditPage } from './components/frontoffice/credit-page/credit-page';
 import { AvanceSurTitrePage } from './components/frontoffice/avance-sur-titre-page/avance-sur-titre-page';
 import { KycPage } from './components/frontoffice/kyc-page/kyc-page';
+import { PortfolioPage } from './components/frontoffice/portfolio-page/portfolio-page';
 import { FiscalDashboardPage } from './components/backoffice/fiscal-dashboard-page/fiscal-dashboard-page';
+import { KycDashboardPage } from './components/backoffice/kyc-dashboard-page/kyc-dashboard-page';
+import { authGuard } from './auth/auth.guard';
+import { backofficeGuard } from './backoffice/backoffice.guard';
 export const routes: Routes = [
   {
     path: '',
@@ -21,33 +25,51 @@ export const routes: Routes = [
   {
     path: 'acceuil-client',
     component: AcceuilClientPage,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'portefeuille',
+    component: PortfolioPage,
+    canActivate: [authGuard],
   },
   {
     path: 'passer-ordre',
     component: PasserOrdrePage,
+    canActivate: [authGuard],
   },
   {
     path: 'transaction',
     component: TransactionPage,
+    canActivate: [authGuard],
   },
   {
     path: 'profil',
     component: ProfilePage,
+    canActivate: [authGuard],
   },
   {
     path: 'credit',
     component: CreditPage,
+    canActivate: [authGuard],
   },
   {
     path: 'avance-sur-titre',
     component: AvanceSurTitrePage,
+    canActivate: [authGuard],
   },
   {
     path: 'kyc',
     component: KycPage,
+    canActivate: [authGuard],
   },
   {
     path: 'backoffice/fiscal',
     component: FiscalDashboardPage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/kyc',
+    component: KycDashboardPage,
+    canActivate: [backofficeGuard],
   },
 ];

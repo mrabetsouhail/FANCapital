@@ -12,7 +12,13 @@ public class TxDtos {
       @NotBlank String seller,
       @NotBlank String buyer,
       @NotBlank String tokenAmount,
-      @NotBlank String pricePerToken
+      @NotBlank String pricePerToken,
+      // Optional fields to carry an off-chain signed order (MVP)
+      String maker,
+      String side,
+      String nonce,
+      String deadline,
+      String signature
   ) {}
 
   public record TxResponse(String status, String txHash, String message) {}
