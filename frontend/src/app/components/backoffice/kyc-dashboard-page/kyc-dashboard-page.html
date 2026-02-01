@@ -98,6 +98,24 @@
                 </td>
                 <td class="py-3 text-right">
                   <div class="inline-flex flex-col gap-2 items-end">
+                    <div class="flex items-center gap-2">
+                      <input
+                        class="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-tertiary"
+                        [ngModel]="scoreByUserId()[u.id]"
+                        (ngModelChange)="onScoreChange(u.id, $event)"
+                        placeholder="Score"
+                        inputmode="numeric"
+                      />
+                      <button
+                        type="button"
+                        class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-900 hover:bg-blue-50 transition text-xs font-medium disabled:opacity-50"
+                        (click)="setScore(u)"
+                        [disabled]="loading() || !u.walletAddress"
+                        title="Pousser InvestorRegistry.setScore"
+                      >
+                        setScore
+                      </button>
+                    </div>
                     <button
                       type="button"
                       class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-800 hover:bg-gray-50 transition text-xs font-medium disabled:opacity-50"

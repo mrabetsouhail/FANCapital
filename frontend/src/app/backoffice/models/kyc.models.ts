@@ -16,3 +16,8 @@ export interface SetKycLevelRequest {
   level: KycLevel;
 }
 
+export interface SetInvestorScoreRequest {
+  userId: string;
+  score: number; // 0..100
+}
+

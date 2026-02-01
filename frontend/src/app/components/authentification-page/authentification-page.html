@@ -24,8 +24,20 @@
 
       <!-- Title Section -->
       <div class="text-center">
-        <h2 class="text-3xl font-bold text-primary">Connexion</h2>
-        <p class="mt-2 text-sm text-gray-600">Connectez-vous à votre compte</p>
+        <div class="flex items-center justify-end mb-3">
+          <select
+            class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-primary"
+            [ngModel]="lang"
+            (ngModelChange)="setLang($event)"
+            aria-label="Language"
+          >
+            <option value="fr">{{ 'NAV.LANG_FR' | translate }}</option>
+            <option value="en">{{ 'NAV.LANG_EN' | translate }}</option>
+            <option value="ar">{{ 'NAV.LANG_AR' | translate }}</option>
+          </select>
+        </div>
+        <h2 class="text-3xl font-bold text-primary">{{ 'AUTH.LOGIN_TITLE' | translate }}</h2>
+        <p class="mt-2 text-sm text-gray-600">{{ 'AUTH.LOGIN_SUBTITLE' | translate }}</p>
       </div>
 
       <!-- Login Form -->
@@ -39,7 +51,7 @@
           <!-- Email Input -->
           <div>
             <label for="email" class="block text-sm font-medium text-primary mb-2">
-              Adresse email
+              {{ 'AUTH.EMAIL' | translate }}
             </label>
             <input
               id="email"
@@ -56,7 +68,7 @@
           <!-- Password Input -->
           <div>
             <label for="password" class="block text-sm font-medium text-primary mb-2">
-              Mot de passe
+              {{ 'AUTH.PASSWORD' | translate }}
             </label>
             <input
               id="password"
@@ -78,7 +90,7 @@
               href="#" 
               class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
             >
-              Mot de passe oublié ?
+              {{ 'AUTH.FORGOT_PASSWORD' | translate }}
             </a>
           </div>
         </div>
@@ -95,19 +107,19 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             </span>
-            Se connecter
+            {{ 'AUTH.SIGN_IN' | translate }}
           </button>
         </div>
 
         <!-- Sign Up Link -->
         <div class="text-center">
           <p class="text-sm text-gray-600">
-            Vous n'avez pas encore de compte ?
+            {{ 'AUTH.NO_ACCOUNT' | translate }}
             <a 
               routerLink="/signin" 
               class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
             >
-              Créer un compte
+              {{ 'AUTH.CREATE_ACCOUNT' | translate }}
             </a>
           </p>
         </div>
