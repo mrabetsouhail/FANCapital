@@ -9,6 +9,7 @@ export interface UserResponse {
   walletAddress?: Address;
   kycLevel?: number;
   isBackofficeAdmin?: boolean;
+  backofficeRole?: 'NONE' | 'ADMIN' | 'COMPLIANCE' | 'REGULATOR' | string;
 
   // Particulier
   nom?: string;
@@ -33,6 +34,15 @@ export interface AuthResponse {
 
 export interface WalletChallengeResponse {
   message: string;
+}
+
+export interface WalletLoginChallengeRequest {
+  walletAddress: Address;
+}
+
+export interface WalletLoginRequest {
+  walletAddress: Address;
+  signature: string; // 0x... (65 bytes)
 }
 
 export interface WalletConfirmRequest {

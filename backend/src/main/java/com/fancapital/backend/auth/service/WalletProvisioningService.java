@@ -29,12 +29,13 @@ public class WalletProvisioningService {
     this.props = props;
   }
 
+  /**
+   * Circuit fermé (Livre Blanc): provision wallet at signup (before KYC).
+   * If already provisioned, no-op.
+   */
   @Transactional
-  public String ensureProvisionedForKycLevel1(String userId) {
+  public String ensureProvisioned(String userId) {
     AppUser u = repo.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user"));
-    if (u.getKycLevel() < 1) {
-      throw new IllegalArgumentException("KYC Level 1 required");
-    }
     if (u.getWalletAddress() != null && !u.getWalletAddress().isBlank()) {
       return u.getWalletAddress();
     }
@@ -59,6 +60,15 @@ public class WalletProvisioningService {
     } catch (Exception e) {
       throw new IllegalStateException("Failed to provision wallet: " + e.getMessage(), e);
     }
+  }
+
+  @Transactional
+  public String ensureProvisionedForKycLevel1(String userId) {
+    AppUser u = repo.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user"));
+    if (u.getKycLevel() < 1) {
+      throw new IllegalArgumentException("KYC Level 1 required");
+    }
+    return ensureProvisioned(userId);
   }
 }
 

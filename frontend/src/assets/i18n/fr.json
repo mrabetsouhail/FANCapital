@@ -1,5 +1,6 @@
 {
   "NAV": {
+    "MARKET": "Marché",
     "PORTFOLIO": "Portefeuille",
     "CREDIT": "Crédit",
     "ADVANCE": "Avance sur Titres",
@@ -25,12 +26,16 @@
   "AUTH": {
     "LOGIN_TITLE": "Connexion",
     "LOGIN_SUBTITLE": "Connectez-vous à votre compte",
+    "LOGIN_HOOK": "Investissez dans l’économie réelle via des CPEF tokenisés (Atlas & Didon), en toute conformité.",
+    "SLOGAN_LINE_1": "L'héritage de Carthage rencontre la puissance de la blockchain.",
+    "SLOGAN_LINE_2": "Entrez dans le cercle de l'investissement institutionnel.",
     "EMAIL": "Adresse email",
     "PASSWORD": "Mot de passe",
     "FORGOT_PASSWORD": "Mot de passe oublié ?",
     "SIGN_IN": "Se connecter",
     "NO_ACCOUNT": "Vous n'avez pas encore de compte ?",
-    "CREATE_ACCOUNT": "Créer un compte"
+    "CREATE_ACCOUNT": "Rejoindre FAN-Capital",
+    "SIGN_IN_WALLET": "Se connecter avec un Wallet"
   },
   "SIGNUP": {
     "TITLE": "Créer un compte",

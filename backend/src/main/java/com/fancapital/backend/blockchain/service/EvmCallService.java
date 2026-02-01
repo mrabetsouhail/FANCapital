@@ -11,6 +11,7 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.DefaultBlockParameterNumber;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthCall;
 
@@ -28,6 +29,22 @@ public class EvmCallService {
     EthCall res;
     try {
       res = web3j.ethCall(tx, DefaultBlockParameterName.LATEST).send();
+    } catch (IOException e) {
+      throw new IllegalStateException("RPC eth_call failed: " + e.getMessage(), e);
+    }
+    if (res.hasError()) {
+      throw new IllegalStateException("eth_call error: " + res.getError().getMessage());
+    }
+    return FunctionReturnDecoder.decode(res.getValue(), function.getOutputParameters());
+  }
+
+  public List<Type> ethCallAtBlock(String contract, Function function, BigInteger blockNumber) {
+    if (blockNumber == null) return ethCall(contract, function);
+    String data = FunctionEncoder.encode(function);
+    Transaction tx = Transaction.createEthCallTransaction(null, contract, data);
+    EthCall res;
+    try {
+      res = web3j.ethCall(tx, new DefaultBlockParameterNumber(blockNumber)).send();
     } catch (IOException e) {
       throw new IllegalStateException("RPC eth_call failed: " + e.getMessage(), e);
     }

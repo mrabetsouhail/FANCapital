@@ -34,7 +34,8 @@ public class AppUser {
   @Column(length = 120)
   private String prenom;
 
-  @Column(nullable = false)
+  // Add SQL default to support schema migration on existing DB rows.
+  @Column(nullable = false, columnDefinition = "boolean default true")
   private boolean resident = true;
 
   @Column(length = 20)
@@ -66,7 +67,8 @@ public class AppUser {
   private Instant createdAt = Instant.now();
 
   // ---- KYC ----
-  @Column(nullable = false)
+  // Add SQL default to support schema migration on existing DB rows.
+  @Column(nullable = false, columnDefinition = "integer default 0")
   private int kycLevel = 0; // 0=none, 1=green, 2=white
 
   private Instant kycValidatedAt;
@@ -79,6 +81,12 @@ public class AppUser {
   private String walletLinkNonce;
 
   private Instant walletLinkedAt;
+
+  // ---- Wallet login (shortcut) ----
+  @Column(length = 80)
+  private String walletAuthNonce;
+
+  private Instant walletAuthNonceAt;
 
   // ---- WaaS (custodial) wallet material (encrypted) ----
   @Column(length = 500)
@@ -242,6 +250,22 @@ public class AppUser {
 
   public void setWalletLinkedAt(Instant walletLinkedAt) {
     this.walletLinkedAt = walletLinkedAt;
+  }
+
+  public String getWalletAuthNonce() {
+    return walletAuthNonce;
+  }
+
+  public void setWalletAuthNonce(String walletAuthNonce) {
+    this.walletAuthNonce = walletAuthNonce;
+  }
+
+  public Instant getWalletAuthNonceAt() {
+    return walletAuthNonceAt;
+  }
+
+  public void setWalletAuthNonceAt(Instant walletAuthNonceAt) {
+    this.walletAuthNonceAt = walletAuthNonceAt;
   }
 
   public String getWalletPrivateKeyEnc() {

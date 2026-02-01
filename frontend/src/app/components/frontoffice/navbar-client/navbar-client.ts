@@ -34,9 +34,11 @@ export class NavbarClient implements OnInit {
   // Profile Data
   memberLevel = signal<string>('Gold'); // Silver, Gold, Platinum, etc.
   isBackofficeAdmin = signal<boolean>(false);
+  backofficeRole = signal<string>('NONE');
   
   // Logo
-  logoPath: string = '/fancapital_logo.jpg';
+  logoPath: string = 'assets/images/fancapital_logo.svg';
+  private readonly fallbackLogoPath: string = 'assets/images/fancapital_logo.jpg';
   
   // Notifications
   hasNotifications = signal<boolean>(false);
@@ -117,6 +119,12 @@ export class NavbarClient implements OnInit {
     this.hasNotifications.set(this.notifications().some((n) => !n.read));
   }
 
+  onLogoError() {
+    if (this.logoPath !== this.fallbackLogoPath) {
+      this.logoPath = this.fallbackLogoPath;
+    }
+  }
+
   unreadCount = signal<number>(this.notifications().filter(n => !n.read).length);
 
   ngOnInit(): void {
@@ -125,6 +133,7 @@ export class NavbarClient implements OnInit {
     this.authApi.me().subscribe({
       next: (u) => {
         this.isBackofficeAdmin.set(!!(u as any)?.isBackofficeAdmin);
+        this.backofficeRole.set(String((u as any)?.backofficeRole ?? 'NONE').toUpperCase());
         const wallet = (u as any)?.walletAddress as string | undefined;
         if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) return;
         localStorage.setItem('walletAddress', wallet);

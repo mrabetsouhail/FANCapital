@@ -19,3 +19,41 @@ body.rtl {
 html[dir="rtl"] body {
   text-align: right;
 }
+
+/* ------------------------------------------------------------
+   FAN-Capital Premium Background (global)
+   Use: add class "fc-premium-bg" on page root wrapper.
+   ------------------------------------------------------------ */
+.fc-premium-bg {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #001024 0%, #001b3d 45%, #00204a 100%);
+}
+
+.fc-premium-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  /* Minimal "nodes/graph" pattern as an embedded SVG */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' fill='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='800' y2='800' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%2322c55e' stop-opacity='0.75'/%3E%3Cstop offset='1' stop-color='%23ffffff' stop-opacity='0.14'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='120' cy='140' r='6' fill='url(%23g)'/%3E%3Ccircle cx='240' cy='260' r='5' fill='url(%23g)'/%3E%3Ccircle cx='340' cy='120' r='4' fill='url(%23g)'/%3E%3Ccircle cx='520' cy='220' r='6' fill='url(%23g)'/%3E%3Ccircle cx='640' cy='140' r='5' fill='url(%23g)'/%3E%3Ccircle cx='680' cy='320' r='4' fill='url(%23g)'/%3E%3Ccircle cx='560' cy='420' r='5' fill='url(%23g)'/%3E%3Ccircle cx='360' cy='420' r='6' fill='url(%23g)'/%3E%3Ccircle cx='220' cy='520' r='4' fill='url(%23g)'/%3E%3Ccircle cx='140' cy='660' r='5' fill='url(%23g)'/%3E%3Ccircle cx='320' cy='680' r='6' fill='url(%23g)'/%3E%3Ccircle cx='520' cy='660' r='4' fill='url(%23g)'/%3E%3Ccircle cx='680' cy='620' r='5' fill='url(%23g)'/%3E%3Cpath d='M120 140L240 260L340 120L520 220L640 140L680 320L560 420L360 420L220 520L140 660L320 680L520 660L680 620' stroke='url(%23g)' stroke-width='2'/%3E%3Cpath d='M90 520C160 460 220 540 280 500C340 460 390 560 450 520C520 480 560 560 620 520C680 480 710 520 740 500' stroke='%2322c55e' stroke-opacity='0.28' stroke-width='3.5'/%3E%3C/svg%3E");
+}
+
+.fc-premium-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 85% 10%, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0) 60%),
+    radial-gradient(closest-side at 10% 95%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 65%);
+  filter: blur(0px);
+}
+
+.fc-premium-bg > * {
+  position: relative;
+}

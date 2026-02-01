@@ -227,6 +227,53 @@ public class BlockchainReadService {
     return new PortfolioResponse(userAddress, positions, cashBal.toString(), totalValue.toString(), totalGain.toString());
   }
 
+  /**
+   * Audit helper: compute portfolio balances at a historical block (eth_call at blockNumber).
+   * Note: VNI/oracle reads will still use "latest" unless fixed price overrides are enabled.
+   */
+  public PortfolioResponse portfolioAtBlock(String userAddress, BigInteger blockNumber) {
+    List<FundDto> funds = registry.listFunds();
+    List<PortfolioPosition> positions = new ArrayList<>();
+
+    BigInteger totalValue = BigInteger.ZERO;
+    BigInteger totalGain = BigInteger.ZERO;
+
+    for (FundDto fund : funds) {
+      BigInteger bal = balanceOfAtBlock(fund.token(), userAddress, blockNumber);
+      BigInteger prm = getPrm(fund.token(), userAddress);
+      BigInteger vni = new BigInteger(getVni(fund.token()).vni());
+
+      BigInteger valueTnd = bal.multiply(vni).divide(PRICE_SCALE);
+      BigInteger gainPerToken = vni.subtract(prm);
+      if (gainPerToken.signum() < 0) gainPerToken = BigInteger.ZERO;
+      BigInteger gainTnd = bal.multiply(gainPerToken).divide(PRICE_SCALE);
+
+      totalValue = totalValue.add(valueTnd);
+      totalGain = totalGain.add(gainTnd);
+
+      positions.add(new PortfolioPosition(
+          fund.id(),
+          fund.name(),
+          fund.symbol(),
+          fund.token(),
+          fund.pool(),
+          fund.oracle(),
+          bal.toString(),
+          vni.toString(),
+          prm.toString(),
+          valueTnd.toString(),
+          gainTnd.toString()
+      ));
+    }
+
+    String cashToken = infra.cashTokenAddress();
+    BigInteger cashBal = (cashToken == null || cashToken.isBlank())
+        ? BigInteger.ZERO
+        : balanceOfAtBlock(cashToken, userAddress, blockNumber);
+
+    return new PortfolioResponse(userAddress, positions, cashBal.toString(), totalValue.toString(), totalGain.toString());
+  }
+
   public InvestorProfileResponse investorProfile(String userAddress) {
     String kyc = infra.kycRegistryAddress();
     String inv = infra.investorRegistryAddress();
@@ -463,6 +510,16 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {})
     );
     List<Type> out = evm.ethCall(token, f);
+    return EvmCallService.uint(out.get(0));
+  }
+
+  private BigInteger balanceOfAtBlock(String token, String user, BigInteger blockNumber) {
+    Function f = new Function(
+        "balanceOf",
+        List.of(new Address(user)),
+        List.of(new TypeReference<Uint256>() {})
+    );
+    List<Type> out = evm.ethCallAtBlock(token, f, blockNumber);
     return EvmCallService.uint(out.get(0));
   }
 

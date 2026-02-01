@@ -9,6 +9,8 @@ import type {
   RegisterParticulierRequest,
   UserResponse,
   WalletChallengeResponse,
+  WalletLoginChallengeRequest,
+  WalletLoginRequest,
   WalletConfirmRequest,
   WalletConfirmResponse,
 } from '../models/auth.models';
@@ -40,6 +42,14 @@ export class AuthApiService {
 
   walletConfirm(req: WalletConfirmRequest) {
     return this.http.post<WalletConfirmResponse>(`${this.baseUrl}/wallet/confirm`, req);
+  }
+
+  walletLoginChallenge(req: WalletLoginChallengeRequest) {
+    return this.http.post<WalletChallengeResponse>(`${this.baseUrl}/wallet/login/challenge`, req);
+  }
+
+  walletLogin(req: WalletLoginRequest) {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/wallet/login`, req);
   }
 }
 

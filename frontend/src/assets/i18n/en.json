@@ -1,5 +1,6 @@
 {
   "NAV": {
+    "MARKET": "Market",
     "PORTFOLIO": "Portfolio",
     "CREDIT": "Credit",
     "ADVANCE": "Securities-backed Loan",
@@ -25,12 +26,16 @@
   "AUTH": {
     "LOGIN_TITLE": "Sign in",
     "LOGIN_SUBTITLE": "Sign in to your account",
+    "LOGIN_HOOK": "Invest in the real economy with tokenized CPEFs (Atlas & Didon), fully compliant.",
+    "SLOGAN_LINE_1": "Carthage’s legacy meets the power of blockchain.",
+    "SLOGAN_LINE_2": "Enter the circle of institutional investing.",
     "EMAIL": "Email address",
     "PASSWORD": "Password",
     "FORGOT_PASSWORD": "Forgot password?",
     "SIGN_IN": "Sign in",
     "NO_ACCOUNT": "Don't have an account?",
-    "CREATE_ACCOUNT": "Create an account"
+    "CREATE_ACCOUNT": "Join FAN-Capital",
+    "SIGN_IN_WALLET": "Sign in with a Wallet"
   },
   "SIGNUP": {
     "TITLE": "Create an account",

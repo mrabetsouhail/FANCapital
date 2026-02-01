@@ -3,15 +3,31 @@
   <div class="w-full px-2 sm:px-4 lg:px-6">
     <div class="flex items-center justify-between py-2 border-b border-gray-200">
       <div class="flex items-center">
-        <img 
-          [src]="logoPath" 
-          alt="Fan Capital Logo" 
-          class="h-16 w-auto object-contain"
-        />
+        <a routerLink="/acceuil-client" class="inline-flex items-center">
+          <img 
+            [src]="logoPath" 
+            (error)="onLogoError()"
+            alt="Fan Capital Logo" 
+            class="h-16 w-auto object-contain"
+          />
+        </a>
       </div>
 
       <div class="flex items-center gap-4">
-        @if (isBackofficeAdmin()) {
+        <a 
+          routerLink="/acceuil-client" 
+          class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+        >
+          {{ 'NAV.MARKET' | translate }}
+        </a>
+        @if (isBackofficeAdmin() || backofficeRole() === 'ADMIN' || backofficeRole() === 'COMPLIANCE' || backofficeRole() === 'REGULATOR') {
+          <a 
+            routerLink="/backoffice/audit" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Registre Audit
+          </a>
+          @if (isBackofficeAdmin() || backofficeRole() === 'ADMIN') {
           <a 
             routerLink="/backoffice/fiscal" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
@@ -24,6 +40,7 @@
           >
             {{ 'NAV.BACKOFFICE_KYC' | translate }}
           </a>
+          }
         } @else {
           <a 
             routerLink="/portefeuille" 

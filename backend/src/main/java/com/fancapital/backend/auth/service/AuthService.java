@@ -16,12 +16,20 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final BackofficeAuthzService backofficeAuthz;
+  private final WalletProvisioningService walletProvisioning;
 
-  public AuthService(AppUserRepository repo, PasswordEncoder passwordEncoder, JwtService jwtService, BackofficeAuthzService backofficeAuthz) {
+  public AuthService(
+      AppUserRepository repo,
+      PasswordEncoder passwordEncoder,
+      JwtService jwtService,
+      BackofficeAuthzService backofficeAuthz,
+      WalletProvisioningService walletProvisioning
+  ) {
     this.repo = repo;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.backofficeAuthz = backofficeAuthz;
+    this.walletProvisioning = walletProvisioning;
   }
 
   @Transactional
@@ -63,6 +71,8 @@ public class AuthService {
     u.setPassportNumber(resident ? null : passport);
     u.setTelephone(InputSanitizer.clean(req.telephone()));
     repo.save(u);
+    // Circuit fermé (Livre Blanc): wallet WaaS auto à l'inscription
+    walletProvisioning.ensureProvisioned(u.getId());
 
     String token = jwtService.mint(u.getId(), u.getEmail(), u.getType().name());
     return new AuthDtos.AuthResponse(token, toUserResponse(u));
@@ -92,6 +102,8 @@ public class AuthService {
     u.setPrenomGerant(InputSanitizer.clean(req.prenomGerant()));
     u.setTelephone(InputSanitizer.clean(req.telephone()));
     repo.save(u);
+    // Circuit fermé (Livre Blanc): wallet WaaS auto à l'inscription
+    walletProvisioning.ensureProvisioned(u.getId());
 
     String token = jwtService.mint(u.getId(), u.getEmail(), u.getType().name());
     return new AuthDtos.AuthResponse(token, toUserResponse(u));
@@ -113,13 +125,16 @@ public class AuthService {
   }
 
   public AuthDtos.UserResponse toUserResponse(AppUser u) {
+    String email = u.getEmail();
+    var role = backofficeAuthz.roleForEmail(email);
     return new AuthDtos.UserResponse(
         u.getId(),
         u.getType().name(),
-        u.getEmail(),
+        email,
         u.getWalletAddress(),
         u.getKycLevel(),
-        backofficeAuthz.isAdminEmail(u.getEmail()),
+        backofficeAuthz.isAdminEmail(email),
+        role.name(),
         u.getNom(),
         u.getPrenom(),
         u.isResident(),

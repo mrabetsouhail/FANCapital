@@ -31,6 +31,7 @@ public class AuthDtos {
       String walletAddress,
       Integer kycLevel,
       Boolean isBackofficeAdmin,
+      String backofficeRole,
       String nom,
       String prenom,
       Boolean resident,
@@ -49,6 +50,16 @@ public class AuthDtos {
   ) {}
 
   public record WalletConfirmRequest(
+      @NotBlank @Pattern(regexp = SIG_RX) String signature
+  ) {}
+
+  // Wallet login (shortcut): unauthenticated challenge + signature verification
+  public record WalletLoginChallengeRequest(
+      @NotBlank @Pattern(regexp = ETH_ADDRESS_RX) String walletAddress
+  ) {}
+
+  public record WalletLoginRequest(
+      @NotBlank @Pattern(regexp = ETH_ADDRESS_RX) String walletAddress,
       @NotBlank @Pattern(regexp = SIG_RX) String signature
   ) {}
 

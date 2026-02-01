@@ -9,8 +9,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class BackendApplication {
   private static final Logger log = LoggerFactory.getLogger(BackendApplication.class);
 
@@ -34,6 +36,16 @@ public class BackendApplication {
         log.warn("Backoffice admin emails not configured (env ADMIN_EMAILS). UI will not show backoffice menu and /api/backoffice/** will be unavailable.");
       } else {
         log.info("Backoffice admin emails configured: {}", normalized);
+      }
+
+      List<String> reg = props.audit() != null ? props.audit().regulatorEmails() : null;
+      List<String> comp = props.audit() != null ? props.audit().complianceEmails() : null;
+      int regCount = reg == null ? 0 : (int) reg.stream().filter(x -> x != null && !x.trim().isBlank()).count();
+      int compCount = comp == null ? 0 : (int) comp.stream().filter(x -> x != null && !x.trim().isBlank()).count();
+      if (regCount == 0 && compCount == 0) {
+        log.warn("Audit backoffice roles not configured (AUDIT_REGULATOR_EMAILS / AUDIT_COMPLIANCE_EMAILS). Audit registry endpoints will be forbidden for non-admin.");
+      } else {
+        log.info("Audit backoffice roles configured: regulatorEmails={}, complianceEmails={}", regCount, compCount);
       }
     };
   }

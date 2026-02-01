@@ -3,6 +3,7 @@ package com.fancapital.backend.auth.controller;
 import com.fancapital.backend.auth.dto.AuthDtos;
 import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.auth.service.AuthService;
+import com.fancapital.backend.auth.service.WalletAuthService;
 import com.fancapital.backend.auth.service.WalletLinkService;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
@@ -23,12 +24,20 @@ public class AuthController {
   private final com.fancapital.backend.auth.service.JwtService jwtService;
   private final AppUserRepository repo;
   private final WalletLinkService walletLinkService;
+  private final WalletAuthService walletAuthService;
 
-  public AuthController(AuthService authService, com.fancapital.backend.auth.service.JwtService jwtService, AppUserRepository repo, WalletLinkService walletLinkService) {
+  public AuthController(
+      AuthService authService,
+      com.fancapital.backend.auth.service.JwtService jwtService,
+      AppUserRepository repo,
+      WalletLinkService walletLinkService,
+      WalletAuthService walletAuthService
+  ) {
     this.authService = authService;
     this.jwtService = jwtService;
     this.repo = repo;
     this.walletLinkService = walletLinkService;
+    this.walletAuthService = walletAuthService;
   }
 
   @PostMapping("/register/particulier")
@@ -82,6 +91,16 @@ public class AuthController {
         "walletAddress", addr,
         "user", user == null ? null : authService.toUserResponse(user)
     ));
+  }
+
+  @PostMapping("/wallet/login/challenge")
+  public AuthDtos.WalletChallengeResponse walletLoginChallenge(@Valid @RequestBody AuthDtos.WalletLoginChallengeRequest req) {
+    return walletAuthService.loginChallenge(req.walletAddress());
+  }
+
+  @PostMapping("/wallet/login")
+  public AuthDtos.AuthResponse walletLogin(@Valid @RequestBody AuthDtos.WalletLoginRequest req) {
+    return walletAuthService.loginWithWallet(req);
   }
 
   private static String currentUserIdOrThrow() {

@@ -68,4 +68,11 @@ backoffice:
     governance-private-key: ${GOV_PRIVATE_KEY:}
     # Comma-separated list of emails allowed to use back-office actions
     admin-emails: ${ADMIN_EMAILS:}
+  audit:
+    # Regulator / auditor read-only access (comma-separated)
+    regulator-emails: ${AUDIT_REGULATOR_EMAILS:}
+    # Compliance officer access (exports + logs) (comma-separated)
+    compliance-emails: ${AUDIT_COMPLIANCE_EMAILS:}
+    reconciliation-enabled: ${AUDIT_RECON_ENABLED:false}
+    reconciliation-interval-ms: ${AUDIT_RECON_INTERVAL_MS:300000}
 

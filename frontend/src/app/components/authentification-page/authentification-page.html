@@ -1,47 +1,76 @@
-<div class="min-h-screen flex bg-secondary">
+<div class="min-h-screen fc-premium-bg flex">
   <!-- Left Side - Logo/Image -->
-  <div class="hidden lg:flex lg:w-1/2 items-center justify-center bg-primary p-12">
-    <div class="max-w-md">
-      <img 
-        [src]="logoPath" 
-        alt="Fan Capital Logo" 
-        class="w-full h-auto object-contain max-h-96"
-      />
+  <div class="hidden lg:flex lg:w-1/2 items-center justify-center p-12">
+    <div class="w-full max-w-[560px] flex flex-col items-center gap-6">
+      <div class="relative w-[380px] max-w-[80%] aspect-square overflow-hidden rounded-[28px] bg-white/5 ring-1 ring-white/10 shadow-2xl">
+        <!-- Crop slightly to minimize the white frame if JPG is used -->
+        <img
+          [src]="logoPath"
+          alt="Fan Capital Logo"
+          (error)="onLogoError()"
+          class="w-full h-full object-cover scale-[1.14] drop-shadow-[0_20px_50px_rgba(0,0,0,0.55)]"
+        />
+      </div>
+
+      <div class="text-center max-w-[520px]">
+        <p class="text-white/90 text-lg font-semibold tracking-wide">
+          {{ 'AUTH.SLOGAN_LINE_1' | translate }}
+        </p>
+        <p class="mt-2 text-white/75 text-sm leading-relaxed">
+          {{ 'AUTH.SLOGAN_LINE_2' | translate }}
+        </p>
+
+        <div class="mt-6 flex items-center justify-center gap-2">
+          <span class="h-px w-12 bg-white/15"></span>
+          <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/85 ring-1 ring-white/10">
+            <span class="inline-block h-2 w-2 rounded-full bg-[#22c55e]"></span>
+            RWA • CPEF • DLT
+          </span>
+          <span class="h-px w-12 bg-white/15"></span>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Right Side - Login Form -->
   <div class="w-full lg:w-1/2 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
+      <!-- Language selector (top-right) -->
+      <div class="flex justify-end">
+        <select
+          class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-primary shadow-sm hover:shadow transition"
+          [ngModel]="lang"
+          (ngModelChange)="setLang($event)"
+          aria-label="Language"
+        >
+          <option value="fr">{{ 'NAV.LANG_FR' | translate }}</option>
+          <option value="en">{{ 'NAV.LANG_EN' | translate }}</option>
+          <option value="ar">{{ 'NAV.LANG_AR' | translate }}</option>
+        </select>
+      </div>
+
       <!-- Logo for mobile -->
       <div class="flex justify-center lg:hidden mb-8">
         <img 
           [src]="logoPath" 
           alt="Fan Capital Logo" 
-          class="h-20 w-auto object-contain "
+          (error)="onLogoError()"
+          class="h-20 w-auto object-contain"
         />
       </div>
 
-      <!-- Title Section -->
-      <div class="text-center">
-        <div class="flex items-center justify-end mb-3">
-          <select
-            class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-primary"
-            [ngModel]="lang"
-            (ngModelChange)="setLang($event)"
-            aria-label="Language"
-          >
-            <option value="fr">{{ 'NAV.LANG_FR' | translate }}</option>
-            <option value="en">{{ 'NAV.LANG_EN' | translate }}</option>
-            <option value="ar">{{ 'NAV.LANG_AR' | translate }}</option>
-          </select>
+      <div class="rounded-2xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] ring-1 ring-gray-100 px-6 sm:px-8 py-8">
+        <!-- Title Section -->
+        <div class="text-center">
+          <h2 class="text-3xl font-extrabold text-primary tracking-tight">{{ 'AUTH.LOGIN_TITLE' | translate }}</h2>
+          <p class="mt-2 text-sm text-gray-600">{{ 'AUTH.LOGIN_SUBTITLE' | translate }}</p>
+          <p class="mt-3 text-sm font-medium text-primary/80">
+            {{ 'AUTH.LOGIN_HOOK' | translate }}
+          </p>
         </div>
-        <h2 class="text-3xl font-bold text-primary">{{ 'AUTH.LOGIN_TITLE' | translate }}</h2>
-        <p class="mt-2 text-sm text-gray-600">{{ 'AUTH.LOGIN_SUBTITLE' | translate }}</p>
-      </div>
 
-      <!-- Login Form -->
-      <form class="mt-8 space-y-6" (ngSubmit)="onSubmit()">
+        <!-- Login Form -->
+        <form class="mt-8 space-y-6" (ngSubmit)="onSubmit()">
         @if (errorMessage) {
           <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {{ errorMessage }}
@@ -53,16 +82,23 @@
             <label for="email" class="block text-sm font-medium text-primary mb-2">
               {{ 'AUTH.EMAIL' | translate }}
             </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-              [(ngModel)]="email"
-              class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-              placeholder="votre@email.com"
-            />
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m8 0l-8 0m12-7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2z" />
+                </svg>
+              </span>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+                [(ngModel)]="email"
+                class="appearance-none relative block w-full pl-12 pr-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="votre@email.com"
+              />
+            </div>
           </div>
 
           <!-- Password Input -->
@@ -70,16 +106,42 @@
             <label for="password" class="block text-sm font-medium text-primary mb-2">
               {{ 'AUTH.PASSWORD' | translate }}
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              [(ngModel)]="password"
-              class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-              placeholder="••••••••"
-            />
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3 1.343 3 3v2H9v-2c0-1.657 1.343-3 3-3zm6 3v6a2 2 0 01-2 2H8a2 2 0 01-2-2v-6a2 2 0 012-2h8a2 2 0 012 2zM8 10V7a4 4 0 118 0v3" />
+                </svg>
+              </span>
+              <input
+                id="password"
+                name="password"
+                [type]="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
+                required
+                [(ngModel)]="password"
+                class="appearance-none relative block w-full pl-12 pr-12 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                (click)="togglePassword()"
+                class="absolute inset-y-0 right-0 flex items-center justify-center w-12 text-gray-600 hover:text-tertiary transition"
+                [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+              >
+                @if (showPassword) {
+                  <!-- eye-off -->
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.477 10.48A3 3 0 0012 15a3 3 0 001.52-.41M9.88 9.88A3 3 0 0115 12c0 .52-.13 1.01-.36 1.44M6.23 6.23C4.57 7.55 3.41 9.25 3 12c1.64 5.33 7.33 9 9 9 1.03 0 2.33-.3 3.62-.86M17.77 17.77C19.43 16.45 20.59 14.75 21 12c-1.64-5.33-7.33-9-9-9-1.03 0-2.33.3-3.62.86" />
+                  </svg>
+                } @else {
+                  <!-- eye -->
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                }
+              </button>
+            </div>
           </div>
         </div>
 
@@ -88,7 +150,7 @@
           <div class="text-sm">
             <a 
               href="#" 
-              class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+              class="font-semibold text-[#001b3d] hover:text-tertiary underline underline-offset-4 decoration-gray-300 hover:decoration-tertiary transition duration-150 ease-in-out"
             >
               {{ 'AUTH.FORGOT_PASSWORD' | translate }}
             </a>
@@ -100,7 +162,7 @@
           <button
             type="submit"
             (click)="onSubmit()"
-            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-secondary bg-tertiary hover:bg-quaternary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tertiary transition duration-150 ease-in-out transform hover:scale-105"
+            class="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-secondary bg-tertiary hover:bg-quaternary shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tertiary transition duration-150 ease-in-out transform hover:scale-[1.01]"
           >
             <span class="absolute left-0 inset-y-0 flex items-center pl-3">
               <svg class="h-5 w-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,8 +170,37 @@
               </svg>
             </span>
             {{ 'AUTH.SIGN_IN' | translate }}
+
+            <!-- “green arrow” micro-interaction -->
+            <span class="ml-2 inline-flex items-center">
+              <svg class="h-5 w-5 text-[#22c55e] transition-transform duration-200 group-hover:translate-x-1 group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l10-10m0 0H9m8 0v8" />
+              </svg>
+            </span>
           </button>
         </div>
+
+        <!-- Wallet (Web3) option (UI) -->
+        @if (walletLoginEnabled) {
+        <div class="space-y-2">
+          <button
+            type="button"
+            (click)="connectWallet()"
+            [disabled]="walletConnecting"
+            class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-3 px-4 text-sm font-semibold text-primary shadow-sm hover:shadow-md hover:border-gray-300 transition disabled:opacity-60"
+          >
+            <svg class="h-5 w-5 text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h3a2 2 0 012 2v2a2 2 0 01-2 2h-3m0-6a2 2 0 00-2 2v2a2 2 0 002 2" />
+            </svg>
+            {{ 'AUTH.SIGN_IN_WALLET' | translate }}
+          </button>
+          @if (walletAddressPreview) {
+            <div class="text-xs text-gray-600 text-center">
+              Wallet: <span class="font-mono">{{ walletAddressPreview }}</span>
+            </div>
+          }
+        </div>
+        }
 
         <!-- Sign Up Link -->
         <div class="text-center">
@@ -117,13 +208,14 @@
             {{ 'AUTH.NO_ACCOUNT' | translate }}
             <a 
               routerLink="/signin" 
-              class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
+              class="font-semibold text-[#001b3d] hover:text-tertiary underline underline-offset-4 decoration-gray-300 hover:decoration-tertiary transition duration-150 ease-in-out"
             >
               {{ 'AUTH.CREATE_ACCOUNT' | translate }}
             </a>
           </p>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 </div>

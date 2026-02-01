@@ -17,7 +17,8 @@ export const backofficeGuard: CanActivateFn = () => {
   return new Promise<boolean>((resolve) => {
     authApi.me().subscribe({
       next: (u) => {
-        if ((u as any)?.isBackofficeAdmin) {
+        const role = String((u as any)?.backofficeRole ?? 'NONE').toUpperCase();
+        if ((u as any)?.isBackofficeAdmin || role === 'ADMIN' || role === 'COMPLIANCE' || role === 'REGULATOR') {
           resolve(true);
           return;
         }

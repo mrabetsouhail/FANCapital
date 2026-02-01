@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 
 import type { FiscalDashboardResponse, TxResponse, WithdrawRequest } from '../models/fiscal.models';
 import type { KycUserRow, SetInvestorScoreRequest, SetKycLevelRequest } from '../models/kyc.models';
+import type { AuditLogsResponse, AuditRegistryResponse } from '../models/audit.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -29,6 +30,26 @@ export class BackofficeApiService {
 
   setInvestorScore(req: SetInvestorScoreRequest) {
     return this.http.post<any>('/api/backoffice/kyc/set-score', req);
+  }
+
+  getAuditRegistry(q?: string) {
+    let params = new HttpParams();
+    const needle = q?.trim();
+    if (needle) params = params.set('q', needle);
+    return this.http.get<AuditRegistryResponse>('/api/backoffice/audit/registry', { params });
+  }
+
+  getAuditLogs(limit: number = 200) {
+    const params = new HttpParams().set('limit', String(limit));
+    return this.http.get<AuditLogsResponse>('/api/backoffice/audit/logs', { params });
+  }
+
+  exportAuditCsv() {
+    return this.http.get('/api/backoffice/audit/export/csv', { responseType: 'blob', observe: 'response' });
+  }
+
+  exportAuditPdf() {
+    return this.http.get('/api/backoffice/audit/export/pdf', { responseType: 'blob', observe: 'response' });
   }
 }
 

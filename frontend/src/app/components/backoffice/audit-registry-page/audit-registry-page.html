@@ -1,0 +1,134 @@
+<div class="min-h-screen fc-premium-bg">
+  <app-navbar-client></app-navbar-client>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-primary">Registre d'Audit (DLT)</h1>
+          <p class="text-sm text-gray-600">Réconciliation Identité (KYC) + Soldes on-chain (Atlas/Didon).</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            (click)="refresh()"
+            class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-primary shadow-sm hover:shadow transition"
+          >
+            Actualiser
+          </button>
+          @if (canExport()) {
+            <button
+              type="button"
+              (click)="exportCsv()"
+              class="px-4 py-2 rounded-lg bg-[#00204A] text-white text-sm font-semibold hover:bg-blue-900 transition"
+            >
+              Export CSV
+            </button>
+            <button
+              type="button"
+              (click)="exportPdf()"
+              class="px-4 py-2 rounded-lg bg-tertiary text-secondary text-sm font-semibold hover:bg-quaternary transition"
+            >
+              Export PDF
+            </button>
+            <button
+              type="button"
+              (click)="loadLogs()"
+              class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-primary shadow-sm hover:shadow transition"
+            >
+              Logs d'accès
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input
+          class="md:col-span-2 w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary"
+          [ngModel]="q()"
+          (ngModelChange)="q.set($event)"
+          placeholder="Rechercher: email, CIN/NIF, wallet, nom…"
+        />
+        <button
+          type="button"
+          (click)="refresh()"
+          class="w-full px-4 py-2 rounded-lg bg-white border border-gray-200 text-primary font-semibold hover:shadow transition"
+        >
+          Rechercher
+        </button>
+      </div>
+
+      @if (error()) {
+        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {{ error() }}
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="mt-4 text-sm text-gray-600">Chargement…</div>
+      }
+
+      <div class="mt-6 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 text-primary">
+              <th class="text-left py-2 pr-3">Identité</th>
+              <th class="text-left py-2 pr-3">ID (CIN/Passeport/NIF)</th>
+              <th class="text-left py-2 pr-3">Wallet</th>
+              <th class="text-right py-2 pr-3">Atlas</th>
+              <th class="text-right py-2">Didon</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filtered(); track r.userId) {
+              <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                <td class="py-2 pr-3">
+                  <div class="font-semibold text-primary">{{ r.fullNameOrCompany || r.email }}</div>
+                  <div class="text-xs text-gray-500">{{ r.email }} · {{ r.type }}</div>
+                </td>
+                <td class="py-2 pr-3 font-mono text-xs text-gray-700">{{ r.cinOrPassportOrFiscalId || '-' }}</td>
+                <td class="py-2 pr-3 font-mono text-xs text-gray-700 break-all">{{ r.walletAddress || '-' }}</td>
+                <td class="py-2 pr-3 text-right font-semibold text-primary">{{ from1e8(r.atlasBalanceToken1e8) }}</td>
+                <td class="py-2 text-right font-semibold text-primary">{{ from1e8(r.didonBalanceToken1e8) }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="py-10 text-center text-gray-500">Aucun résultat.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (logs().length) {
+        <div class="mt-8">
+          <h2 class="text-lg font-semibold text-primary mb-3">Audit Log (hash-chain)</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-gray-200 text-primary">
+                  <th class="text-left py-2 pr-3">Date</th>
+                  <th class="text-left py-2 pr-3">Action</th>
+                  <th class="text-left py-2 pr-3">Acteur</th>
+                  <th class="text-left py-2 pr-3">Hash</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (l of logs(); track l.id) {
+                  <tr class="border-b border-gray-100">
+                    <td class="py-2 pr-3">{{ l.createdAt || '-' }}</td>
+                    <td class="py-2 pr-3">{{ l.action }}</td>
+                    <td class="py-2 pr-3">{{ l.actorEmail || l.actorUserId || '-' }}</td>
+                    <td class="py-2 pr-3 font-mono break-all">{{ l.entryHash }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+  </main>
+</div>
+

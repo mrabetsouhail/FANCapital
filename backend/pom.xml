@@ -21,6 +21,7 @@
     <java.version>17</java.version>
     <web3j.version>4.12.1</web3j.version>
     <jjwt.version>0.12.5</jjwt.version>
+    <pdfbox.version>3.0.6</pdfbox.version>
   </properties>
 
   <dependencies>
@@ -78,6 +79,12 @@
       <groupId>org.web3j</groupId>
       <artifactId>core</artifactId>
       <version>${web3j.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
     </dependency>
 
     <dependency>

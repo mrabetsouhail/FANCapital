@@ -1,4 +1,4 @@
-<div class="min-h-screen flex items-center justify-center bg-secondary py-12 px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen fc-premium-bg flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
   @if (showKycPrompt()) {
     <div class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/40" (click)="onKycLater()"></div>
@@ -7,6 +7,9 @@
         <p class="text-sm text-gray-600 mb-5">
           {{ 'PROMPT.KYC_BODY' | translate }}
         </p>
+        <div class="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          Wallet WaaS: un wallet interne (circuit fermé) est créé automatiquement pour votre compte. Aucune extension MetaMask n'est requise.
+        </div>
 
         <div class="flex gap-3 justify-end">
           <button
@@ -27,44 +30,8 @@
       </div>
     </div>
   }
-  @if (showWalletPrompt()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/40" (click)="onWalletLater()"></div>
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-6 mx-4">
-        <h3 class="text-xl font-bold text-primary mb-2">{{ 'PROMPT.WALLET_TITLE' | translate }}</h3>
-        <p class="text-sm text-gray-600 mb-4">
-          {{ 'PROMPT.WALLET_BODY' | translate }}
-        </p>
-
-        @if (walletError()) {
-          <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {{ walletError() }}
-          </div>
-        }
-
-        <div class="flex gap-3 justify-end">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
-            (click)="onWalletLater()"
-            [disabled]="isWalletLinking()"
-          >
-            {{ 'PROMPT.WALLET_LATER' | translate }}
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
-            (click)="onConnectWallet()"
-            [disabled]="isWalletLinking()"
-          >
-            @if (isWalletLinking()) { {{ 'PROMPT.WALLET_CONNECTING' | translate }} } @else { {{ 'PROMPT.WALLET_CONNECT' | translate }} }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
   <!-- Centered Signup Form -->
-  <div class="w-full max-w-2xl space-y-8">
+  <div class="w-full max-w-2xl space-y-8 bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6 sm:p-8">
      
 
       <!-- Title Section -->

@@ -1,12 +1,18 @@
-<div class="min-h-screen bg-secondary ">
-  <!-- Navbar Component -->
-  <app-navbar-client></app-navbar-client>
+<div class="min-h-screen fc-premium-bg">
+    <!-- Navbar Component -->
+    <app-navbar-client></app-navbar-client>
 
-  <!-- Main Content: Token Cards -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Main Content: Token Cards -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Marché CPEF</h1>
+        <p class="mt-2 text-white/75 text-sm">
+          Atlas & Didon — prix en temps réel, exécution via la liquidité de la plateforme.
+        </p>
+      </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Token Alpha Card -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+      <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] p-6 ring-1 ring-white/40 hover:shadow-[0_28px_80px_rgba(15,23,42,0.16)] transition-shadow duration-200">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-2xl font-bold text-gray-900">CPEF Atlas</h3>
@@ -44,14 +50,14 @@
           <a
             [routerLink]="['/passer-ordre']"
             [queryParams]="{ token: 'Atlas', action: 'buy' }"
-            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
+            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
           >
             Acheter
           </a>
           <a
             [routerLink]="['/passer-ordre']"
             [queryParams]="{ token: 'Atlas', action: 'sell' }"
-            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
+            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
           >
             Vendre
           </a>
@@ -59,7 +65,7 @@
       </div>
 
       <!-- Token Beta Card -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+      <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] p-6 ring-1 ring-white/40 hover:shadow-[0_28px_80px_rgba(15,23,42,0.16)] transition-shadow duration-200">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-2xl font-bold text-gray-900">CPEF Didon</h3>
@@ -97,26 +103,26 @@
           <a
             [routerLink]="['/passer-ordre']"
             [queryParams]="{ token: 'Didon', action: 'buy' }"
-            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-105"
+            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
           >
             Acheter
           </a>
           <a
             [routerLink]="['/passer-ordre']"
             [queryParams]="{ token: 'Didon', action: 'sell' }"
-            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-105"
+            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
           >
             Vendre
           </a>
         </div>
       </div>
     </div>
-  </main>
+    </main>
 
   <!-- Footer: Recent Activity -->
-  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 mt-4">
-    <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">Activité Récente</h3>
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 mt-4 pb-10">
+      <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] p-6 ring-1 ring-white/40">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Activité Récente</h3>
       <div class="space-y-3">
         @for (transaction of recentTransactions(); track transaction.id) {
           <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150">
@@ -148,6 +154,6 @@
           </div>
         }
       </div>
-    </div>
-  </footer>
+      </div>
+    </footer>
 </div>
