@@ -5,13 +5,15 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../auth/services/auth-api.service';
 import { SessionService } from '../../auth/services/session.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { LanguageService, type AppLang } from '../../i18n/language.service';
 
 type ClientType = 'particulier' | 'entreprise';
 type PostSignupRoute = '/kyc' | '/acceuil-client';
 
 @Component({
   selector: 'app-signin-page',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule],
   templateUrl: './signin-page.html',
   styleUrl: './signin-page.css',
 })
@@ -53,7 +55,21 @@ export class SigninPage {
   isWalletLinking = signal<boolean>(false);
   nextRouteAfterSignup = signal<PostSignupRoute>('/acceuil-client');
 
-  constructor(private authApi: AuthApiService, private router: Router, private session: SessionService) {}
+  lang = signal<AppLang>('fr');
+
+  constructor(
+    private authApi: AuthApiService,
+    private router: Router,
+    private session: SessionService,
+    private language: LanguageService
+  ) {
+    this.lang.set(this.language.current);
+  }
+
+  setLang(l: string) {
+    this.language.use(l as AppLang);
+    this.lang.set(this.language.current);
+  }
 
   selectClientType(type: ClientType) {
     this.errorMessage.set('');

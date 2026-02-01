@@ -9,3 +9,13 @@
   --color-tertiary: #00204A; /* Le Bleu Marine*/
   --color-quaternary: #22c55e; /* Vert*/
 }
+
+/* Basic RTL support for Arabic */
+html[dir="rtl"],
+body.rtl {
+  direction: rtl;
+}
+
+html[dir="rtl"] body {
+  text-align: right;
+}

@@ -4,10 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../auth/services/auth-api.service';
 import { SessionService } from '../../auth/services/session.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { LanguageService, type AppLang } from '../../i18n/language.service';
 
 @Component({
   selector: 'app-authentification-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TranslateModule],
   templateUrl: './authentification-page.html',
   styleUrl: './authentification-page.css',
 })
@@ -16,8 +18,22 @@ export class AuthentificationPage {
   password: string = '';
   logoPath: string = '/fancapital_logo.jpg';
   errorMessage: string = '';
+
+  lang: AppLang = 'fr';
   
-  constructor(private router: Router, private authApi: AuthApiService, private session: SessionService) {}
+  constructor(
+    private router: Router,
+    private authApi: AuthApiService,
+    private session: SessionService,
+    private language: LanguageService
+  ) {
+    this.lang = this.language.current;
+  }
+
+  setLang(l: string) {
+    this.language.use(l as AppLang);
+    this.lang = this.language.current;
+  }
   
   
   onSubmit() {

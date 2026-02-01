@@ -19,6 +19,7 @@ export class KycDashboardPage implements OnInit {
   actionMsg = signal<string>('');
 
   q = signal<string>('');
+  scoreByUserId = signal<Record<string, string>>({});
 
   constructor(private api: BackofficeApiService) {}
 
@@ -32,7 +33,15 @@ export class KycDashboardPage implements OnInit {
     this.actionMsg.set('');
     this.api.listKycUsers(this.q()).subscribe({
       next: (res) => {
-        this.rows.set(res ?? []);
+        const rows = res ?? [];
+        this.rows.set(rows);
+        // Ensure score input exists for visible rows
+        const prev = this.scoreByUserId();
+        const next: Record<string, string> = { ...prev };
+        for (const r of rows) {
+          if (next[r.id] == null) next[r.id] = '0';
+        }
+        this.scoreByUserId.set(next);
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -67,6 +76,43 @@ export class KycDashboardPage implements OnInit {
         this.loading.set(false);
         const msg =
           err instanceof HttpErrorResponse ? (err.error?.message ?? err.message) : 'Erreur validation KYC';
+        this.error.set(String(msg));
+      },
+    });
+  }
+
+  onScoreChange(userId: string, v: string) {
+    this.scoreByUserId.set({ ...this.scoreByUserId(), [userId]: v });
+  }
+
+  setScore(row: KycUserRow) {
+    this.error.set('');
+    this.actionMsg.set('');
+    if (!row.walletAddress) {
+      this.error.set("Wallet non provisionné (valider KYC1 d'abord).");
+      return;
+    }
+    const raw = (this.scoreByUserId()[row.id] ?? '').trim();
+    if (!/^\d{1,3}$/.test(raw)) {
+      this.error.set('Score invalide (0..100)');
+      return;
+    }
+    const score = Number(raw);
+    if (!Number.isFinite(score) || score < 0 || score > 100) {
+      this.error.set('Score invalide (0..100)');
+      return;
+    }
+
+    this.loading.set(true);
+    this.api.setInvestorScore({ userId: row.id, score }).subscribe({
+      next: (res: any) => {
+        this.actionMsg.set(`Score mis à jour: ${row.email} → ${score} (tx: ${res?.txHash ?? ''})`);
+        this.loading.set(false);
+      },
+      error: (err: unknown) => {
+        this.loading.set(false);
+        const msg =
+          err instanceof HttpErrorResponse ? (err.error?.message ?? err.message) : 'Erreur setScore';
         this.error.set(String(msg));
       },
     });

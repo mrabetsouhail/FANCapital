@@ -16,58 +16,69 @@
             routerLink="/backoffice/fiscal" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            Dashboard Fiscal
+            {{ 'NAV.BACKOFFICE_FISCAL' | translate }}
           </a>
           <a 
             routerLink="/backoffice/kyc" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            KYC
+            {{ 'NAV.BACKOFFICE_KYC' | translate }}
           </a>
         } @else {
           <a 
             routerLink="/portefeuille" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            Portefeuille
+            {{ 'NAV.PORTFOLIO' | translate }}
           </a>
           <a 
             routerLink="/credit" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            Crédit
+            {{ 'NAV.CREDIT' | translate }}
           </a>
           <a 
             routerLink="/avance-sur-titre" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            Avance sur Titres
+            {{ 'NAV.ADVANCE' | translate }}
           </a>
           <a 
             routerLink="/profil" 
             class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
           >
-            Profil
+            {{ 'NAV.PROFILE' | translate }}
           </a>
         }
       </div>
 
       <!-- Profile Menu -->
       <div class="flex items-center gap-3">
+        <select
+          class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-primary"
+          [value]="lang()"
+          (change)="setLang(($any($event.target).value))"
+          aria-label="Language"
+        >
+          <option value="fr">{{ 'NAV.LANG_FR' | translate }}</option>
+          <option value="en">{{ 'NAV.LANG_EN' | translate }}</option>
+          <option value="ar">{{ 'NAV.LANG_AR' | translate }}</option>
+        </select>
+
         <button
           type="button"
           (click)="onLogout()"
           class="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 transition text-sm font-medium"
-          title="Déconnexion"
+          [title]="'NAV.LOGOUT' | translate"
         >
-          Déconnexion
+          {{ 'NAV.LOGOUT' | translate }}
         </button>
 
         <div class="relative menu-container">
         <button
           (click)="toggleMenu()"
           class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition duration-150 ease-in-out relative flex items-center justify-center"
-          title="Menu"
+          [title]="'NAV.MENU' | translate"
         >
           <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -90,7 +101,7 @@
                     <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    <span class="text-sm font-semibold text-primary">Notifications</span>
+                    <span class="text-sm font-semibold text-primary">{{ 'NAV.NOTIFICATIONS' | translate }}</span>
                     @if (unreadCount() > 0) {
                       <span class="bg-[#22c55e] text-white text-xs font-bold rounded-full px-2 py-0.5">
                         {{ unreadCount() }}
@@ -158,7 +169,7 @@
               @if (notifications().length > 0) {
                 <div class="px-4 py-2 border-t border-gray-200 bg-gray-50">
                   <button class="text-xs text-primary font-medium hover:text-tertiary transition duration-150 ease-in-out">
-                    Voir toutes les notifications
+                    {{ 'NAV.VIEW_ALL_NOTIFICATIONS' | translate }}
                   </button>
                 </div>
               }
@@ -174,7 +185,7 @@
                 <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                <span class="text-sm font-medium text-red-600">Déconnexion</span>
+                <span class="text-sm font-medium text-red-600">{{ 'NAV.LOGOUT' | translate }}</span>
               </button>
             </div>
           </div>
@@ -195,7 +206,7 @@
         <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">Tokens Wallet</p>
+              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.TOKENS_WALLET' | translate }}</p>
               <p class="text-base font-bold text-primary">
                 {{ (tokensAlpha() + tokensBeta()) | number:'1.4-4' }}
               </p>
@@ -215,11 +226,11 @@
         <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">Cash Wallet</p>
+              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.CASH_WALLET' | translate }}</p>
               <p class="text-base font-bold text-primary">
                 {{ cashAmount() | number:'1.2-2' }} TND
               </p>
-              <p class="text-[9px] text-primary opacity-75 mt-0.5">Disponible</p>
+              <p class="text-[9px] text-primary opacity-75 mt-0.5">{{ 'NAV.AVAILABLE' | translate }}</p>
             </div>
             <div class="ml-1.5">
               <svg class="w-5 h-5 text-primary opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,11 +244,11 @@
         <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">Credit Wallet</p>
+              <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.CREDIT_WALLET' | translate }}</p>
               <p class="text-base font-bold text-primary">
                 {{ creditAmount() | number:'1.2-2' }} TND
               </p>
-              <p class="text-[9px] text-primary opacity-75 mt-0.5">Ligne de crédit</p>
+              <p class="text-[9px] text-primary opacity-75 mt-0.5">{{ 'NAV.CREDIT_LINE' | translate }}</p>
             </div>
             <div class="ml-1.5">
               <svg class="w-5 h-5 text-primary opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,7 +269,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Dépôt
+          {{ 'NAV.DEPOSIT' | translate }}
         </button>
 
         <!-- Retrait Button -->
@@ -269,7 +280,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
           </svg>
-          Retrait
+          {{ 'NAV.WITHDRAW' | translate }}
         </button>
 
         <!-- Profile Icon -->

@@ -5,6 +5,8 @@ import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import type { PortfolioPosition } from '../../../blockchain/models/portfolio.models';
 import { SessionService } from '../../../auth/services/session.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { LanguageService, type AppLang } from '../../../i18n/language.service';
 
 interface Notification {
   id: number;
@@ -18,7 +20,7 @@ interface Notification {
 
 @Component({
   selector: 'app-navbar-client',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './navbar-client.html',
   styleUrl: './navbar-client.css',
 })
@@ -99,11 +101,16 @@ export class NavbarClient implements OnInit {
   isMenuOpen = signal<boolean>(false);
   isNotificationsSubmenuOpen = signal<boolean>(false);
 
+  // Language
+  lang = signal<AppLang>('fr');
+  readonly langs: AppLang[] = ['fr', 'en', 'ar'];
+
   constructor(
     private router: Router,
     private authApi: AuthApiService,
     private blockchainApi: BlockchainApiService,
-    private session: SessionService
+    private session: SessionService,
+    private language: LanguageService
   ) {
     // credit remains off-chain for now (UI placeholder)
     this.creditAmount.set(10000.0);
@@ -113,6 +120,7 @@ export class NavbarClient implements OnInit {
   unreadCount = signal<number>(this.notifications().filter(n => !n.read).length);
 
   ngOnInit(): void {
+    this.lang.set(this.language.current);
     // Best-effort: if user is logged in and has a WaaS wallet, load on-chain balances.
     this.authApi.me().subscribe({
       next: (u) => {
@@ -124,6 +132,11 @@ export class NavbarClient implements OnInit {
       },
       error: () => {},
     });
+  }
+
+  setLang(l: AppLang) {
+    this.language.use(l);
+    this.lang.set(l);
   }
 
   private refreshWallet(wallet: string) {

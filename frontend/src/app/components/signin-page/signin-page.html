@@ -3,9 +3,9 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/40" (click)="onKycLater()"></div>
       <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-6 mx-4">
-        <h3 class="text-xl font-bold text-primary mb-2">Compléter la phase de KYC</h3>
+        <h3 class="text-xl font-bold text-primary mb-2">{{ 'PROMPT.KYC_TITLE' | translate }}</h3>
         <p class="text-sm text-gray-600 mb-5">
-          Votre compte est créé. Pour débloquer toutes les fonctionnalités, veuillez compléter votre KYC.
+          {{ 'PROMPT.KYC_BODY' | translate }}
         </p>
 
         <div class="flex gap-3 justify-end">
@@ -14,14 +14,14 @@
             class="px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
             (click)="onKycLater()"
           >
-            Ultérieur
+            {{ 'PROMPT.LATER' | translate }}
           </button>
           <button
             type="button"
             class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
             (click)="onKycNow()"
           >
-            Maintenant
+            {{ 'PROMPT.NOW' | translate }}
           </button>
         </div>
       </div>
@@ -31,9 +31,9 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/40" (click)="onWalletLater()"></div>
       <div class="relative w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-200 p-6 mx-4">
-        <h3 class="text-xl font-bold text-primary mb-2">Connecter votre wallet</h3>
+        <h3 class="text-xl font-bold text-primary mb-2">{{ 'PROMPT.WALLET_TITLE' | translate }}</h3>
         <p class="text-sm text-gray-600 mb-4">
-          Pour consulter votre portefeuille (Atlas/Didon) et signer des opérations, connectez un wallet (MetaMask).
+          {{ 'PROMPT.WALLET_BODY' | translate }}
         </p>
 
         @if (walletError()) {
@@ -49,7 +49,7 @@
             (click)="onWalletLater()"
             [disabled]="isWalletLinking()"
           >
-            Plus tard
+            {{ 'PROMPT.WALLET_LATER' | translate }}
           </button>
           <button
             type="button"
@@ -57,7 +57,7 @@
             (click)="onConnectWallet()"
             [disabled]="isWalletLinking()"
           >
-            @if (isWalletLinking()) { Connexion... } @else { Connecter }
+            @if (isWalletLinking()) { {{ 'PROMPT.WALLET_CONNECTING' | translate }} } @else { {{ 'PROMPT.WALLET_CONNECT' | translate }} }
           </button>
         </div>
       </div>
@@ -69,8 +69,20 @@
 
       <!-- Title Section -->
       <div class="text-center">
-        <h2 class="text-3xl font-bold text-primary">Créer un compte</h2>
-        <p class="mt-2 text-sm text-gray-600">Rejoignez Fan Capital aujourd'hui</p>
+        <div class="flex items-center justify-end mb-3">
+          <select
+            class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-primary"
+            [ngModel]="lang()"
+            (ngModelChange)="setLang($event)"
+            aria-label="Language"
+          >
+            <option value="fr">{{ 'NAV.LANG_FR' | translate }}</option>
+            <option value="en">{{ 'NAV.LANG_EN' | translate }}</option>
+            <option value="ar">{{ 'NAV.LANG_AR' | translate }}</option>
+          </select>
+        </div>
+        <h2 class="text-3xl font-bold text-primary">{{ 'SIGNUP.TITLE' | translate }}</h2>
+        <p class="mt-2 text-sm text-gray-600">{{ 'SIGNUP.SUBTITLE' | translate }}</p>
       </div>
 
       <!-- Client Type Selector -->
@@ -82,7 +94,7 @@
             ? 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-secondary bg-tertiary transition duration-150 ease-in-out' 
             : 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-primary bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
         >
-          Particulier
+          {{ 'SIGNUP.PARTICULIER' | translate }}
         </button>
         <button
           type="button"
@@ -91,7 +103,7 @@
             ? 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-secondary bg-tertiary transition duration-150 ease-in-out' 
             : 'flex-1 py-3 px-4 rounded-md text-sm font-medium text-primary bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
         >
-          Entreprise
+          {{ 'SIGNUP.ENTREPRISE' | translate }}
         </button>
       </div>
 
@@ -110,7 +122,7 @@
               <!-- Nom -->
               <div>
                 <label for="nom" class="block text-sm font-medium text-primary mb-2">
-                  Nom <span class="text-red-500">*</span>
+                  {{ 'SIGNUP.LAST_NAME' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input
                   id="nom"
@@ -120,7 +132,7 @@
                   minlength="2"
                   [(ngModel)]="particulierForm.nom"
                   class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-                  placeholder="Votre nom"
+                  [attr.placeholder]="'SIGNUP.PLACEHOLDER_LAST_NAME' | translate"
                 />
                 @if (particulierForm.nom && particulierForm.nom.trim().length < 2) {
                   <p class="mt-1 text-xs text-red-500">Le nom doit contenir au moins 2 caractères</p>
@@ -130,7 +142,7 @@
               <!-- Prénom -->
               <div>
                 <label for="prenom" class="block text-sm font-medium text-primary mb-2">
-                  Prénom <span class="text-red-500">*</span>
+                  {{ 'SIGNUP.FIRST_NAME' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input
                   id="prenom"
@@ -140,7 +152,7 @@
                   minlength="2"
                   [(ngModel)]="particulierForm.prenom"
                   class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-                  placeholder="Votre prénom"
+                  [attr.placeholder]="'SIGNUP.PLACEHOLDER_FIRST_NAME' | translate"
                 />
                 @if (particulierForm.prenom && particulierForm.prenom.trim().length < 2) {
                   <p class="mt-1 text-xs text-red-500">Le prénom doit contenir au moins 2 caractères</p>
@@ -155,7 +167,7 @@
             <!-- Email -->
             <div>
               <label for="email" class="block text-sm font-medium text-primary mb-2">
-                Adresse email <span class="text-red-500">*</span>
+                {{ 'SIGNUP.EMAIL' | translate }} <span class="text-red-500">*</span>
               </label>
               <input
                 id="email"
@@ -166,7 +178,7 @@
                 pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
                 [(ngModel)]="particulierForm.email"
                 class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-                placeholder="votre@email.com"
+                [attr.placeholder]="'SIGNUP.PLACEHOLDER_EMAIL' | translate"
               />
               @if (particulierForm.email && !validateEmail(particulierForm.email)) {
                 <p class="mt-1 text-xs text-red-500">Veuillez entrer une adresse email valide</p>
@@ -176,7 +188,7 @@
             <!-- Mot de passe -->
             <div>
               <label for="password" class="block text-sm font-medium text-primary mb-2">
-                Mot de passe <span class="text-red-500">*</span>
+                {{ 'SIGNUP.PASSWORD' | translate }} <span class="text-red-500">*</span>
               </label>
               <input
                 id="password"
@@ -203,7 +215,7 @@
             <!-- Confirmation mot de passe -->
             <div>
               <label for="confirmPassword" class="block text-sm font-medium text-primary mb-2">
-                Confirmation du mot de passe <span class="text-red-500">*</span>
+                {{ 'SIGNUP.CONFIRM_PASSWORD' | translate }} <span class="text-red-500">*</span>
               </label>
               <input
                 id="confirmPassword"
@@ -227,16 +239,16 @@
             <!-- Résidence -->
             <div>
               <label class="block text-sm font-medium text-primary mb-2">
-                Résidence <span class="text-red-500">*</span>
+                {{ 'SIGNUP.RESIDENCY' | translate }} <span class="text-red-500">*</span>
               </label>
               <div class="flex gap-4">
                 <label class="inline-flex items-center gap-2 text-sm text-primary">
                   <input type="radio" name="resident" [value]="true" [(ngModel)]="particulierForm.resident" />
-                  Résident tunisien
+                  {{ 'SIGNUP.RESIDENT_TN' | translate }}
                 </label>
                 <label class="inline-flex items-center gap-2 text-sm text-primary">
                   <input type="radio" name="resident" [value]="false" [(ngModel)]="particulierForm.resident" />
-                  Non-résident (étranger)
+                  {{ 'SIGNUP.NON_RESIDENT' | translate }}
                 </label>
               </div>
             </div>
@@ -245,8 +257,8 @@
             @if (particulierForm.resident) {
             <div>
               <label for="cin" class="block text-sm font-medium text-primary mb-2">
-                Numéro de CIN <span class="text-red-500">*</span>
-                <span class="text-xs text-gray-500 font-normal">(8 chiffres)</span>
+                {{ 'SIGNUP.CIN' | translate }} <span class="text-red-500">*</span>
+                <span class="text-xs text-gray-500 font-normal">{{ 'SIGNUP.CIN_HINT' | translate }}</span>
               </label>
               <input
                 id="cin"
@@ -267,7 +279,7 @@
             <!-- Numéro Passeport -->
             <div>
               <label for="passportNumber" class="block text-sm font-medium text-primary mb-2">
-                Numéro de passeport <span class="text-red-500">*</span>
+                {{ 'SIGNUP.PASSPORT' | translate }} <span class="text-red-500">*</span>
               </label>
               <input
                 id="passportNumber"
@@ -287,7 +299,7 @@
             <!-- Téléphone -->
             <div>
               <label for="telephone" class="block text-sm font-medium text-primary mb-2">
-                Numéro de téléphone <span class="text-red-500">*</span>
+                {{ 'SIGNUP.PHONE' | translate }} <span class="text-red-500">*</span>
               </label>
               <input
                 id="telephone"
@@ -296,7 +308,7 @@
                 required
                 [(ngModel)]="particulierForm.telephone"
                 class="appearance-none relative block w-full px-4 py-3 border-2 border-gray-300 placeholder-gray-500 text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
-                placeholder="Numéro de téléphone"
+                [attr.placeholder]="'SIGNUP.PLACEHOLDER_PHONE' | translate"
               />
             </div>
           </div>
@@ -313,19 +325,19 @@
               <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                 
               </span>
-              Créer mon compte
+              {{ 'SIGNUP.CREATE_PERSONAL' | translate }}
             </button>
           </div>
 
           <!-- Login Link -->
           <div class="text-center">
             <p class="text-sm text-gray-600">
-              Vous avez déjà un compte ?
+              {{ 'SIGNUP.ALREADY_HAVE' | translate }}
               <a 
                 routerLink="/" 
                 class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
               >
-                Se connecter
+                {{ 'SIGNUP.LOGIN' | translate }}
               </a>
             </p>
           </div>
@@ -532,19 +544,19 @@
               <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                
               </span>
-              Créer le compte entreprise
+              {{ 'SIGNUP.CREATE_COMPANY' | translate }}
             </button>
           </div>
 
           <!-- Login Link -->
           <div class="text-center">
             <p class="text-sm text-gray-600">
-              Vous avez déjà un compte ?
+              {{ 'SIGNUP.ALREADY_HAVE' | translate }}
               <a 
                 routerLink="/" 
                 class="font-medium text-tertiary hover:text-quaternary transition duration-150 ease-in-out"
               >
-                Se connecter
+                {{ 'SIGNUP.LOGIN' | translate }}
               </a>
             </p>
           </div>
