@@ -24,7 +24,9 @@ public record BackofficeProperties(
       List<String> regulatorEmails,
       List<String> complianceEmails,
       boolean reconciliationEnabled,
-      long reconciliationIntervalMs
+      long reconciliationIntervalMs,
+      boolean checkpointEnabled,
+      long checkpointIntervalMs
   ) {}
 }
 

@@ -2,6 +2,7 @@ package com.fancapital.backend.backoffice.service;
 
 import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.backoffice.config.BackofficeProperties;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,9 +23,9 @@ public class BackofficeAuthzService {
   public BackofficeAuthzService(AppUserRepository repo, BackofficeProperties props) {
     this.repo = repo;
 
-    this.adminEmails = normalize(props.tax() != null ? props.tax().adminEmails() : List.of());
-    this.regulatorEmails = normalize(props.audit() != null ? props.audit().regulatorEmails() : List.of());
-    this.complianceEmails = normalize(props.audit() != null ? props.audit().complianceEmails() : List.of());
+    this.adminEmails = normalize(parseCommaSeparated(props.tax() != null ? props.tax().adminEmails() : List.of()));
+    this.regulatorEmails = normalize(parseCommaSeparated(props.audit() != null ? props.audit().regulatorEmails() : List.of()));
+    this.complianceEmails = normalize(parseCommaSeparated(props.audit() != null ? props.audit().complianceEmails() : List.of()));
   }
 
   public enum BackofficeRole {
@@ -44,8 +45,12 @@ public class BackofficeAuthzService {
     }
     String userId = String.valueOf(a.getPrincipal());
     String email = repo.findById(userId).map(u -> u.getEmail().toLowerCase()).orElse("");
+    if (email.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: User email not found for userId=" + userId);
+    }
     if (!adminEmails.contains(email)) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+          String.format("Forbidden: Email '%s' is not in admin list. Configured admins: %s", email, adminEmails));
     }
   }
 
@@ -53,7 +58,13 @@ public class BackofficeAuthzService {
   public void requireAuditRead() {
     BackofficeRole r = currentBackofficeRole();
     if (r == BackofficeRole.NONE) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+      Authentication a = SecurityContextHolder.getContext().getAuthentication();
+      String userId = a != null && a.getPrincipal() != null ? String.valueOf(a.getPrincipal()) : "unknown";
+      String email = repo.findById(userId).map(u -> u.getEmail().toLowerCase()).orElse("");
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+          String.format("Forbidden: Email '%s' has no audit access. Required: ADMIN_EMAILS, AUDIT_REGULATOR_EMAILS, or AUDIT_COMPLIANCE_EMAILS. " +
+              "Configured admins: %s, regulators: %s, compliance: %s", 
+              email, adminEmails, regulatorEmails, complianceEmails));
     }
   }
 
@@ -108,6 +119,31 @@ public class BackofficeAuthzService {
     return BackofficeRole.NONE;
   }
 
+  /**
+   * Parse comma-separated string into list.
+   * Spring Boot doesn't automatically parse comma-separated env vars into lists,
+   * so if ADMIN_EMAILS="a@b.com,c@d.com", it comes as a single-element list.
+   */
+  private static List<String> parseCommaSeparated(List<String> input) {
+    if (input == null || input.isEmpty()) return List.of();
+    List<String> result = new ArrayList<>();
+    for (String item : input) {
+      if (item == null) continue;
+      // If the item contains commas, split it
+      if (item.contains(",")) {
+        String[] parts = item.split(",");
+        for (String part : parts) {
+          String trimmed = part.trim();
+          if (!trimmed.isBlank()) result.add(trimmed);
+        }
+      } else {
+        String trimmed = item.trim();
+        if (!trimmed.isBlank()) result.add(trimmed);
+      }
+    }
+    return result;
+  }
+
   private static Set<String> normalize(List<String> configured) {
     Set<String> s = new HashSet<>();
     if (configured == null) return s;
@@ -117,6 +153,11 @@ public class BackofficeAuthzService {
       if (!x.isBlank()) s.add(x);
     }
     return s;
+  }
+
+  /** Debug helper: returns configured admin emails (for troubleshooting). */
+  public Set<String> getAdminEmailsForDebug() {
+    return new HashSet<>(adminEmails);
   }
 }
 

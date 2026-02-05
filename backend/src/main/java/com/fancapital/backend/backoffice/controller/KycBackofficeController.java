@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -104,5 +105,19 @@ public class KycBackofficeController {
     String txHash = investorWrite.setScore(wallet, req.score());
     return new TxResponse("submitted", txHash, "InvestorRegistry.setScore submitted");
   }
-}
+
+  @GetMapping("/debug-auth")
+  public ResponseEntity<?> debugAuth() {
+    String userId = authz.currentUserId();
+    String email = authz.currentUserEmail();
+    boolean isAdmin = email != null && authz.isAdminEmail(email);
+    return ResponseEntity.ok(Map.of(
+        "userId", userId != null ? userId : "null",
+        "email", email != null ? email : "null",
+        "emailLowercase", email != null ? email.toLowerCase() : "null",
+        "isAdmin", isAdmin,
+        "adminEmailsConfigured", authz.getAdminEmailsForDebug(),
+        "message", isAdmin ? "You have admin access" : "You do NOT have admin access. Check ADMIN_EMAILS env var."
+    ));
+  }}
 

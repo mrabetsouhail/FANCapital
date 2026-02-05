@@ -10,10 +10,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.web3j.abi.FunctionEncoder;
+import org.web3j.abi.FunctionReturnDecoder;
 import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.abi.datatypes.generated.Uint8;
 import org.web3j.crypto.Credentials;
@@ -69,9 +71,13 @@ public class OnchainBootstrapService {
   public void bootstrapUser(String userId) {
     AppUser u = userRepo.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown user"));
     String wallet = u.getWalletAddress();
-    if (wallet == null || wallet.isBlank()) throw new IllegalStateException("User has no walletAddress");
+    if (wallet == null || wallet.isBlank()) {
+      throw new IllegalStateException("User has no walletAddress");
+    }
 
     // 1) whitelist in KYCRegistry
+    // Note: OnchainBootstrapService should use OnboardingKeyService, but for now we keep operatorCredentials
+    // TODO: Migrate to OnboardingKeyService for strict separation
     String kycRegistry = infra.kycRegistryAddress();
     Credentials operator = operatorCredentials();
     TransactionManager opTm = new RawTransactionManager(web3j, operator, chainId().longValue());
@@ -91,6 +97,9 @@ public class OnchainBootstrapService {
 
     // 2) ensure some TND balance
     String cash = infra.cashTokenAddress();
+    if (cash == null || cash.isBlank()) {
+      throw new IllegalStateException("CashTokenTND address not found in deployments. Ensure blockchain contracts are deployed and deployment JSON file exists.");
+    }
     BigInteger bal = erc20BalanceOf(cash, wallet);
     if (bal.compareTo(BOOTSTRAP_TND) < 0) {
       BigInteger mintAmt = BOOTSTRAP_TND.subtract(bal);
@@ -104,6 +113,41 @@ public class OnchainBootstrapService {
     for (var fund : registry.listFunds()) {
       Function approve = new Function("approve", List.of(new Address(fund.pool()), new Uint256(MAX_APPROVE)), List.of());
       sendTx(userTm, cash, approve, BigInteger.valueOf(120_000));
+    }
+
+    // 4) Initialize feeLevel to 0 (BRONZE) in InvestorRegistry if not already set
+    // Note: In Solidity, uint8 defaults to 0, but we explicitly set it for clarity
+    String investorRegistry = infra.investorRegistryAddress();
+    if (investorRegistry != null && !investorRegistry.isBlank()) {
+      Function getFee = new Function(
+          "getFeeLevel",
+          List.of(new Address(wallet)),
+          List.of(new TypeReference<Uint256>() {})
+      );
+      String data = FunctionEncoder.encode(getFee);
+      Transaction call = Transaction.createEthCallTransaction(null, investorRegistry, data);
+      try {
+        EthCall res = web3j.ethCall(call, DefaultBlockParameterName.LATEST).send();
+        if (!res.hasError() && res.getValue() != null && !res.getValue().isBlank()) {
+          var decoded = org.web3j.abi.FunctionReturnDecoder.decode(res.getValue(), getFee.getOutputParameters());
+          if (decoded != null && !decoded.isEmpty()) {
+            BigInteger currentFeeLevel = (BigInteger) decoded.get(0).getValue();
+            // Only set if it's still 0 (default/uninitialized)
+            // If it's already been set to a different value, don't override
+            if (currentFeeLevel.equals(BigInteger.ZERO)) {
+              Function setFee = new Function(
+                  "setFeeLevel",
+                  List.of(new Address(wallet), new Uint8(BigInteger.ZERO)),
+                  List.of()
+              );
+              sendTx(opTm, investorRegistry, setFee, BigInteger.valueOf(250_000));
+            }
+          }
+        }
+      } catch (IOException e) {
+        // If InvestorRegistry is not available, skip feeLevel initialization (non-critical)
+        System.err.println("Warning: Could not initialize feeLevel for user " + wallet + ": " + e.getMessage());
+      }
     }
   }
 
@@ -133,11 +177,21 @@ public class OnchainBootstrapService {
     Transaction call = Transaction.createEthCallTransaction(null, token, data);
     try {
       EthCall res = web3j.ethCall(call, DefaultBlockParameterName.LATEST).send();
-      if (res.hasError()) throw new IllegalStateException("eth_call error: " + res.getError().getMessage());
-      var decoded = org.web3j.abi.FunctionReturnDecoder.decode(res.getValue(), f.getOutputParameters());
+      if (res.hasError()) {
+        String errorMsg = res.getError() != null ? res.getError().getMessage() : "unknown";
+        throw new IllegalStateException("eth_call error for token " + token + ": " + errorMsg + ". Ensure blockchain is running and contracts are deployed.");
+      }
+      String resultValue = res.getValue();
+      if (resultValue == null || resultValue.isBlank() || "0x".equals(resultValue)) {
+        return BigInteger.ZERO;
+      }
+      var decoded = org.web3j.abi.FunctionReturnDecoder.decode(resultValue, f.getOutputParameters());
+      if (decoded == null || decoded.isEmpty()) {
+        return BigInteger.ZERO;
+      }
       return (BigInteger) decoded.get(0).getValue();
     } catch (IOException e) {
-      throw new IllegalStateException("balanceOf eth_call failed: " + e.getMessage(), e);
+      throw new IllegalStateException("balanceOf eth_call failed for token " + token + ": " + e.getMessage() + ". Ensure blockchain is running at " + props.rpcUrl(), e);
     }
   }
 

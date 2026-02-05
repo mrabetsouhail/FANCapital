@@ -9,6 +9,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC1404} from "../interfaces/IERC1404.sol";
 import {IKYCRegistry} from "../interfaces/IKYCRegistry.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+import {CircuitBreaker} from "../governance/CircuitBreaker.sol";
 
 /// @notice Base CPEF token implementing ERC-1404 style transfer restrictions.
 /// @dev Token decimals are 8 to match the CPEF spec.
@@ -34,6 +35,7 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
 
     IKYCRegistry public kycRegistry;
     IPriceOracle public priceOracle;
+    CircuitBreaker public circuitBreaker;
 
     /// @notice Average cost basis per user (PRM) in TND (scaled 1e8)
     mapping(address => uint256) private _prm;
@@ -51,6 +53,7 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     event EscrowManagerUpdated(address indexed oldManager, address indexed newManager);
     event KYCRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event PriceOracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event CircuitBreakerUpdated(address indexed oldBreaker, address indexed newBreaker);
     event PRMUpdated(address indexed user, uint256 oldPRM, uint256 newPRM);
     event EscrowLockUpdated(address indexed user, bool locked);
 
@@ -101,6 +104,12 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
         emit PriceOracleUpdated(old, newOracle);
     }
 
+    function setCircuitBreaker(address newBreaker) external onlyRole(GOVERNANCE_ROLE) {
+        address old = address(circuitBreaker);
+        circuitBreaker = CircuitBreaker(newBreaker);
+        emit CircuitBreakerUpdated(old, newBreaker);
+    }
+
     /// @notice Lock/unlock a user for escrow (collateral); blocks transfers/burns when locked.
     /// @dev In production this should be controlled by an EscrowRegistry contract.
     function setEscrowLocked(address user, bool locked) external onlyEscrowManagerOrOwner {
@@ -113,6 +122,10 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     /// @param amount Token units (8 decimals).
     /// @param pricePerTokenTnd Price per 1 token in TND scaled 1e8 (used to update PRM).
     function mint(address to, uint256 amount, uint256 pricePerTokenTnd) external onlyLiquidityPool nonReentrant {
+        // Global pause check (Panic Button)
+        if (address(circuitBreaker) != address(0)) {
+            require(!circuitBreaker.isPaused(), "CPEF: global pause active");
+        }
         require(address(kycRegistry) != address(0), "CPEF: KYC not set");
         require(kycRegistry.isWhitelisted(to), "CPEF: recipient not whitelisted");
         // Green-list cap is enforced only on NEW acquisitions (mint).
@@ -125,6 +138,10 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     /// @notice Burn tokens from a user account (redemption).
     /// @dev Only the platform (LiquidityPool) can burn. Cash settlement happens off-chain.
     function burnFromUser(address from, uint256 amount) external onlyLiquidityPool nonReentrant {
+        // Global pause check (Panic Button)
+        if (address(circuitBreaker) != address(0)) {
+            require(!circuitBreaker.isPaused(), "CPEF: global pause active");
+        }
         require(!isEscrowLocked[from], "CPEF: escrow locked");
         _burn(from, amount);
         // PRM is kept as-is; backend can compute gains using PRM and oracle VNI.
@@ -175,6 +192,10 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     }
 
     function transfer(address to, uint256 amount) public override returns (bool) {
+        // Global pause check (Panic Button)
+        if (address(circuitBreaker) != address(0)) {
+            require(!circuitBreaker.isPaused(), "CPEF: global pause active");
+        }
         uint8 code = detectTransferRestriction(_msgSender(), to, amount);
         require(code == RESTRICTION_NONE, messageForTransferRestriction(code));
         bool ok = super.transfer(to, amount);

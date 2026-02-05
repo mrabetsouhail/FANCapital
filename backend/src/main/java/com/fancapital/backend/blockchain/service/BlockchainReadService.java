@@ -110,6 +110,9 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {}, new TypeReference<Uint64>() {})
     );
     List<Type> out1 = evm.ethCall(fund.oracle(), f1);
+    if (out1 == null || out1.size() < 2) {
+      return new OracleVniResponse(tokenAddress, "0", "0", 0);
+    }
     BigInteger vni = EvmCallService.uint(out1.get(0));
     BigInteger updatedAt = EvmCallService.uint(out1.get(1));
 
@@ -119,7 +122,7 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {})
     );
     List<Type> out2 = evm.ethCall(fund.oracle(), f2);
-    BigInteger volBps = EvmCallService.uint(out2.get(0));
+    BigInteger volBps = (out2 == null || out2.isEmpty()) ? BigInteger.ZERO : EvmCallService.uint(out2.get(0));
 
     return new OracleVniResponse(tokenAddress, vni.toString(), updatedAt.toString(), volBps.intValue());
   }
@@ -284,27 +287,36 @@ public class BlockchainReadService {
       throw new IllegalStateException("InvestorRegistry address not configured in deployments infra.");
     }
 
+    // Helper: first decoded value or null when RPC/contract returns empty (e.g. user not registered)
+    List<Type> out;
+
     // ---- KYCRegistry ----
     Function fWl = new Function(
         "isWhitelisted",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Bool>() {})
     );
-    boolean whitelisted = bool(evm.ethCall(kyc, fWl).get(0));
+    out = evm.ethCall(kyc, fWl);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    boolean whitelisted = bool(out.get(0));
 
     Function fLvl = new Function(
         "getUserLevel",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Uint256>() {})
     );
-    int kycLevel = EvmCallService.uint(evm.ethCall(kyc, fLvl).get(0)).intValue();
+    out = evm.ethCall(kyc, fLvl);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    int kycLevel = EvmCallService.uint(out.get(0)).intValue();
 
     Function fRes = new Function(
         "isResident",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Bool>() {})
     );
-    boolean resident = bool(evm.ethCall(kyc, fRes).get(0));
+    out = evm.ethCall(kyc, fRes);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    boolean resident = bool(out.get(0));
 
     // ---- InvestorRegistry ----
     Function fScore = new Function(
@@ -312,28 +324,36 @@ public class BlockchainReadService {
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Uint256>() {})
     );
-    int score = EvmCallService.uint(evm.ethCall(inv, fScore).get(0)).intValue();
+    out = evm.ethCall(inv, fScore);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    int score = EvmCallService.uint(out.get(0)).intValue();
 
     Function fTier = new Function(
         "getTier",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Uint256>() {})
     );
-    int tier = EvmCallService.uint(evm.ethCall(inv, fTier).get(0)).intValue();
+    out = evm.ethCall(inv, fTier);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    int tier = EvmCallService.uint(out.get(0)).intValue();
 
     Function fFee = new Function(
         "getFeeLevel",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Uint256>() {})
     );
-    int feeLevel = EvmCallService.uint(evm.ethCall(inv, fFee).get(0)).intValue();
+    out = evm.ethCall(inv, fFee);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    int feeLevel = EvmCallService.uint(out.get(0)).intValue();
 
     Function fSub = new Function(
         "isSubscriptionActive",
         List.of(new Address(userAddress)),
         List.of(new TypeReference<Bool>() {})
     );
-    boolean subscriptionActive = bool(evm.ethCall(inv, fSub).get(0));
+    out = evm.ethCall(inv, fSub);
+    if (out == null || out.isEmpty()) return defaultInvestorProfile(userAddress);
+    boolean subscriptionActive = bool(out.get(0));
 
     return new InvestorProfileResponse(
         userAddress,
@@ -344,6 +364,20 @@ public class BlockchainReadService {
         tier,
         feeLevel,
         subscriptionActive
+    );
+  }
+
+  /** Profil par défaut lorsque l'adresse n'est pas enregistrée ou que le contrat ne retourne pas de donnée. */
+  private static InvestorProfileResponse defaultInvestorProfile(String userAddress) {
+    return new InvestorProfileResponse(
+        userAddress,
+        false,  // whitelisted
+        0,      // kycLevel
+        false,  // resident
+        0,      // score
+        0,      // tier
+        0,      // feeLevel
+        false   // subscriptionActive
     );
   }
 
@@ -510,6 +544,9 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {})
     );
     List<Type> out = evm.ethCall(token, f);
+    if (out == null || out.isEmpty()) {
+      return BigInteger.ZERO;
+    }
     return EvmCallService.uint(out.get(0));
   }
 
@@ -520,6 +557,9 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {})
     );
     List<Type> out = evm.ethCallAtBlock(token, f, blockNumber);
+    if (out == null || out.isEmpty()) {
+      return BigInteger.ZERO;
+    }
     return EvmCallService.uint(out.get(0));
   }
 
@@ -530,6 +570,7 @@ public class BlockchainReadService {
         List.of(new TypeReference<Uint256>() {})
     );
     List<Type> out = evm.ethCall(token, f);
+    if (out == null || out.isEmpty()) return BigInteger.ZERO;
     return EvmCallService.uint(out.get(0));
   }
 

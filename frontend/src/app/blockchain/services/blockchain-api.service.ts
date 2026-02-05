@@ -14,6 +14,13 @@ import type {
 } from '../models/pricing.models';
 import type { VniResponse } from '../models/oracle.models';
 import type { P2PSettleRequest, P2PSettleResponse } from '../models/p2p.models';
+import type {
+  SubmitOrderRequest,
+  SubmitOrderResponse,
+  OrdersListResponse,
+  Order,
+  CancelOrderResponse,
+} from '../models/orderbook.models';
 import type { PortfolioResponse } from '../models/portfolio.models';
 import type { InvestorProfileResponse } from '../models/investor.models';
 import type { TxHistoryResponse } from '../models/tx-history.models';
@@ -72,6 +79,28 @@ export class BlockchainApiService {
   // ---------- P2P ----------
   p2pSettle(req: P2PSettleRequest) {
     return this.http.post<P2PSettleResponse>(`${this.baseUrl}/p2p/settle`, req);
+  }
+
+  // ---------- P2P Order Book ----------
+  submitOrder(req: SubmitOrderRequest) {
+    return this.http.post<SubmitOrderResponse>(`${this.baseUrl}/p2p/order`, req);
+  }
+
+  listOrders(token?: string, side?: 'buy' | 'sell') {
+    const params: any = {};
+    if (token) params.token = token;
+    if (side) params.side = side;
+    return this.http.get<OrdersListResponse>(`${this.baseUrl}/p2p/orders`, { params });
+  }
+
+  getOrder(orderId: string) {
+    return this.http.get<Order>(`${this.baseUrl}/p2p/order/${orderId}`);
+  }
+
+  cancelOrder(orderId: string, maker: string) {
+    return this.http.delete<CancelOrderResponse>(`${this.baseUrl}/p2p/order/${orderId}`, {
+      params: { maker },
+    });
   }
 }
 

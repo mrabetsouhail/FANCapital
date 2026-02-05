@@ -6,7 +6,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.FunctionReturnDecoder;
-import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.protocol.Web3j;
@@ -23,6 +22,7 @@ public class EvmCallService {
     this.web3j = web3j;
   }
 
+  @SuppressWarnings("rawtypes")
   public List<Type> ethCall(String contract, Function function) {
     String data = FunctionEncoder.encode(function);
     Transaction tx = Transaction.createEthCallTransaction(null, contract, data);
@@ -38,6 +38,7 @@ public class EvmCallService {
     return FunctionReturnDecoder.decode(res.getValue(), function.getOutputParameters());
   }
 
+  @SuppressWarnings("rawtypes")
   public List<Type> ethCallAtBlock(String contract, Function function, BigInteger blockNumber) {
     if (blockNumber == null) return ethCall(contract, function);
     String data = FunctionEncoder.encode(function);
@@ -54,6 +55,7 @@ public class EvmCallService {
     return FunctionReturnDecoder.decode(res.getValue(), function.getOutputParameters());
   }
 
+  @SuppressWarnings("rawtypes")
   public static BigInteger uint(Type t) {
     return (BigInteger) t.getValue();
   }

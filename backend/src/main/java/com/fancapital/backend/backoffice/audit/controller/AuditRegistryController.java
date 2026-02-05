@@ -3,9 +3,13 @@ package com.fancapital.backend.backoffice.audit.controller;
 import com.fancapital.backend.backoffice.audit.model.AuditDtos;
 import com.fancapital.backend.backoffice.audit.model.AuditLogEntry;
 import com.fancapital.backend.backoffice.audit.model.AuditAlert;
+import com.fancapital.backend.backoffice.audit.model.AuditCheckpoint;
+import com.fancapital.backend.backoffice.audit.model.BusinessContextMapping;
 import com.fancapital.backend.backoffice.audit.service.AuditLogService;
 import com.fancapital.backend.backoffice.audit.service.AuditRegistryService;
 import com.fancapital.backend.backoffice.audit.service.AuditReconciliationService;
+import com.fancapital.backend.backoffice.audit.service.AuditProofService;
+import com.fancapital.backend.backoffice.audit.service.BusinessContextService;
 import com.fancapital.backend.backoffice.audit.repo.AuditAlertRepository;
 import com.fancapital.backend.backoffice.service.BackofficeAuthzService;
 import com.fancapital.backend.auth.repo.AppUserRepository;
@@ -49,6 +53,8 @@ public class AuditRegistryController {
   private final AuditLogService auditLog;
   private final AuditReconciliationService recon;
   private final AuditAlertRepository alerts;
+  private final AuditProofService auditProof;
+  private final BusinessContextService businessContext;
 
   public AuditRegistryController(
       BackofficeAuthzService authz,
@@ -57,7 +63,9 @@ public class AuditRegistryController {
       BlockchainReadService chain,
       AuditLogService auditLog,
       AuditReconciliationService recon,
-      AuditAlertRepository alerts
+      AuditAlertRepository alerts,
+      AuditProofService auditProof,
+      BusinessContextService businessContext
   ) {
     this.authz = authz;
     this.registry = registry;
@@ -66,6 +74,8 @@ public class AuditRegistryController {
     this.auditLog = auditLog;
     this.recon = recon;
     this.alerts = alerts;
+    this.auditProof = auditProof;
+    this.businessContext = businessContext;
   }
 
   @GetMapping("/registry")
@@ -125,6 +135,97 @@ public class AuditRegistryController {
     var r = recon.reconcileOnce(actorId, actorEmail);
     log(req, "RECONCILE_TRIGGERED", null, "latestBlock=" + r.latestBlock());
     return new AuditDtos.ReconcileResponse(r.latestBlock(), r.tokensSynced(), r.transfersProcessed(), r.alertsCreated());
+  }
+
+  @GetMapping("/checkpoints")
+  public List<AuditDtos.CheckpointResponse> checkpoints(
+      @RequestParam(required = false) String tokenAddress,
+      @RequestParam(required = false) Long beforeBlock,
+      @RequestParam(required = false, defaultValue = "100") @Min(1) @Max(500) int limit,
+      HttpServletRequest req
+  ) {
+    authz.requireAuditRead();
+    log(req, "VIEW_CHECKPOINTS", null, "token=" + tokenAddress + ", beforeBlock=" + beforeBlock + ", limit=" + limit);
+    
+    if (tokenAddress != null && beforeBlock != null) {
+      AuditCheckpoint cp = auditProof.getLatestCheckpointBefore(tokenAddress, beforeBlock);
+      if (cp == null) return List.of();
+      return List.of(toCheckpointResponse(cp));
+    }
+    
+    // Liste des checkpoints avec filtres optionnels
+    List<AuditCheckpoint> checkpoints = auditProof.listCheckpoints(tokenAddress, limit);
+    return checkpoints.stream().map(this::toCheckpointResponse).toList();
+  }
+
+  @GetMapping("/checkpoints/verify")
+  public AuditDtos.CheckpointVerifyResponse verifyCheckpoint(
+      @RequestParam @Pattern(regexp = UUID_RX) String checkpointId,
+      HttpServletRequest req
+  ) {
+    authz.requireAuditRead();
+    log(req, "VERIFY_CHECKPOINT", null, "checkpointId=" + checkpointId);
+    
+    return auditProof.findCheckpointById(checkpointId)
+        .map(checkpoint -> {
+          boolean isValid = auditProof.verifyCheckpoint(checkpoint);
+          String message = isValid 
+              ? "Checkpoint is valid" 
+              : "Checkpoint verification failed: proof hash mismatch";
+          return new AuditDtos.CheckpointVerifyResponse(isValid, message);
+        })
+        .orElse(new AuditDtos.CheckpointVerifyResponse(false, "Checkpoint not found"));
+  }
+
+  @GetMapping("/business-context")
+  public AuditDtos.BusinessContextResponse getBusinessContext(
+      @RequestParam(required = false) String transactionHash,
+      @RequestParam(required = false) String businessContextId,
+      HttpServletRequest req
+  ) {
+    authz.requireAuditRead();
+    log(req, "VIEW_BUSINESS_CONTEXT", null, "txHash=" + transactionHash + ", contextId=" + businessContextId);
+    
+    if (transactionHash != null) {
+      return businessContext.findByTransactionHash(transactionHash)
+          .map(this::toBusinessContextResponse)
+          .orElse(null);
+    }
+    
+    if (businessContextId != null) {
+      return businessContext.findByBusinessContextId(businessContextId)
+          .map(this::toBusinessContextResponse)
+          .orElse(null);
+    }
+    
+    throw new IllegalArgumentException("Either transactionHash or businessContextId must be provided");
+  }
+
+  private AuditDtos.CheckpointResponse toCheckpointResponse(AuditCheckpoint cp) {
+    return new AuditDtos.CheckpointResponse(
+        cp.getId(),
+        cp.getCreatedAt() != null ? cp.getCreatedAt().toString() : null,
+        cp.getBlockNumber(),
+        cp.getBlockHash(),
+        cp.getTokenAddress(),
+        cp.getTotalSupply1e8(),
+        cp.getProofHash(),
+        cp.getPreviousCheckpointHash(),
+        cp.getMetadata()
+    );
+  }
+
+  private AuditDtos.BusinessContextResponse toBusinessContextResponse(BusinessContextMapping m) {
+    return new AuditDtos.BusinessContextResponse(
+        m.getId(),
+        m.getCreatedAt() != null ? m.getCreatedAt().toString() : null,
+        m.getTransactionHash(),
+        m.getBusinessContextId(),
+        m.getContractAddress(),
+        m.getOperationType(),
+        m.getDescription(),
+        m.getAccountingDocumentId()
+    );
   }
 
   @GetMapping("/export/csv")

@@ -4,6 +4,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import type { FiscalDashboardResponse, TxResponse, WithdrawRequest } from '../models/fiscal.models';
 import type { KycUserRow, SetInvestorScoreRequest, SetKycLevelRequest } from '../models/kyc.models';
 import type { AuditLogsResponse, AuditRegistryResponse } from '../models/audit.models';
+import type { FeeWalletDashboard } from '../models/fee-wallet.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -50,6 +51,10 @@ export class BackofficeApiService {
 
   exportAuditPdf() {
     return this.http.get('/api/backoffice/audit/export/pdf', { responseType: 'blob', observe: 'response' });
+  }
+
+  getFeeWallet() {
+    return this.http.get<FeeWalletDashboard>('/api/backoffice/fees/wallet');
   }
 }
 

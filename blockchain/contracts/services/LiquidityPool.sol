@@ -274,6 +274,11 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
 
         tndOut = grossTnd - totalFee - tax;
 
+        // Global pause check (Panic Button) - blocks ALL operations
+        if (address(circuitBreaker) != address(0)) {
+            require(!circuitBreaker.isPaused(), "LP: global pause active");
+        }
+
         // Circuit breaker: pause redemptions when reserve ratio is too low.
         // We keep buys enabled to allow replenishing liquidity.
         if (address(circuitBreaker) != address(0)) {

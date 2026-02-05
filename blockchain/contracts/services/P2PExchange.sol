@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {CashTokenTND} from "./CashTokenTND.sol";
 import {IKYCRegistry} from "../interfaces/IKYCRegistry.sol";
 import {IInvestorRegistry} from "../interfaces/IInvestorRegistry.sol";
+import {CircuitBreaker} from "../governance/CircuitBreaker.sol";
 
 /// @notice Atomic P2P settlement: buyer pays TND, seller delivers CPEF (via allowance).
 /// @dev Fees (P2P) + VAT are charged on notional and sent to treasury.
@@ -20,6 +21,7 @@ contract P2PExchange is AccessControl, ReentrancyGuard {
     CashTokenTND public cashToken;
     IKYCRegistry public kycRegistry;
     IInvestorRegistry public investorRegistry;
+    CircuitBreaker public circuitBreaker;
     address public treasury;
 
     // P2P fee schedule (before VAT), by feeLevel (0..4)
@@ -68,6 +70,10 @@ contract P2PExchange is AccessControl, ReentrancyGuard {
         investorRegistry = IInvestorRegistry(newRegistry);
     }
 
+    function setCircuitBreaker(address newBreaker) external onlyRole(GOVERNANCE_ROLE) {
+        circuitBreaker = CircuitBreaker(newBreaker);
+    }
+
     function setP2PFeeBps(uint8 feeLevel, uint256 feeBps) external onlyRole(GOVERNANCE_ROLE) {
         require(feeLevel <= 4, "P2P: bad level");
         require(feeBps <= 500, "P2P: fee too high");
@@ -85,6 +91,11 @@ contract P2PExchange is AccessControl, ReentrancyGuard {
         uint256 tokenAmount,
         uint256 pricePerToken
     ) external nonReentrant {
+        // Global pause check (Panic Button) - blocks ALL operations
+        if (address(circuitBreaker) != address(0)) {
+            require(!circuitBreaker.isPaused(), "P2P: global pause active");
+        }
+
         // Commercial gating (70/30 model):
         // - Bronze users should not access P2P at all (upsell trigger)
         // - Minimum required: KYC Level 2 (legal) + Tier >= Silver/Gold (commercial)

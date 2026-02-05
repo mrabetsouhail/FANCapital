@@ -30,8 +30,9 @@ public class WalletProvisioningService {
   }
 
   /**
-   * Circuit fermé (Livre Blanc): provision wallet at signup (before KYC).
-   * If already provisioned, no-op.
+   * Provisionne le wallet WaaS si l'utilisateur n'en a pas.
+   * Appelé uniquement après validation KYC1 par l'admin (KycService.setKycLevel).
+   * Si déjà provisionné, no-op.
    */
   @Transactional
   public String ensureProvisioned(String userId) {

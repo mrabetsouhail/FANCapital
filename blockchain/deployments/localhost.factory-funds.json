@@ -2,19 +2,19 @@
   "network": "localhost",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "infra": {
-    "KYCRegistry": "0x5067457698Fd6Fa1C6964e416b3f42713513B3dD",
-    "InvestorRegistry": "0x18E317A7D70d8fBf8e6E893616b52390EbBdb629",
-    "CashTokenTND": "0x4b6aB5F819A515382B0dEB6935D793817bB4af28",
-    "TaxVault": "0xCace1b78160AE76398F486c8a18044da0d66d86D",
-    "CircuitBreaker": "0xD5ac451B0c50B9476107823Af206eD814a2e2580"
+    "KYCRegistry": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "InvestorRegistry": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "CashTokenTND": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "TaxVault": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+    "CircuitBreaker": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
   },
   "deployers": {
-    "OracleDeployer": "0xF8e31cb472bc70500f08Cd84917E5A1912Ec8397",
-    "PoolDeployer": "0xc0F115A19107322cFBf1cDBC7ea011C19EbDB4F8",
-    "TokenDeployer": "0xc96304e3c037f81dA488ed9dEa1D8F2a48278a75"
+    "OracleDeployer": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "PoolDeployer": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "TokenDeployer": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
   },
   "factory": {
-    "CPEFFactory": "0x34B40BA116d5Dec75548a9e9A8f15411461E8c70",
+    "CPEFFactory": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
     "treasury": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "oracleUpdater": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "poolOperator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -24,18 +24,18 @@
       "id": 0,
       "name": "CPEF Atlas",
       "symbol": "$ATLAS$",
-      "token": "0x8e0BfED44D5B63812d0693FB248AfA1892dDc036",
-      "pool": "0x1D39e79c59b7705ec57F65aCb6420E43a3495f84",
-      "oracle": "0xA1Ee49A7156D264f4F6f886c03726b296A0A3dbD"
+      "token": "0x9bd03768a7DCc129555dE410FF8E85528A4F88b5",
+      "pool": "0x3B02fF1e626Ed7a8fd6eC5299e2C54e1421B626B",
+      "oracle": "0x61c36a8d610163660E21a8b7359e1Cac0C9133e1"
     },
     {
       "id": 1,
       "name": "CPEF Didon",
       "symbol": "$DIDON$",
-      "token": "0x0Fa25a25af5f831d3d66A59CF9e5AdE1018bC9e3",
-      "pool": "0x40CFa95C804feaF1d0eEf82072e143F424CE0030",
-      "oracle": "0x66A17eC6720cF120bA9F6512B529D8D80E5cd1D7"
+      "token": "0x440C0fCDC317D69606eabc35C0F676D1a8251Ee1",
+      "pool": "0xBA12646CC07ADBe43F8bD25D83FB628D29C8A762",
+      "oracle": "0x23dB4a08f2272df049a4932a4Cc3A6Dc1002B33E"
     }
   ],
-  "generatedAt": "2026-01-30T15:55:51.107Z"
+  "generatedAt": "2026-02-05T21:21:29.493Z"
 }

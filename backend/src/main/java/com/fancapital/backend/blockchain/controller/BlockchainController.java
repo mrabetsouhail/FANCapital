@@ -17,6 +17,7 @@ import com.fancapital.backend.blockchain.model.TxDtos.TxResponse;
 import com.fancapital.backend.blockchain.service.BlockchainReadService;
 import com.fancapital.backend.blockchain.service.DeploymentRegistry;
 import com.fancapital.backend.blockchain.service.LiquidityPoolWriteService;
+import com.fancapital.backend.blockchain.service.P2PExchangeWriteService;
 import com.fancapital.backend.blockchain.service.OperatorDiagnosticsService;
 import java.util.Map;
 import jakarta.validation.Valid;
@@ -37,17 +38,20 @@ public class BlockchainController {
   private final DeploymentRegistry registry;
   private final BlockchainReadService readService;
   private final LiquidityPoolWriteService poolWriteService;
+  private final P2PExchangeWriteService p2pWriteService;
   private final OperatorDiagnosticsService operatorDiagnostics;
 
   public BlockchainController(
       DeploymentRegistry registry,
       BlockchainReadService readService,
       LiquidityPoolWriteService poolWriteService,
+      P2PExchangeWriteService p2pWriteService,
       OperatorDiagnosticsService operatorDiagnostics
   ) {
     this.registry = registry;
     this.readService = readService;
     this.poolWriteService = poolWriteService;
+    this.p2pWriteService = p2pWriteService;
     this.operatorDiagnostics = operatorDiagnostics;
   }
 
@@ -121,9 +125,14 @@ public class BlockchainController {
     return new TxResponse("submitted", txHash, "LiquidityPool.sellFor submitted");
   }
 
+  /**
+   * @deprecated Use /api/blockchain/p2p/order instead for order book matching.
+   * This endpoint is kept for direct settlement (when both parties are known).
+   */
   @PostMapping("/p2p/settle")
   public TxResponse p2pSettle(@Valid @RequestBody P2PSettleRequest req) {
-    return new TxResponse("submitted", "0xmocked", "Spring Boot MVP: p2p settle not wired to signer yet");
+    String txHash = p2pWriteService.settle(req);
+    return new TxResponse("submitted", txHash, "P2PExchange.settle submitted");
   }
 }
 

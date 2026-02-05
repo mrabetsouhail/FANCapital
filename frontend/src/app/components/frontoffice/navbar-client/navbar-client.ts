@@ -138,9 +138,24 @@ export class NavbarClient implements OnInit {
         if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) return;
         localStorage.setItem('walletAddress', wallet);
         this.refreshWallet(wallet);
+        
+        // Set up periodic refresh every 5 seconds to ensure balance is always up-to-date
+        setInterval(() => {
+          this.refreshWalletBalance();
+        }, 5000);
       },
       error: () => {},
     });
+    
+    // Also try to refresh from localStorage if available
+    const savedWallet = localStorage.getItem('walletAddress');
+    if (savedWallet && savedWallet.startsWith('0x') && savedWallet.length === 42) {
+      this.refreshWallet(savedWallet);
+      // Set up periodic refresh
+      setInterval(() => {
+        this.refreshWalletBalance();
+      }, 5000);
+    }
   }
 
   setLang(l: AppLang) {
@@ -149,16 +164,53 @@ export class NavbarClient implements OnInit {
   }
 
   private refreshWallet(wallet: string) {
+    console.log('[NavbarClient] Refreshing wallet balance for:', wallet);
     this.blockchainApi.getPortfolio(wallet as any).subscribe({
       next: (p) => {
+        console.log('[NavbarClient] Portfolio received:', p);
         const atlas = this.pickFund(p.positions, 'atlas', 0);
         const didon = this.pickFund(p.positions, 'didon', 1);
         this.tokensAlpha.set(atlas ? this.from1e8(atlas.balanceTokens) : 0);
         this.tokensBeta.set(didon ? this.from1e8(didon.balanceTokens) : 0);
-        this.cashAmount.set(p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0);
+        const cashBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
+        console.log('[NavbarClient] Setting cashAmount to:', cashBalance, 'TND (raw:', p.cashBalanceTnd, ')');
+        this.cashAmount.set(cashBalance);
       },
-      error: () => {},
+      error: (err) => {
+        console.error('[NavbarClient] Error refreshing wallet:', err);
+      },
     });
+  }
+
+  /**
+   * Public method to refresh wallet balance from blockchain.
+   * Can be called from other components after transactions.
+   */
+  public refreshWalletBalance() {
+    console.log('[NavbarClient] refreshWalletBalance() called');
+    const wallet = localStorage.getItem('walletAddress');
+    console.log('[NavbarClient] Wallet from localStorage:', wallet);
+    if (wallet && wallet.startsWith('0x') && wallet.length === 42) {
+      this.refreshWallet(wallet);
+    } else {
+      // Try to get from auth service
+      console.log('[NavbarClient] No wallet in localStorage, fetching from auth service...');
+      this.authApi.me().subscribe({
+        next: (u) => {
+          const walletAddr = (u as any)?.walletAddress as string | undefined;
+          console.log('[NavbarClient] Wallet from auth service:', walletAddr);
+          if (walletAddr && walletAddr.startsWith('0x') && walletAddr.length === 42) {
+            localStorage.setItem('walletAddress', walletAddr);
+            this.refreshWallet(walletAddr);
+          } else {
+            console.warn('[NavbarClient] Invalid wallet address from auth service:', walletAddr);
+          }
+        },
+        error: (err) => {
+          console.error('[NavbarClient] Error fetching user from auth service:', err);
+        },
+      });
+    }
   }
 
   private pickFund(positions: PortfolioPosition[], nameHint: string, idHint: number): PortfolioPosition | null {

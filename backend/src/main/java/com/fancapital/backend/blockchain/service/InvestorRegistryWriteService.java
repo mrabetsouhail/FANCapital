@@ -10,6 +10,7 @@ import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint16;
+import org.web3j.abi.datatypes.generated.Uint8;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.EthGasPrice;
@@ -41,6 +42,27 @@ public class InvestorRegistryWriteService {
     Function fn = new Function(
         "setScore",
         List.of(new Address(userWallet), new Uint16(BigInteger.valueOf(score))),
+        List.of()
+    );
+    return send(investorRegistry, fn, BigInteger.valueOf(250_000));
+  }
+
+  /**
+   * Initialise ou met à jour le feeLevel d'un utilisateur (0=BRONZE, 1=SILVER, 2=GOLD, 3=DIAMOND, 4=PLATINUM).
+   * Par défaut, les nouveaux utilisateurs sont initialisés à 0 (BRONZE).
+   */
+  public String setFeeLevel(String userWallet, int feeLevel) {
+    if (feeLevel < 0 || feeLevel > 4) {
+      throw new IllegalArgumentException("feeLevel must be 0..4 (0=BRONZE, 1=SILVER, 2=GOLD, 3=DIAMOND, 4=PLATINUM)");
+    }
+    String investorRegistry = infra.investorRegistryAddress();
+    if (investorRegistry == null || investorRegistry.isBlank()) {
+      throw new IllegalStateException("InvestorRegistry address not configured in deployments infra.");
+    }
+
+    Function fn = new Function(
+        "setFeeLevel",
+        List.of(new Address(userWallet), new Uint8(BigInteger.valueOf(feeLevel))),
         List.of()
     );
     return send(investorRegistry, fn, BigInteger.valueOf(250_000));

@@ -1,8 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { NavbarClient } from '../navbar-client/navbar-client';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import { AuthApiService } from '../../../auth/services/auth-api.service';
 import type { Fund } from '../../../blockchain/models/fund.models';
 
 interface Transaction {
@@ -54,9 +56,25 @@ export class AcceuilClientPage implements OnInit {
     { id: 4, type: 'achat', token: 'Alpha', amount: 15, price: 123.00, date: new Date(Date.now() - 48 * 60 * 60 * 1000) },
   ]);
 
-  constructor(private router: Router, private api: BlockchainApiService) {}
+  @ViewChild(NavbarClient) navbarClient?: NavbarClient;
+
+  constructor(
+    private router: Router, 
+    private api: BlockchainApiService,
+    private authApi: AuthApiService
+  ) {}
 
   ngOnInit() {
+    // Refresh wallet balance when navigating to this page (e.g., after transaction)
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => {
+        // Small delay to ensure navbar is rendered
+        setTimeout(() => {
+          this.navbarClient?.refreshWalletBalance();
+        }, 300);
+      });
+
     // Load funds then fetch VNIs (Atlas/Didon)
     this.api.listFunds().subscribe({
       next: (res) => {
@@ -65,6 +83,11 @@ export class AcceuilClientPage implements OnInit {
         this.fundAlpha.set(atlas ?? null);
         this.fundBeta.set(didon ?? null);
         this.refreshVni();
+        
+        // Also refresh wallet balance on initial load
+        setTimeout(() => {
+          this.navbarClient?.refreshWalletBalance();
+        }, 500);
       },
       error: () => {
         // keep UI usable even if API not available

@@ -7,7 +7,6 @@ import com.fancapital.backend.backoffice.audit.model.AuditUserTokenBalance;
 import com.fancapital.backend.backoffice.audit.repo.AuditAlertRepository;
 import com.fancapital.backend.backoffice.audit.repo.AuditTokenSyncStateRepository;
 import com.fancapital.backend.backoffice.audit.repo.AuditUserTokenBalanceRepository;
-import com.fancapital.backend.backoffice.service.DeploymentInfraService;
 import com.fancapital.backend.blockchain.model.FundDto;
 import com.fancapital.backend.blockchain.service.DeploymentRegistry;
 import com.fancapital.backend.blockchain.service.EvmCallService;
@@ -47,7 +46,6 @@ public class AuditReconciliationService {
 
   private final Web3j web3j;
   private final DeploymentRegistry registry;
-  private final DeploymentInfraService infra;
   private final AppUserRepository users;
   private final EvmCallService evm;
   private final AuditTokenSyncStateRepository syncRepo;
@@ -58,7 +56,6 @@ public class AuditReconciliationService {
   public AuditReconciliationService(
       Web3j web3j,
       DeploymentRegistry registry,
-      DeploymentInfraService infra,
       AppUserRepository users,
       EvmCallService evm,
       AuditTokenSyncStateRepository syncRepo,
@@ -68,7 +65,6 @@ public class AuditReconciliationService {
   ) {
     this.web3j = web3j;
     this.registry = registry;
-    this.infra = infra;
     this.users = users;
     this.evm = evm;
     this.syncRepo = syncRepo;
@@ -275,6 +271,7 @@ public class AuditReconciliationService {
         List.of(new Address(wallet)),
         List.of(new TypeReference<Uint256>() {})
     );
+    @SuppressWarnings("rawtypes")
     List<Type> out = evm.ethCall(token, f);
     return EvmCallService.uint(out.get(0));
   }
@@ -287,6 +284,7 @@ public class AuditReconciliationService {
     return ("0x" + last40).toLowerCase(Locale.ROOT);
   }
 
+  @SuppressWarnings("rawtypes")
   private static BigInteger decodeTransferValue(String data) {
     List<Type> decoded = FunctionReturnDecoder.decode(data, TRANSFER.getNonIndexedParameters());
     if (decoded.isEmpty()) return BigInteger.ZERO;

@@ -12,6 +12,7 @@ import { PortfolioPage } from './components/frontoffice/portfolio-page/portfolio
 import { FiscalDashboardPage } from './components/backoffice/fiscal-dashboard-page/fiscal-dashboard-page';
 import { KycDashboardPage } from './components/backoffice/kyc-dashboard-page/kyc-dashboard-page';
 import { AuditRegistryPage } from './components/backoffice/audit-registry-page/audit-registry-page';
+import { FeeWalletPage } from './components/backoffice/fee-wallet-page/fee-wallet-page';
 import { authGuard } from './auth/auth.guard';
 import { backofficeGuard } from './backoffice/backoffice.guard';
 export const routes: Routes = [
@@ -76,6 +77,11 @@ export const routes: Routes = [
   {
     path: 'backoffice/audit',
     component: AuditRegistryPage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/fees',
+    component: FeeWalletPage,
     canActivate: [backofficeGuard],
   },
 ];

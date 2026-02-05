@@ -34,6 +34,24 @@ blockchain:
   deployments-path: ""
   # Private key used to sign LiquidityPool.buyFor/sellFor tx (must have OPERATOR_ROLE on each pool)
   operator-private-key: ${OPERATOR_PRIVATE_KEY:}
+  # Panic Key (cold storage) for emergency global pause (PANIC_KEY_ROLE on CircuitBreaker).
+  # This key should be stored offline and only used in emergency situations.
+  # For production, this key MUST be stored in cold storage (hardware wallet, paper wallet, etc.).
+  panic-private-key: ${PANIC_PRIVATE_KEY:}
+  # Mint Key (HSM) for minting CashTokenTND (MINTER_ROLE on CashTokenTND).
+  # In production, this key should be stored in a Hardware Security Module (HSM).
+  mint-private-key: ${MINT_PRIVATE_KEY:}
+  # Burn Key (HSM) for burning CashTokenTND (BURNER_ROLE on CashTokenTND).
+  # In production, this key should be stored in a Hardware Security Module (HSM).
+  burn-private-key: ${BURN_PRIVATE_KEY:}
+  # Oracle Key (HSM) for updating VNI prices from BVMT (ORACLE_ROLE on PriceOracle).
+  # According to Dossier de Sécurité v2.0, this key is dedicated exclusively to price updates.
+  # In production, this key should be stored in a Hardware Security Module (HSM).
+  oracle-private-key: ${ORACLE_PRIVATE_KEY:}
+  # Onboarding Key (HSM) for KYC validation and account creation (KYC_VALIDATOR_ROLE on KYCRegistry).
+  # According to Dossier de Sécurité v2.0, this key is used exclusively for KYC validation.
+  # In production, this key should be stored in a Hardware Security Module (HSM).
+  onboarding-private-key: ${ONBOARDING_PRIVATE_KEY:}
   # Dev helper: fixed prices to unblock UI testing (until oracle/API is wired)
   price-overrides:
     enabled: ${FIXED_VNI_ENABLED:true}
@@ -75,4 +93,7 @@ backoffice:
     compliance-emails: ${AUDIT_COMPLIANCE_EMAILS:}
     reconciliation-enabled: ${AUDIT_RECON_ENABLED:false}
     reconciliation-interval-ms: ${AUDIT_RECON_INTERVAL_MS:300000}
+    # Checkpoint generation every 10,000 blocks (Livre Blanc v2.1 - Section 4.1)
+    checkpoint-enabled: ${AUDIT_CHECKPOINT_ENABLED:true}
+    checkpoint-interval-ms: ${AUDIT_CHECKPOINT_INTERVAL_MS:600000}
 

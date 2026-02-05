@@ -25,6 +25,7 @@ interface ICPEFToken {
     function setLiquidityPool(address newPool) external;
     function setKYCRegistry(address newRegistry) external;
     function setPriceOracle(address newOracle) external;
+    function setCircuitBreaker(address newBreaker) external;
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
     function GOVERNANCE_ROLE() external view returns (bytes32);
     function grantRole(bytes32 role, address account) external;
@@ -33,6 +34,7 @@ interface ICPEFToken {
     function liquidityPool() external view returns (address);
     function kycRegistry() external view returns (address);
     function priceOracle() external view returns (address);
+    function circuitBreaker() external view returns (address);
 }
 
 interface ILiquidityPool {
@@ -183,10 +185,11 @@ contract CPEFFactory is AccessControl {
         ILiquidityPool pool = ILiquidityPool(poolAddr);
         ICPEFToken token = ICPEFToken(tokenAddr);
 
-        // Wire token <-> pool/oracle/kyc
+        // Wire token <-> pool/oracle/kyc/circuitBreaker
         token.setLiquidityPool(poolAddr);
         token.setKYCRegistry(address(kycRegistry));
         token.setPriceOracle(oracleAddr);
+        token.setCircuitBreaker(address(circuitBreaker));
 
         // Wire pool to shared infra
         pool.setInvestorRegistry(address(investorRegistry));

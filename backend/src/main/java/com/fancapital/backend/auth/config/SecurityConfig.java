@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
@@ -34,7 +36,20 @@ public class SecurityConfig {
     return new BCryptPasswordEncoder();
   }
 
+  /** Chaîne prioritaire : /api/blockchain/** est entièrement public (GET + POST : portfolio, quote-buy, quote-sell, buy, sell, etc.). */
   @Bean
+  @Order(0)
+  public SecurityFilterChain blockchainSecurityFilterChain(HttpSecurity http) throws Exception {
+    return http
+        .securityMatcher("/api/blockchain/**")
+        .csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
+        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .build();
+  }
+
+  @Bean
+  @Order(1)
   public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ObjectMapper objectMapper) throws Exception {
     http
         .csrf(csrf -> csrf.disable())
@@ -43,13 +58,14 @@ public class SecurityConfig {
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            // Blockchain read/write: public (no auth required for portfolio, funds, pool, etc.)
+            .requestMatchers("/api/blockchain/**").permitAll()
             .requestMatchers(
                 "/api/auth/login",
                 "/api/auth/register/**",
                 "/api/auth/wallet/login/**"
             ).permitAll()
             .requestMatchers("/api/auth/**").authenticated()
-            .requestMatchers("/api/blockchain/**").permitAll()
             // Dev-only: H2 console
             .requestMatchers("/h2-console", "/h2-console/**").permitAll()
             .anyRequest().authenticated()
@@ -69,7 +85,7 @@ public class SecurityConfig {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
         throws ServletException, IOException {
       String auth = request.getHeader("Authorization");
       if (auth != null && auth.startsWith("Bearer ")) {

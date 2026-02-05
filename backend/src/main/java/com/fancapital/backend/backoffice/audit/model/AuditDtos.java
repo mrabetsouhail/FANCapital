@@ -64,5 +64,33 @@ public class AuditDtos {
       long transfersProcessed,
       int alertsCreated
   ) {}
+
+  public record CheckpointResponse(
+      String id,
+      String createdAt,
+      long blockNumber,
+      String blockHash,
+      String tokenAddress,
+      String totalSupply1e8,
+      String proofHash,
+      String previousCheckpointHash,
+      String metadata
+  ) {}
+
+  public record CheckpointVerifyResponse(
+      boolean valid,
+      String message
+  ) {}
+
+  public record BusinessContextResponse(
+      String id,
+      String createdAt,
+      String transactionHash,
+      String businessContextId,
+      String contractAddress,
+      String operationType,
+      String description,
+      String accountingDocumentId
+  ) {}
 }
 

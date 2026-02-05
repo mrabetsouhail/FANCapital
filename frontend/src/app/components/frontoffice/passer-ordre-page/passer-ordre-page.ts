@@ -1,10 +1,11 @@
-import { Component, signal, computed, OnInit, effect, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, effect, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
 import { ConfirmOrderModal, type ConfirmOrderSummary } from '../confirm-order-modal/confirm-order-modal';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import { AuthApiService } from '../../../auth/services/auth-api.service';
 import type { Fund } from '../../../blockchain/models/fund.models';
 import type { QuoteBuyResponse, QuoteSellResponse } from '../../../blockchain/models/pricing.models';
 
@@ -21,6 +22,8 @@ type AmountType = 'tnd' | 'tokens';
 })
 export class PasserOrdrePage implements OnInit {
   private readonly api = inject(BlockchainApiService);
+  private readonly authApi = inject(AuthApiService);
+  @ViewChild(NavbarClient) navbarClient?: NavbarClient;
 
   tokenType = signal<TokenType>('Atlas');
   orderType = signal<OrderType>('buy');
@@ -159,14 +162,23 @@ export class PasserOrdrePage implements OnInit {
   constructor(
     private router: Router,
     private route: ActivatedRoute
-  ) {}
+  ) {
+    // effect() must run in injection context (constructor); triggers refreshQuote when tracked signals change
+    effect(() => {
+      this.tokenType();
+      this.orderType();
+      this.orderMode();
+      this.amountType();
+      this.amount();
+      this.currentPrice();
+      this.refreshQuote();
+    });
+  }
 
   ngOnInit() {
-   
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
       if (params['token']) {
         const raw = String(params['token']);
-        // Backward compatibility: Alpha/Beta -> Atlas/Didon
         const normalized =
           raw.toLowerCase() === 'alpha' ? 'Atlas'
           : raw.toLowerCase() === 'beta' ? 'Didon'
@@ -185,34 +197,39 @@ export class PasserOrdrePage implements OnInit {
       this.userAddress.set(saved);
     }
 
-    // Load funds + initial VNIs
-    this.api.listFunds().subscribe({
-      next: (res) => {
-        const atlas = res.funds.find((f) => f.name.toLowerCase().includes('atlas')) ?? res.funds[0] ?? null;
-        const didon = res.funds.find((f) => f.name.toLowerCase().includes('didon')) ?? res.funds[1] ?? null;
-        this.fundAlpha.set(atlas ?? null);
-        this.fundBeta.set(didon ?? null);
-        this.refreshVni();
-        this.refreshQuote();
-      },
-      error: (e) => {
-        this.quoteError.set(this.formatErr(e));
-      },
-    });
+    // Defer API calls to next tick to avoid ExpressionChangedAfterItHasBeenCheckedError
+    setTimeout(() => {
+      this.authApi.me().subscribe({
+        next: (u) => {
+          const wallet = (u as any)?.walletAddress as string | undefined;
+          if (wallet && wallet.startsWith('0x') && wallet.length === 42) {
+            this.userAddress.set(wallet);
+            localStorage.setItem('walletAddress', wallet);
+            this.api.getPortfolio(wallet as any).subscribe({
+              next: (p) => {
+                this.cashBalance.set(p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0);
+              },
+              error: () => {},
+            });
+          }
+        },
+        error: () => {},
+      });
 
-    // Auto-refresh quote when key inputs change
-    effect(() => {
-      // read signals to track
-      this.tokenType();
-      this.orderType();
-      this.orderMode();
-      this.amountType();
-      this.amount();
-      this.currentPrice();
-
-      // trigger (best-effort)
-      this.refreshQuote();
-    });
+      this.api.listFunds().subscribe({
+        next: (res) => {
+          const atlas = res.funds.find((f) => f.name.toLowerCase().includes('atlas')) ?? res.funds[0] ?? null;
+          const didon = res.funds.find((f) => f.name.toLowerCase().includes('didon')) ?? res.funds[1] ?? null;
+          this.fundAlpha.set(atlas ?? null);
+          this.fundBeta.set(didon ?? null);
+          this.refreshVni();
+          this.refreshQuote();
+        },
+        error: (e) => {
+          this.quoteError.set(this.formatErr(e));
+        },
+      });
+    }, 0);
   }
 
   toggleOrderMode() {
@@ -256,11 +273,27 @@ export class PasserOrdrePage implements OnInit {
         const tndIn = this.to1e8(this.amountType() === 'tnd' ? this.amount() : this.amount() * this.currentPrice());
         this.api.buy({ token, user: user as any, tndIn }).subscribe({
           next: (res) => {
-            // MVP: backend buy() is stub; still update UI for testing
-            this.cashBalance.set(this.cashAfter());
-            this.submitMessage.set(res.message ?? 'Ordre soumis (mode test)');
+            this.submitMessage.set(res.message ?? 'Ordre soumis');
             this.isConfirmOpen.set(false);
-            setTimeout(() => this.router.navigate(['/acceuil-client']), 500);
+            // Refresh cash balance immediately and multiple times to ensure update
+            this.refreshCashBalance();
+            setTimeout(() => {
+              this.refreshCashBalance();
+              this.navbarClient?.refreshWalletBalance();
+            }, 1000);
+            setTimeout(() => {
+              this.refreshCashBalance();
+              this.navbarClient?.refreshWalletBalance();
+            }, 3000); // Wait 3 seconds for transaction confirmation
+            setTimeout(() => {
+              this.router.navigate(['/acceuil-client']).then(() => {
+                // Refresh again after navigation to ensure navbar is updated
+                setTimeout(() => {
+                  this.refreshCashBalance();
+                  this.navbarClient?.refreshWalletBalance();
+                }, 500);
+              });
+            }, 500);
           },
           error: (e) => this.quoteError.set(this.formatErr(e)),
           complete: () => this.isSubmitting.set(false),
@@ -271,11 +304,27 @@ export class PasserOrdrePage implements OnInit {
         );
         this.api.sell({ token, user: user as any, tokenAmount }).subscribe({
           next: (res) => {
-            // MVP: backend sell() is stub; still update UI for testing
-            this.cashBalance.set(this.cashAfter());
-            this.submitMessage.set(res.message ?? 'Ordre soumis (mode test)');
+            this.submitMessage.set(res.message ?? 'Ordre soumis');
             this.isConfirmOpen.set(false);
-            setTimeout(() => this.router.navigate(['/acceuil-client']), 500);
+            // Refresh cash balance immediately and multiple times to ensure update
+            this.refreshCashBalance();
+            setTimeout(() => {
+              this.refreshCashBalance();
+              this.navbarClient?.refreshWalletBalance();
+            }, 1000);
+            setTimeout(() => {
+              this.refreshCashBalance();
+              this.navbarClient?.refreshWalletBalance();
+            }, 3000); // Wait 3 seconds for transaction confirmation
+            setTimeout(() => {
+              this.router.navigate(['/acceuil-client']).then(() => {
+                // Refresh again after navigation to ensure navbar is updated
+                setTimeout(() => {
+                  this.refreshCashBalance();
+                  this.navbarClient?.refreshWalletBalance();
+                }, 500);
+              });
+            }, 500);
           },
           error: (e) => this.quoteError.set(this.formatErr(e)),
           complete: () => this.isSubmitting.set(false),
@@ -284,7 +333,7 @@ export class PasserOrdrePage implements OnInit {
       return;
     }
 
-    // P2P mode (MVP): sign an "atomic order intent" and send to backend stub.
+    // P2P mode: Utiliser le wallet WaaS géré par la plateforme (pas de MetaMask nécessaire)
     const fund = this.getSelectedFund();
     const token = fund?.token;
     if (!token) return;
@@ -292,10 +341,9 @@ export class PasserOrdrePage implements OnInit {
     this.quoteError.set(null);
     this.submitMessage.set(null);
 
-    const maker = await this.ensureWalletAddressOrThrow();
-    const nonce = String(Date.now()); // ok for MVP
-    const deadline = String(Math.floor(Date.now() / 1000) + 5 * 60); // 5 minutes
     const side = this.orderType(); // buy/sell
+    const nonce = String(Date.now()); // ok for MVP
+    const deadline = String(Math.floor(Date.now() / 1000) + 3600); // +1 heure par défaut
 
     const tokenAmount1e8 =
       side === 'buy'
@@ -304,51 +352,46 @@ export class PasserOrdrePage implements OnInit {
 
     const pricePerToken1e8 = this.to1e8(this.currentPrice());
 
-    const message = [
-      'FAN-Capital P2P Order (MVP)',
-      `maker=${maker}`,
-      `side=${side}`,
-      `token=${token}`,
-      `tokenAmount1e8=${tokenAmount1e8}`,
-      `pricePerToken1e8=${pricePerToken1e8}`,
-      `nonce=${nonce}`,
-      `deadline=${deadline}`,
-    ].join('\n');
-
     this.isSubmitting.set(true);
-    try {
-      const signature = await this.personalSign(maker, message);
-      const zero = '0x0000000000000000000000000000000000000000';
-      const buyer = side === 'buy' ? maker : zero;
-      const seller = side === 'sell' ? maker : zero;
-
-      this.api
-        .p2pSettle({
-          token: token as any,
-          buyer: buyer as any,
-          seller: seller as any,
-          tokenAmount: tokenAmount1e8,
-          pricePerToken: pricePerToken1e8,
-          maker: maker as any,
-          side,
-          nonce,
-          deadline,
-          signature,
-        })
-        .subscribe({
-          next: (res) => {
-            this.submitMessage.set(res.message ?? 'Ordre P2P signé (mode test)');
+    
+    // Utiliser le nouveau système d'order book (wallet WaaS automatique)
+    // Le backend récupère automatiquement l'utilisateur connecté via JWT
+    this.api
+      .submitOrder({
+        maker: '0x0000000000000000000000000000000000000000' as any, // Ignoré par le backend, remplacé par userId du JWT
+        side,
+        token: token as any,
+        tokenAmount: tokenAmount1e8,
+        pricePerToken: pricePerToken1e8,
+        nonce,
+        deadline,
+        // signature optionnelle - pas nécessaire avec WaaS
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.status === 'SETTLED' && res.matchedOrder) {
+            this.submitMessage.set(`Ordre matché et réglé! Transaction: ${res.matchedOrder.settlementTxHash || 'en cours'}`);
+          } else if (res.status === 'MATCHED') {
+            this.submitMessage.set('Ordre matché, settlement en cours...');
+          } else {
+            this.submitMessage.set(`Ordre soumis (ID: ${res.orderId}). En attente de matching.`);
+          }
+          // Rafraîchir le solde après transaction
+          if (res.status === 'SETTLED' || res.status === 'MATCHED') {
             this.cashBalance.set(this.cashAfter());
-            this.isConfirmOpen.set(false);
-            setTimeout(() => this.router.navigate(['/acceuil-client']), 500);
-          },
-          error: (e) => this.quoteError.set(this.formatErr(e)),
-          complete: () => this.isSubmitting.set(false),
-        });
-    } catch (e: any) {
-      this.isSubmitting.set(false);
-      this.quoteError.set(e?.message ?? 'Signature annulée / wallet indisponible');
-    }
+            setTimeout(() => {
+              this.navbarClient?.refreshWalletBalance();
+            }, 1000);
+          }
+          this.isConfirmOpen.set(false);
+          setTimeout(() => this.router.navigate(['/acceuil-client']), 2000);
+        },
+        error: (e) => {
+          this.quoteError.set(this.formatErr(e));
+          this.isSubmitting.set(false);
+        },
+        complete: () => this.isSubmitting.set(false),
+      });
   }
 
   onCancel() {
@@ -361,28 +404,6 @@ export class PasserOrdrePage implements OnInit {
     return this.tokenType() === 'Atlas' ? this.fundAlpha() : this.fundBeta();
   }
 
-  private async ensureWalletAddressOrThrow(): Promise<string> {
-    const w = (globalThis as any).window;
-    const eth = w?.ethereum;
-    if (!eth?.request) {
-      throw new Error("Wallet non détecté. Installe MetaMask (ou un wallet EVM) pour signer l'ordre P2P.");
-    }
-    const accounts: string[] = await eth.request({ method: 'eth_requestAccounts', params: [] });
-    const addr = accounts?.[0];
-    if (!addr || !addr.startsWith('0x')) throw new Error('Adresse wallet invalide.');
-    this.userAddress.set(addr);
-    return addr;
-  }
-
-  private async personalSign(address: string, message: string): Promise<string> {
-    const w = (globalThis as any).window;
-    const eth = w?.ethereum;
-    if (!eth?.request) throw new Error('Wallet non détecté.');
-    // personal_sign expects params: [data, address] on most providers
-    const sig: string = await eth.request({ method: 'personal_sign', params: [message, address] });
-    if (!sig || !sig.startsWith('0x')) throw new Error('Signature invalide.');
-    return sig;
-  }
 
   private refreshVni() {
     const a = this.fundAlpha();
@@ -442,6 +463,29 @@ export class PasserOrdrePage implements OnInit {
     // avoid floating rounding issues in UI: keep 2 decimals for TND and 4 for token-ish
     const scaled = Math.round(n * 1e8);
     return String(scaled);
+  }
+
+  /**
+   * Refresh cash balance from blockchain after transaction.
+   */
+  private refreshCashBalance() {
+    const user = this.userAddress();
+    console.log('[PasserOrdrePage] refreshCashBalance() called for user:', user);
+    if (!user || !user.startsWith('0x') || user.length !== 42) {
+      console.warn('[PasserOrdrePage] Invalid user address:', user);
+      return;
+    }
+    
+    this.api.getPortfolio(user as any).subscribe({
+      next: (p) => {
+        const newBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
+        console.log('[PasserOrdrePage] Cash balance updated to:', newBalance, 'TND (raw:', p.cashBalanceTnd, ')');
+        this.cashBalance.set(newBalance);
+      },
+      error: (err) => {
+        console.error('[PasserOrdrePage] Error refreshing cash balance:', err);
+      },
+    });
   }
 
   private formatErr(e: any): string {
