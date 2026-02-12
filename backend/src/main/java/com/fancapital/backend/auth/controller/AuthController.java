@@ -25,19 +25,22 @@ public class AuthController {
   private final AppUserRepository repo;
   private final WalletLinkService walletLinkService;
   private final WalletAuthService walletAuthService;
+  private final com.fancapital.backend.auth.service.PremiumActivationService premiumActivationService;
 
   public AuthController(
       AuthService authService,
       com.fancapital.backend.auth.service.JwtService jwtService,
       AppUserRepository repo,
       WalletLinkService walletLinkService,
-      WalletAuthService walletAuthService
+      WalletAuthService walletAuthService,
+      com.fancapital.backend.auth.service.PremiumActivationService premiumActivationService
   ) {
     this.authService = authService;
     this.jwtService = jwtService;
     this.repo = repo;
     this.walletLinkService = walletLinkService;
     this.walletAuthService = walletAuthService;
+    this.premiumActivationService = premiumActivationService;
   }
 
   @PostMapping("/register/particulier")
@@ -101,6 +104,13 @@ public class AuthController {
   @PostMapping("/wallet/login")
   public AuthDtos.AuthResponse walletLogin(@Valid @RequestBody AuthDtos.WalletLoginRequest req) {
     return walletAuthService.loginWithWallet(req);
+  }
+
+  @PostMapping("/premium/activate")
+  public ResponseEntity<?> activatePremium() {
+    String userId = currentUserIdOrThrow();
+    String message = premiumActivationService.activateForUser(userId);
+    return ResponseEntity.ok(Map.of("status", "ok", "message", message));
   }
 
   private static String currentUserIdOrThrow() {

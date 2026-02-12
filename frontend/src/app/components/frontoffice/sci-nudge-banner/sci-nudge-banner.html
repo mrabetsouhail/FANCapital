@@ -1,0 +1,26 @@
+@if (shouldShow) {
+  <div class="flex items-center justify-between gap-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+    <p class="flex-1">
+      @if (sci()!.kycTierCap === 0 && sci()!.tierFromScore >= 1) {
+        <strong>Incitation KYC :</strong> Validez votre <strong>KYC 2</strong> pour débloquer le tier {{ nextTierName }}, un taux plus bas (4.5% au lieu de 5.0%) et le marché P2P.
+      } @else if (nearThresholdInfo(); as near) {
+        <strong>Alerte seuil (±2 pts) :</strong> Vous êtes à <strong>{{ sci()!.score }}/{{ near.threshold }}</strong> points du tier {{ near.tierName }}.
+      } @else {
+        <strong>Nudge SCI :</strong> Vous êtes à {{ sci()!.score }}/{{ threshold }} points du tier {{ nextTierName }}.
+      }
+    </p>
+    <a routerLink="/kyc" class="shrink-0 px-3 py-1.5 bg-amber-600 text-white rounded-md font-medium hover:bg-amber-700 transition">
+      Compléter KYC 2
+    </a>
+    <button
+      type="button"
+      (click)="dismiss()"
+      class="shrink-0 p-1 text-amber-600 hover:text-amber-800 rounded"
+      aria-label="Fermer"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+}

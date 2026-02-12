@@ -19,12 +19,12 @@ contract CreditModelBPGP is AccessControl, ReentrancyGuard {
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     uint256 internal constant PRICE_SCALE = 1e8; // TND
-    uint256 internal constant LTV_BPS = 5_000; // 50%
+    uint256 internal constant LTV_BPS = 7_000; // 70% (MAX_LTV_EMISSION rehaussé)
     uint256 internal constant BPS = 10_000;
 
-    // Default parameters (can be tuned by governance later)
+    // Default parameters - CREDIT_LOMBARD v4.51
     uint256 public hurdleRateBps = 250; // 2.5%
-    uint256 public fanShareBps = 1_000; // 10% FAN / 90% client (for tier Platinum/Diamond group)
+    // fanShareBps overridden per-tier in closeAdvance: PLATINUM 20%, DIAMOND 10%
 
     enum Status {
         Requested,
@@ -83,18 +83,23 @@ contract CreditModelBPGP is AccessControl, ReentrancyGuard {
         escrow = EscrowRegistry(newEscrow);
     }
 
-    function setParams(uint256 newHurdleRateBps, uint256 newFanShareBps) external onlyRole(GOVERNANCE_ROLE) {
+    function setParams(uint256 newHurdleRateBps, uint256 /* newFanShareBps */) external onlyRole(GOVERNANCE_ROLE) {
         require(newHurdleRateBps <= 2_000, "B: hurdle too high"); // sanity
-        require(newFanShareBps <= BPS, "B: bad share");
         hurdleRateBps = newHurdleRateBps;
-        fanShareBps = newFanShareBps;
-        emit ParamsUpdated(newHurdleRateBps, newFanShareBps);
+        emit ParamsUpdated(newHurdleRateBps, 0);
+    }
+
+    /// @notice Returns fan share bps for user tier (CREDIT_LOMBARD v4.51: PLATINUM 20%, DIAMOND 10%)
+    function _getFanShareBpsForUser(address user) internal view returns (uint256) {
+        uint8 tier = investorRegistry.getTier(user);
+        if (tier == 4) return 1_000; // DIAMOND: 10%
+        return 2_000; // PLATINUM: 20%
     }
 
     function requestAdvance(address token, uint256 collateralAmount, uint64 durationDays) external nonReentrant returns (uint256 loanId) {
         require(address(kycRegistry) != address(0), "B: KYC not set");
         require(kycRegistry.isWhitelisted(msg.sender), "B: not whitelisted");
-        require(kycRegistry.getUserLevel(msg.sender) >= 2, "B: requires KYC level 2");
+        require(kycRegistry.getUserLevel(msg.sender) >= 1, "B: requires KYC 1 (Green List)");
 
         require(address(investorRegistry) != address(0), "B: investor registry not set");
         require(investorRegistry.canUseCreditModelB(msg.sender), "B: requires premium tier+sub");
@@ -158,10 +163,11 @@ contract CreditModelBPGP is AccessControl, ReentrancyGuard {
             uint256 perfAbs = uint256(perfTnd);
             if (perfAbs > hurdleTnd) {
                 uint256 excess = perfAbs - hurdleTnd;
-                fanShareTnd = excess.mulDiv(fanShareBps, BPS);
+                uint256 shareBps = _getFanShareBpsForUser(l.user);
+                fanShareTnd = excess.mulDiv(shareBps, BPS);
                 clientShareTnd = excess - fanShareTnd;
             } else {
-                clientShareTnd = perfAbs; // below hurdle: all to client in this simplified model
+                clientShareTnd = perfAbs; // below hurdle: all to client
             }
         }
 

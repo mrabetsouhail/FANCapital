@@ -46,6 +46,12 @@
           >
             {{ 'NAV.BACKOFFICE_KYC' | translate }}
           </a>
+          <a 
+            routerLink="/backoffice/multisig" 
+            class="text-base font-medium text-primary hover:text-tertiary transition duration-150 ease-in-out"
+          >
+            Multi-Sig
+          </a>
           }
         } @else {
           <a 
@@ -221,6 +227,8 @@
   <!-- Wallets and Actions Bar -->
   @if (!isBackofficeAdmin()) {
   <div class="max-w-6xl mx-auto px-3 sm:px-4 lg:px-5">
+    <!-- SCI Nudge (KYC2 incitation quand proche d'un seuil) -->
+    <app-sci-nudge-banner [sci]="sciScore()" class="mb-2" />
     <!-- Wallets and Actions Bar -->
     <div class="flex items-center justify-between h-20 py-1">
       <!-- Left Side - Wallets -->
@@ -253,7 +261,7 @@
               <p class="text-base font-bold text-primary">
                 {{ cashAmount() | number:'1.2-2' }} TND
               </p>
-              <p class="text-[9px] text-primary opacity-75 mt-0.5">{{ 'NAV.AVAILABLE' | translate }}</p>
+              <p class="text-[9px] text-primary opacity-75 mt-0.5">{{ cashAmount() === 0 ? 'Chargement...' : ('NAV.AVAILABLE' | translate) }}</p>
             </div>
             <div class="ml-1.5">
               <svg class="w-5 h-5 text-primary opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,15 +271,15 @@
           </div>
         </div>
 
-        <!-- Credit Wallet -->
-        <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
+        <!-- Credit Wallet = avance créditée (AST). Vide (0) si pas d'avance en cours. -->
+        <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200" title="Avance sur titres créditée (0 si aucune avance)">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.CREDIT_WALLET' | translate }}</p>
               <p class="text-base font-bold text-primary">
                 {{ creditAmount() | number:'1.2-2' }} TND
               </p>
-              <p class="text-[9px] text-primary opacity-75 mt-0.5">{{ 'NAV.CREDIT_LINE' | translate }}</p>
+              <p class="text-[9px] text-gray-500 mt-0.5">{{ creditAmount() > 0 ? ('NAV.AVANCE_CREDITEE' | translate) : ('NAV.VIDE' | translate) }}</p>
             </div>
             <div class="ml-1.5">
               <svg class="w-5 h-5 text-primary opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">

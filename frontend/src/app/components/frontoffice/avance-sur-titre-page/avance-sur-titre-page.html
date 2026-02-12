@@ -8,7 +8,48 @@
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-primary mb-2">Avance sur Titres</h1>
-      <p class="text-gray-600">Transformez vos tokens en liquidités sans les vendre</p>
+      <p class="text-gray-600">Transformez vos tokens en liquidités sans les vendre (CREDIT_LOMBARD v4.51)</p>
+    </div>
+
+    <!-- Choix Modèle + Tier -->
+    <div class="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <h2 class="text-lg font-semibold text-primary mb-3">Modèle d'avance</h2>
+      <div class="flex flex-wrap gap-4">
+        <div>
+          <label class="block text-sm text-gray-600 mb-1">Type</label>
+          <div class="flex gap-2 p-1 bg-white rounded-lg border border-gray-200">
+            <button
+              (click)="creditModel.set('A')"
+              [class]="creditModel() === 'A' ? 'px-4 py-2 rounded-md text-sm font-medium text-white bg-[#00204A]' : 'px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100'"
+            >
+              Modèle A (Taux fixe dégressif)
+            </button>
+            <button
+              (click)="creditModel.set('B')"
+              [disabled]="!isPgpAvailable()"
+              [class]="creditModel() === 'B' ? 'px-4 py-2 rounded-md text-sm font-medium text-white bg-[#00204A]' : 'px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'"
+              [title]="!isPgpAvailable() ? 'PGP réservé aux tiers PLATINUM et DIAMOND' : ''"
+            >
+              Modèle B (PGP)
+            </button>
+          </div>
+          @if (!isPgpAvailable()) {
+            <p class="text-xs text-amber-600 mt-1">PGP réservé aux tiers PLATINUM et DIAMOND</p>
+          }
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1">Votre tier (Score SCI)</label>
+          @if (tierLoading()) {
+            <span class="inline-flex px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500">
+              Chargement...
+            </span>
+          } @else {
+            <span class="inline-flex px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-primary">
+              {{ userTier() }} ({{ tierRangeLabel() }}){{ interestRate() > 0 ? ' - ' + interestRate() + '%' : ' - Non disponible' }}
+            </span>
+          }
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -24,38 +65,44 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Type de Token</label>
               <div class="flex gap-2 p-1 bg-gray-100 rounded-lg">
                 <button
-                  (click)="selectedTokenType.set('Alpha'); onTokenTypeChange()"
-                  [class]="selectedTokenType() === 'Alpha' 
+                  (click)="selectedTokenType.set('Atlas'); onTokenTypeChange()"
+                  [class]="selectedTokenType() === 'Atlas' 
                     ? 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-[#00204A] transition duration-150 ease-in-out' 
                     : 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
                 >
-                  Token Alpha
+                  Atlas
                 </button>
                 <button
-                  (click)="selectedTokenType.set('Beta'); onTokenTypeChange()"
-                  [class]="selectedTokenType() === 'Beta' 
+                  (click)="selectedTokenType.set('Didon'); onTokenTypeChange()"
+                  [class]="selectedTokenType() === 'Didon' 
                     ? 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-white bg-[#00204A] transition duration-150 ease-in-out' 
                     : 'flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-700 bg-transparent hover:bg-gray-200 transition duration-150 ease-in-out'"
                 >
-                  Token Beta
+                  Didon
                 </button>
               </div>
             </div>
 
-            <!-- Token Amount -->
+            <!-- Token Amount (entier uniquement) -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Nombre de tokens à mettre en collatéral
               </label>
+              @if (tokensLoading()) {
+                <p class="text-sm text-gray-500 py-2">Chargement des soldes et prix...</p>
+              }
+              @if (!tokensLoading()) {
               <input
                 type="number"
                 min="0"
+                step="1"
                 [max]="getSelectedTokenAmount()"
                 [(ngModel)]="selectedTokenAmount"
                 (input)="onTokenAmountChange()"
                 class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out text-lg"
                 placeholder="0"
               />
+              }
               <p class="text-xs text-gray-500 mt-1">
                 Disponible: {{ getSelectedTokenAmount() }} tokens
               </p>
@@ -71,11 +118,18 @@
                   </span>
                 </div>
                 <div class="flex justify-between items-center mt-2">
-                  <span class="text-sm text-gray-600">Emprunt maximum (70% LTV):</span>
-                  <span class="text-lg font-semibold text-[#00204A]">
+                  <span class="text-sm text-gray-600">Avance max (70% LTV):</span>
+                  <span class="text-sm font-medium text-gray-700">
                     {{ maxLoanAmount() | number:'1.2-2' }} TND
                   </span>
                 </div>
+                <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                  <span class="text-sm font-medium text-gray-700">Montant crédité (Credit Wallet):</span>
+                  <span class="text-lg font-semibold text-[#00204A]">
+                    {{ maxCreditAmount() | number:'1.2-2' }} TND
+                  </span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Fonds versés sur le Credit Wallet (Spec v4.7). Le taux d'intérêt n'est pas prélevé à l'avance ; il est dû lors du remboursement.</p>
               </div>
             }
           </div>
@@ -89,12 +143,12 @@
             <!-- Slider -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-4">
-                Montant souhaité: <span class="font-bold text-primary text-lg">{{ loanAmount() | number:'1.2-2' }} TND</span>
+                Montant à recevoir (Credit Wallet): <span class="font-bold text-primary text-lg">{{ loanAmount() | number:'1.2-2' }} TND</span>
               </label>
               <input
                 type="range"
                 min="0"
-                [max]="maxLoanAmount()"
+                [max]="maxCreditAmount()"
                 step="10"
                 [(ngModel)]="loanAmount"
                 (input)="onLoanAmountChange()"
@@ -102,7 +156,7 @@
               />
               <div class="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0 TND</span>
-                <span>{{ maxLoanAmount() | number:'1.2-2' }} TND</span>
+                <span>{{ maxCreditAmount() | number:'1.2-2' }} TND (avance max)</span>
               </div>
             </div>
 
@@ -125,12 +179,23 @@
                     {{ currentLTV() | number:'1.1-1' }}%
                   </span>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-gray-600">Taux d'intérêt annuel:</span>
-                  <span class="text-lg font-semibold text-primary">
-                    {{ interestRate }}%
-                  </span>
+                @if (creditModel() === 'A' && interestRate() > 0) {
+                <div class="flex flex-col gap-0.5">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600">Taux d'intérêt annuel:</span>
+                    <span class="text-lg font-semibold text-primary">
+                      {{ interestRate() }}%
+                    </span>
+                  </div>
+                  <p class="text-xs text-gray-500">Dû lors du remboursement (non déduit du montant crédité).</p>
                 </div>
+                }
+                @if (creditModel() === 'B') {
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-600">Modèle PGP:</span>
+                  <span class="text-sm text-gray-700">Hurdle 2.5%, partage gains selon tier</span>
+                </div>
+                }
                 <div class="flex justify-between items-center pt-2 border-t border-gray-300">
                   <span class="text-sm font-medium text-gray-700">Prix de liquidation:</span>
                   <span class="text-lg font-bold text-red-600">
@@ -139,12 +204,60 @@
                 </div>
               </div>
             }
+
+            <!-- Bouton Demander l'avance -->
+            @if (loanAmount() > 0 && selectedTokenAmount() > 0 && userTier() !== 'BRONZE') {
+              <div class="mt-6 pt-4 border-t border-gray-200">
+                @if (requestError()) {
+                  <p class="text-sm text-red-600 mb-3">{{ requestError() }}</p>
+                }
+                @if (requestSuccess()) {
+                  <p class="text-sm text-green-600 mb-3">
+                    Demande soumise. L'avance sera activée et le Credit Wallet crédité sous 1 à 2 minutes.
+                  </p>
+                  <p class="text-xs text-gray-500 font-mono break-all">Tx: {{ requestSuccess()!.txHash }}</p>
+                } @else {
+                  <button
+                    (click)="demanderAvance()"
+                    [disabled]="requestInProgress()"
+                    class="w-full py-3 px-6 rounded-lg font-semibold text-white bg-[#00204A] hover:bg-[#003366] disabled:opacity-60 disabled:cursor-not-allowed transition"
+                  >
+                    {{ requestInProgress() ? 'Envoi en cours...' : 'Demander l\'avance' }}
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
       </div>
 
       <!-- Right Column: Risk Visualization & Repayment Schedule -->
       <div class="space-y-6">
+        <!-- Dashboard LTV Variable + Progression (Mod AST 4.1) -->
+        @if (loanAmount() > 0 && selectedTokenAmount() > 0) {
+          <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            <h2 class="text-xl font-semibold text-primary mb-4">Dashboard Crédit</h2>
+            <div class="space-y-4">
+              <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span class="text-sm text-gray-600">LTV Variable (Dette / Valeur collatéral)</span>
+                <span [class]="ltvVariablePercent() < 75 ? 'text-lg font-semibold text-green-600' : ltvVariablePercent() < 85 ? 'text-lg font-semibold text-yellow-600' : 'text-lg font-semibold text-red-600'">
+                  {{ ltvVariablePercent() | number:'1.1-1' }}%
+                </span>
+              </div>
+              <div>
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-gray-600">Jours restants</span>
+                  <span class="font-medium">{{ daysRemainingSim() }}/{{ tierDurationDays() }}</span>
+                </div>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-[#00204A] rounded-full transition-all" 
+                    [style.width.%]="100 - (daysElapsedSim() / tierDurationDays()) * 100"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Risk Visualization -->
         <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
           <h2 class="text-xl font-semibold text-primary mb-4">Visualisation du Risque (LTV)</h2>
@@ -163,7 +276,7 @@
                   <rect width="600" height="200" fill="url(#grid)"/>
                   
                   <!-- Y-axis labels (LTV %) -->
-                  @for (label of [0, 25, 50, 75, 90, 100]; track label) {
+                  @for (label of [0, 25, 50, 75, 85, 100]; track label) {
                     <text [attr.x]="10" [attr.y]="200 - (label / 100 * 180) + 5" style="font-size: 10px; fill: #6b7280;">
                       {{ label }}%
                     </text>
@@ -179,16 +292,16 @@
                     </text>
                   }
                   
-                  <!-- Risk area (above 90%) -->
+                  <!-- Risk area (above 85% - liquidation) -->
                   <polygon
-                    points="0,20 600,20 600,0 0,0"
+                    points="0,27 600,27 600,0 0,0"
                     fill="#ef4444"
                     opacity="0.2"
                   />
                   
-                  <!-- Warning area (75-90%) -->
+                  <!-- Warning area (75-85% - margin call) -->
                   <polygon
-                    points="0,45 600,45 600,20 0,20"
+                    points="0,45 600,45 600,27 0,27"
                     fill="#f59e0b"
                     opacity="0.2"
                   />
@@ -247,7 +360,7 @@
                 </svg>
               </div>
 
-              <!-- Risk Legend -->
+              <!-- Risk Legend - CREDIT_LOMBARD v4.51 -->
               <div class="grid grid-cols-3 gap-2 text-xs">
                 <div class="flex items-center gap-2">
                   <div class="w-4 h-4 bg-green-500 opacity-30 rounded"></div>
@@ -255,11 +368,11 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <div class="w-4 h-4 bg-yellow-500 opacity-30 rounded"></div>
-                  <span class="text-gray-600">Attention (75-90%)</span>
+                  <span class="text-gray-600">Margin Call (75-85%)</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <div class="w-4 h-4 bg-red-500 opacity-30 rounded"></div>
-                  <span class="text-gray-600">Risque (&gt;90%)</span>
+                  <span class="text-gray-600">Liquidation (&gt;85%)</span>
                 </div>
               </div>
             </div>

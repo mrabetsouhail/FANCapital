@@ -40,8 +40,48 @@ public class DeploymentRegistry {
     return load().funds().stream().filter(f -> f.token().equalsIgnoreCase(t)).findFirst();
   }
 
+  /** Résout Atlas/Didon (UI) vers l'adresse du token. */
+  public String getTokenAddressForSymbol(String symbol) {
+    if (symbol == null || symbol.isBlank()) return null;
+    String s = symbol.toLowerCase().strip();
+    for (FundDto f : load().funds()) {
+      String name = (f.name() != null ? f.name() : "").toLowerCase();
+      String sym = (f.symbol() != null ? f.symbol() : "").toLowerCase();
+      if ((name.contains("atlas") || sym.contains("atlas")) && s.contains("atlas")) return f.token();
+      if ((name.contains("didon") || sym.contains("didon")) && s.contains("didon")) return f.token();
+    }
+    return null;
+  }
+
   public String getDeploymentsPathUsed() {
     return load().pathUsed();
+  }
+
+  /** Adresse CreditModelA depuis localhost.json (fallback pour AST). */
+  public String getCreditModelAAddress() {
+    return getContractFromLocalhost("CreditModelA");
+  }
+
+  /** Adresse EscrowRegistry depuis localhost.json. */
+  public String getEscrowRegistryAddress() {
+    return getContractFromLocalhost("EscrowRegistry");
+  }
+
+  private String getContractFromLocalhost(String name) {
+    try {
+      Path p = Path.of("..", "blockchain", "deployments", "localhost.json");
+      if (!Files.exists(p)) return null;
+      String raw = Files.readString(p);
+      var tree = objectMapper.readTree(raw);
+      var contracts = tree.has("contracts") ? tree.get("contracts") : tree.get("infra");
+      if (contracts != null && contracts.has(name)) {
+        String v = contracts.get(name).asText();
+        return (v != null && !v.isBlank()) ? v.trim() : null;
+      }
+    } catch (IOException e) {
+      // ignore
+    }
+    return null;
   }
 
   private Deployments load() {

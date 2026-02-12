@@ -3,19 +3,23 @@ import * as fs from "fs";
 import * as path from "path";
 
 async function main() {
-  const ONBOARDING_KEY_ADDRESS = process.env.ONBOARDING_KEY_ADDRESS;
-  
-  if (!ONBOARDING_KEY_ADDRESS || !ethers.isAddress(ONBOARDING_KEY_ADDRESS)) {
-    throw new Error("ONBOARDING_KEY_ADDRESS environment variable must be set to a valid Ethereum address");
+  // Adresse à laquelle accorder KYC_VALIDATOR_ROLE (celle qui signe addToWhitelist).
+  // Priorité : ONBOARDING_KEY_ADDRESS > OPERATOR_PRIVATE_KEY (fallback, car bootstrap utilise operator)
+  let TARGET_ADDRESS = process.env.ONBOARDING_KEY_ADDRESS;
+  if (!TARGET_ADDRESS || !ethers.isAddress(TARGET_ADDRESS)) {
+    const OPERATOR_PK = process.env.OPERATOR_PRIVATE_KEY;
+    if (OPERATOR_PK && OPERATOR_PK.startsWith("0x") && OPERATOR_PK.length === 66) {
+      TARGET_ADDRESS = new ethers.Wallet(OPERATOR_PK.trim()).address;
+      console.log("Derived from OPERATOR_PRIVATE_KEY:", TARGET_ADDRESS);
+    } else {
+      throw new Error("Set ONBOARDING_KEY_ADDRESS or OPERATOR_PRIVATE_KEY");
+    }
   }
+  console.log("Granting KYC_VALIDATOR_ROLE to:", TARGET_ADDRESS);
 
-  console.log("Granting KYC_VALIDATOR_ROLE to:", ONBOARDING_KEY_ADDRESS);
-
-  // Try to load deployments from localhost.json or localhost.factory-funds.json
   const deploymentsDir = path.join(__dirname, "..", "deployments");
   let kycRegistryAddr: string | null = null;
-
-  const files = ["localhost.json", "localhost.factory-funds.json", "localhost.council-funds.json"];
+  const files = ["localhost.factory-funds.json", "localhost.json", "localhost.council-funds.json"];
   for (const file of files) {
     const filePath = path.join(deploymentsDir, file);
     if (fs.existsSync(filePath)) {
@@ -35,26 +39,26 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Using deployer:", deployer.address);
 
+  const code = await ethers.provider.getCode(kycRegistryAddr);
+  if (!code || code === "0x" || code.length <= 2) {
+    throw new Error(`No contract at ${kycRegistryAddr}. Redeploy with: npm run deploy:factory-funds:localhost`);
+  }
+
   const KYCRegistry = await ethers.getContractAt("KYCRegistry", kycRegistryAddr);
-  
-  // Get KYC_VALIDATOR_ROLE
-  const KYC_VALIDATOR_ROLE = await KYCRegistry.KYC_VALIDATOR_ROLE();
+  const KYC_VALIDATOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("KYC_VALIDATOR_ROLE"));
   console.log("KYC_VALIDATOR_ROLE:", KYC_VALIDATOR_ROLE);
 
-  // Check if role is already granted
-  const hasRole = await KYCRegistry.hasRole(KYC_VALIDATOR_ROLE, ONBOARDING_KEY_ADDRESS);
+  const hasRole = await KYCRegistry.hasRole(KYC_VALIDATOR_ROLE, TARGET_ADDRESS);
   if (hasRole) {
-    console.log("✓ KYC_VALIDATOR_ROLE already granted to", ONBOARDING_KEY_ADDRESS);
+    console.log("✓ KYC_VALIDATOR_ROLE already granted to", TARGET_ADDRESS);
     return;
   }
 
-  // Grant role
   console.log("Granting KYC_VALIDATOR_ROLE...");
-  const tx = await KYCRegistry.grantRole(KYC_VALIDATOR_ROLE, ONBOARDING_KEY_ADDRESS);
+  const tx = await KYCRegistry.grantRole(KYC_VALIDATOR_ROLE, TARGET_ADDRESS);
   console.log("Transaction hash:", tx.hash);
   await tx.wait();
-  
-  console.log("✓ KYC_VALIDATOR_ROLE granted successfully to", ONBOARDING_KEY_ADDRESS);
+  console.log("✓ KYC_VALIDATOR_ROLE granted successfully to", TARGET_ADDRESS);
 }
 
 main()

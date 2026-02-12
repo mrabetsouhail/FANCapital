@@ -51,5 +51,10 @@ export class AuthApiService {
   walletLogin(req: WalletLoginRequest) {
     return this.http.post<AuthResponse>(`${this.baseUrl}/wallet/login`, req);
   }
+
+  /** Active l'abonnement Premium (versement via Cash Wallet). */
+  activatePremium() {
+    return this.http.post<{ status: string; message: string }>(`${this.baseUrl}/premium/activate`, {});
+  }
 }
 

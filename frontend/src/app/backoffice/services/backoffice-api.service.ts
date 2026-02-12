@@ -5,6 +5,7 @@ import type { FiscalDashboardResponse, TxResponse, WithdrawRequest } from '../mo
 import type { KycUserRow, SetInvestorScoreRequest, SetKycLevelRequest } from '../models/kyc.models';
 import type { AuditLogsResponse, AuditRegistryResponse } from '../models/audit.models';
 import type { FeeWalletDashboard } from '../models/fee-wallet.models';
+import type { MultiSigInfo, MultiSigTransactionsList, SubmitTransactionRequest } from '../models/multisig.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -55,6 +56,31 @@ export class BackofficeApiService {
 
   getFeeWallet() {
     return this.http.get<FeeWalletDashboard>('/api/backoffice/fees/wallet');
+  }
+
+  // Multi-Sig Governance
+  getMultiSigInfo() {
+    return this.http.get<MultiSigInfo>('/api/backoffice/multisig/info');
+  }
+
+  listMultiSigTransactions() {
+    return this.http.get<MultiSigTransactionsList>('/api/backoffice/multisig/transactions');
+  }
+
+  getMultiSigTransaction(txId: string) {
+    return this.http.get<any>(`/api/backoffice/multisig/transactions/${txId}`);
+  }
+
+  submitMultiSigTransaction(req: SubmitTransactionRequest) {
+    return this.http.post<TxResponse>('/api/backoffice/multisig/submit', req);
+  }
+
+  confirmMultiSigTransaction(txId: string) {
+    return this.http.post<TxResponse>(`/api/backoffice/multisig/confirm/${txId}`, {});
+  }
+
+  executeMultiSigTransaction(txId: string) {
+    return this.http.post<TxResponse>(`/api/backoffice/multisig/execute/${txId}`, {});
   }
 }
 

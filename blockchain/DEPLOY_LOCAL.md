@@ -33,19 +33,40 @@ Ce script déploie :
 Les adresses sont enregistrées dans `blockchain/deployments/localhost.factory-funds.json`.  
 Le backend lit ce fichier pour connaître les adresses des contrats.
 
-## 3. (Optionnel) Rôles et données de test
+## 3. Rôles : accorder MINTER_ROLE à l’opérateur backend
+
+Pour que l’**alimentation du Cash Wallet** (bouton « Alimenter 10 000 TND » ou auto-seed) fonctionne, l’adresse liée à `OPERATOR_PRIVATE_KEY` (celle du backend) doit avoir le rôle **MINTER_ROLE** sur le contrat CashTokenTND.
+
+Exécutez, avec le nœud blockchain et les contrats déjà déployés :
+
+```powershell
+cd blockchain
+$env:OPERATOR_PRIVATE_KEY="<votre clé privée opérateur - la même que dans application.yml>"
+npm run grant-minter
+```
+
+Ou si vous préférez passer l’adresse directement :
+
+```powershell
+$env:MINT_KEY_ADDRESS="0x..."
+npm run grant-minter
+```
+
+## 4. (Optionnel) Autres scripts de test
 
 Après le déploiement, vous pouvez :
 
-- **Minter du TND** pour les pools ou un wallet : `npx hardhat run scripts/mint-tnd.ts --network localhost`
-- **Accorder les rôles** (minter, burner, oracle, panic, etc.) : ex. `npx hardhat run scripts/grant-minter-role.ts --network localhost`
+- **Minter du TND** pour les pools : `npx hardhat run scripts/mint-tnd.ts --network localhost`
 - **Whitelist un utilisateur** : `npx hardhat run scripts/whitelist-user.ts --network localhost`
 
 ## Résumé des commandes
 
-| Action              | Commande                                              |
-|---------------------|--------------------------------------------------------|
-| Démarrer le nœud    | `cd blockchain && npm run node`                       |
-| Déployer contrats   | `cd blockchain && npm run deploy:factory-funds:localhost` |
+| Action                        | Commande                                                              |
+|-------------------------------|-----------------------------------------------------------------------|
+| Démarrer le nœud              | `cd blockchain && npm run node`                                       |
+| Déployer contrats             | `cd blockchain && npm run deploy:factory-funds:localhost`              |
+| Accorder MINTER à la Mint Key | `$env:MINT_PRIVATE_KEY="0x..."; npm run grant-minter`                  |
+
+**Remarque :** Si vous utilisez une seule clé (MINT = OPERATOR) et que c'est la clé du premier compte Hardhat, vous avez déjà `MINTER_ROLE` et l'étape 3 est inutile.
 
 Une fois le déploiement terminé, redémarrer le backend pour qu’il recharge les adresses depuis `localhost.factory-funds.json`.

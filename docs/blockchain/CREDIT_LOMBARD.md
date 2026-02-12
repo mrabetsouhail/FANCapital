@@ -1,4 +1,4 @@
-# Avance sur Titres (Crédit Lombard) - FAN-Capital
+# Avance sur Titres (Crédit Lombard) - FAN-Capital v4.51
 
 ## Vue d'ensemble
 
@@ -6,9 +6,23 @@ L'avance sur titres permet aux utilisateurs d'obtenir des liquidités immédiate
 
 ---
 
-## 1. Caractéristiques Générales
+## 1. Conditions d'Éligibilité
 
-### 1.1 Objectif
+L'accès au crédit est un **privilège réservé aux membres actifs** de la communauté :
+
+| Critère | Exigence |
+|---------|----------|
+| **Abonnement Premium** | Obligatoire pour accéder à l'interface de prêt |
+| **Statut KYC** | Minimum KYC 1 (Green List) |
+| **Circuit Fermé** | Les fonds sont versés exclusivement dans le **Credit Wallet** |
+
+**Restriction majeure** : L'option "Cash-Out" vers une banque externe est **inexistante**. La liquidité reste investie dans les actifs CPEF, garantissant l'adossement total et la conformité réglementaire.
+
+---
+
+## 2. Caractéristiques Générales
+
+### 2.1 Objectif
 
 **Liquidité immédiate** sans liquidation du portefeuille :
 - Conservation des titres
@@ -16,67 +30,78 @@ L'avance sur titres permet aux utilisateurs d'obtenir des liquidités immédiate
 - Optimisation fiscale
 - Flexibilité financière
 
-### 1.2 Disponibilité
+### 2.2 Disponibilité par Tier
 
-**Niveaux** : Premium uniquement (Silver à Platinum)
-- BRONZE : ❌ Non disponible
-- SILVER : ✅ Disponible
-- GOLD : ✅ Disponible
-- DIAMOND : ✅ Disponible
-- PLATINUM : ✅ Disponible
+**Niveaux** : Premium uniquement, selon Score SCI (voir Modèle A et B)
 
 ---
 
-## 2. Types d'Avance
+## 3. Types d'Avance
 
-### 2.1 Modèle A : Avance à Taux Fixe (2%)
+### 3.1 Modèle A : Avance à Taux Fixe (Dégressif)
 
-**Caractéristiques** :
-- **Taux** : 2% annuel fixe
-- **Prévisibilité** : Coûts totaux connus à l'avance
-- **Partage** : Aucun partage de gains
-- **Disponibilité** : Tous niveaux Premium
+Ce modèle permet d'augmenter sa capacité d'investissement à un **coût prévisible**. Le taux **diminue** à mesure que l'investisseur monte en grade (Score SCI).
+
+| Niveau (Tier) | Seuil SCI | Taux Annuel (Modèle A) | Usage Autorisé |
+|---------------|-----------|------------------------|----------------|
+| BRONZE | 0 - 15 | ❌ Non disponible | - |
+| SILVER | 16 - 35 | 5.0% | Réinvestissement Credit Wallet |
+| GOLD | 36 - 55 | 4.5% | Réinvestissement Credit Wallet |
+| PLATINUM | 56 - 84 | 3.5% | Réinvestissement Credit Wallet |
+| DIAMOND | 85+ | 3.0% | Réinvestissement Credit Wallet |
 
 **Avantages** :
-- Simplicité
-- Prévisibilité
+- Simplicité et prévisibilité
 - Pas de partage de gains
+- Incitation à monter en tier (taux plus bas : 3% vs 5%)
 
-**Utilisation** : Utilisateurs recherchant prévisibilité
+**Utilisation** : Utilisateurs recherchant prévisibilité et coût connu à l'avance
 
-### 2.2 Modèle B : Modèle Participatif (PGP)
+### 3.2 Modèle B : Modèle Participatif (PGP)
 
-**Caractéristiques** :
-- **Hurdle Rate** : 2.5% (seuil de performance)
-- **Partage gains** : Selon niveau (10-30% FAN-Capital)
-- **Partage pertes** : Quote-part plateforme
-- **Disponibilité** : Silver, Gold, Diamond
+**Exclusivement pour les hauts niveaux (PLATINUM & DIAMOND).**
+
+Ce modèle ne repose pas sur un taux fixe, mais sur un **alignement de performance** entre FAN-Capital et l'investisseur.
+
+| Caractéristique | Spécification |
+|-----------------|---------------|
+| **Hurdle Rate** | 2.5% (seuil de déclenchement du partage) |
+| **Partage des Pertes** | En cas de baisse de la VNI, la plateforme absorbe une partie de la perte (selon le ratio du tier) |
+| **Disponibilité** | PLATINUM et DIAMOND uniquement |
+
+**Ratios de Partage (Gains)** :
+
+| Niveau | Client | Plateforme |
+|--------|--------|------------|
+| PLATINUM | 80% | 20% |
+| DIAMOND | 90% | 10% |
 
 **Avantages** :
 - Alignement d'intérêts
 - Partage des risques
-- Potentiel meilleur rendement
-
-**Utilisation** : Utilisateurs confiants en performance
+- Potentiel meilleur rendement pour le client
 
 ---
 
-## 3. Loan-to-Value (LTV)
+## 4. Loan-to-Value (LTV)
 
-### 3.1 LTV par Type d'Actif
+### 4.1 LTV par Type d'Actif (Mod AST 2.1)
 
 | Type d'Actif | LTV Maximum |
 |--------------|-------------|
-| CPEF-EQUITY-HIGH | 50% |
-| CPEF-EQUITY-MEDIUM | 50% |
+| CPEF-EQUITY-HIGH | 70% |
+| CPEF-EQUITY-MEDIUM | 70% |
 
-### 3.2 Calcul LTV
+### 4.2 Calcul LTV
 
 **Formule** :
 ```
 Valeur_Collatéral = Quantité_Tokens × VNI_actuelle
-Montant_Avance_Max = Valeur_Collatéral × LTV
+Montant_Avance_Max = Valeur_Collatéral × LTV (50%)
+Montant_Crédité = Montant_Avance_Max × (1 - 5%)  // Retenue 5% avant crédit Credit Wallet
 ```
+
+L'investisseur saisit un **nombre entier** de tokens. Le montant crédité au Credit Wallet est inférieur de 5% à l'avance max (LTV 50%).
 
 **Exemple** :
 - 100 CPEF-EQUITY
@@ -87,9 +112,9 @@ Montant_Avance_Max = Valeur_Collatéral × LTV
 
 ---
 
-## 4. Mécanisme de Séquestre
+## 5. Mécanisme de Séquestre
 
-### 4.1 Escrow Registry
+### 5.1 Escrow Registry
 
 **Processus** :
 1. Demande avance utilisateur
@@ -102,32 +127,40 @@ Montant_Avance_Max = Valeur_Collatéral × LTV
 - Blocage jusqu'à échéance ou remboursement
 - Protection contre double utilisation
 
-### 4.2 Credit Wallet
+### 5.2 Credit Wallet
 
-**Destination** : Fonds versés sur solde spécifique
-- Réinvestissement interne possible
-- Retrait bancaire possible
-- Utilisation flexible
+**Circuit Fermé** : Fonds versés exclusivement sur le **Credit Wallet** interne.
+
+| Caractéristique | Spécification |
+|-----------------|---------------|
+| **Destination** | Credit Wallet uniquement |
+| **Réinvestissement** | Achats de nouveaux jetons CPEF uniquement |
+| **Cash-Out bancaire** | ❌ **Inexistant** – La liquidité reste investie dans les actifs CPEF |
 
 ---
 
-## 5. Modèle A : Taux Fixe (2%)
+## 6. Modèle A : Taux Fixe Dégressif
 
-### 5.1 Caractéristiques
+### 6.1 Caractéristiques
 
-**Taux** : 2% annuel fixe
+Le taux annuel **décroît** avec le niveau (Score SCI). Voir tableau section 3.1.
 
 **Calcul intérêts** :
 ```
-Intérêts = Montant_Avance × Taux × (Durée / 365)
+Intérêts = Montant_Avance × Taux_Annuel × (Durée / 365)
 ```
 
-**Exemple** :
+**Exemple (Gold, 4.5%)** :
 - Avance : 10,000 TND
 - Durée : 6 mois (183 jours)
-- Intérêts : 10,000 × 0.02 × (183/365) = **100.27 TND**
+- Intérêts : 10,000 × 0.045 × (183/365) = **225.62 TND**
 
-### 5.2 Remboursement
+**Exemple (Diamond, 3%)** :
+- Avance : 10,000 TND
+- Durée : 6 mois (183 jours)
+- Intérêts : 10,000 × 0.03 × (183/365) = **150.41 TND**
+
+### 6.2 Remboursement
 
 **Mode** : Cash-First (priorité numéraire)
 
@@ -143,9 +176,11 @@ Intérêts = Montant_Avance × Taux × (Durée / 365)
 
 ---
 
-## 6. Modèle B : Partage Gains/Pertes (PGP)
+## 7. Modèle B : Partage Gains/Pertes (PGP)
 
-### 6.1 Hurdle Rate
+**Disponibilité** : PLATINUM et DIAMOND uniquement.
+
+### 7.1 Hurdle Rate
 
 **Seuil** : 2.5% de performance VNI
 
@@ -159,46 +194,50 @@ Intérêts = Montant_Avance × Taux × (Durée / 365)
 - Hurdle : 2.5%
 - Résultat : Client conserve 100% (pas de commission)
 
-### 6.2 Ratios de Partage
+### 7.2 Ratios de Partage
 
-**Au-delà du Hurdle Rate** :
+**Au-delà du Hurdle Rate (2.5%)** :
 
 | Niveau | Client | FAN-Capital | Hurdle Rate |
-|-------|--------|-------------|-------------|
-| SILVER | 70% | 30% | 2.5% |
-| GOLD | 80% | 20% | 2.5% |
+|--------|--------|-------------|-------------|
+| PLATINUM | 80% | 20% | 2.5% |
 | DIAMOND | 90% | 10% | 2.5% |
 
-**Exemple (Gold, performance 5%)** :
+**Exemple (PLATINUM, performance 5%)** :
 - Performance : 5%
 - Au-delà du seuil : 5% - 2.5% = 2.5%
 - Client : 2.5% × 80% = **2.0%**
 - FAN-Capital : 2.5% × 20% = **0.5%**
 
-### 6.3 Partage des Pertes
+### 7.3 Partage des Pertes
 
-**Principe** : La plateforme assume sa quote-part
+**Principe** : En cas de baisse de la VNI, la plateforme absorbe une partie de la perte selon le ratio du tier.
 
-**Exemple (Gold, perte -5%)** :
+**Exemple (PLATINUM, perte -5%)** :
 - Performance : -5%
 - Client : -5% × 80% = **-4%**
 - FAN-Capital : -5% × 20% = **-1%**
 
-### 6.4 Durées et Délais
+### 7.4 Durées et Délais
 
 | Niveau | Durée Max | Délai Grâce |
 |--------|-----------|-------------|
-| SILVER | 3 mois | 3 jours |
-| GOLD | 6 mois | 7 jours |
+| PLATINUM | 6 mois | 7 jours |
 | DIAMOND | 12 mois | 15 jours |
 
 ---
 
-## 7. Mécanique de Remboursement
+## 8. Mécanisme de Remboursement "Cash-First"
 
-### 7.1 Cash-First (Priorité Numéraire)
+### 8.1 Principe
 
-**Principe** : Priorité au remboursement en numéraire
+Pour **protéger le patrimoine** de l'utilisateur, le système privilégie le remboursement en numéraire :
+
+| Élément | Description |
+|---------|-------------|
+| **Conservation des Titres** | L'investisseur garde la pleine propriété de ses jetons mis en séquestre (Escrow) |
+| **Remboursement par Coupons** | Les dividendes ou intérêts versés par les actifs sous-jacents (Actions/Obligations du portefeuille) sont **automatiquement affectés** au remboursement de l'avance |
+| **Libération de Collatéral** | Chaque remboursement (manuel ou via coupon) libère **instantanément** une quantité proportionnelle de jetons du compte de séquestre vers le portefeuille principal |
 
 **Processus** :
 1. À l'échéance : Versement cash pour solder l'avance
@@ -211,7 +250,7 @@ Intérêts = Montant_Avance × Taux × (Durée / 365)
 - Pas de liquidation forcée
 - Flexibilité
 
-### 7.2 Versements Mensuels et Déblocage Progressif
+### 8.2 Versements Mensuels et Déblocage Progressif
 
 **Coupons Mensuels** :
 - Revenus (dividendes, intérêts) versés chaque mois
@@ -234,20 +273,28 @@ Intérêts = Montant_Avance × Taux × (Durée / 365)
 
 ---
 
-## 8. Gestion de Crise et Liquidation
+## 9. Sécurité et Liquidation (LTV)
 
-### 8.1 Protocoles de Liquidation
+Le ratio **Loan-to-Value** est le garde-fou du système :
+
+| Seuil | LTV | Action |
+|-------|-----|--------|
+| **Émission** | 50% max | Montant maximum d'avance à l'ouverture : 50% de la valeur des titres |
+| **Appel de marge (Margin Call)** | 75% | Si la VNI baisse et que le LTV atteint 75%, notification utilisateur |
+| **Liquidation forcée** | 85% | Le Smart Contract vend **automatiquement** la portion nécessaire de titres pour couvrir la dette, protégeant la solvabilité de la plateforme |
+
+### 9.1 Protocoles de Liquidation
 
 **Conditions d'Activation** (dernier recours uniquement) :
 1. **Non-remboursement** : Aucun remboursement cash après expiration délai de grâce
-2. **LTV critique** : Ratio LTV dépasse 85%, mettant en péril la solvabilité
+2. **LTV critique** : Ratio LTV atteint 85%, déclenchement automatique
 
 **Processus** :
-1. Notification utilisateur
+1. Notification utilisateur (à 75% LTV)
 2. Délai de grâce (selon niveau)
-3. Si non-respect : Liquidation forcée
+3. Si non-respect ou LTV ≥ 85% : Liquidation forcée automatique
 
-### 8.2 Sécurité d'Exécution
+### 9.2 Sécurité d'Exécution
 
 **Lissage TWAP** :
 - Prix de vente calculé sur moyenne temporelle
@@ -267,9 +314,9 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 
 ---
 
-## 9. Exemples de Simulation
+## 10. Exemples de Simulation
 
-### 9.1 Avance Taux Fixe (Modèle A)
+### 10.1 Avance Taux Fixe (Modèle A)
 
 **Données** :
 - Collatéral : 100 CPEF-EQUITY-MEDIUM
@@ -278,27 +325,27 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 - LTV : 50%
 - Avance : 6,275 TND
 - Durée : 6 mois
-- Taux : 2%
+- Niveau : Gold (taux 4.5%)
 
 **Calcul** :
-1. Intérêts : 6,275 × 0.02 × (183/365) = **62.92 TND**
-2. **Total à rembourser** : 6,275 + 62.92 = **6,337.92 TND**
+1. Intérêts : 6,275 × 0.045 × (183/365) = **141.57 TND**
+2. **Total à rembourser** : 6,275 + 141.57 = **6,416.57 TND**
 
 **Scénario Appréciation** :
 - VNI finale : 135.00 TND
 - Valeur finale : 13,500 TND
 - Gain : 950 TND
-- **Net après remboursement** : 13,500 - 6,337.92 = **7,162.08 TND**
-- **Gain net** : 7,162.08 - 6,275 = **887.08 TND**
+- **Net après remboursement** : 13,500 - 6,416.57 = **7,083.43 TND**
+- **Gain net** : 7,083.43 - 6,275 = **808.43 TND**
 
-### 9.2 Avance PGP (Modèle B - Gold)
+### 10.2 Avance PGP (Modèle B - PLATINUM)
 
 **Données** :
 - Collatéral : 100 CPEF-EQUITY-MEDIUM
 - VNI initiale : 125.50 TND
 - Avance : 6,275 TND (50% LTV)
 - Durée : 6 mois
-- Niveau : Gold (80/20)
+- Niveau : PLATINUM (80/20)
 - Hurdle Rate : 2.5%
 
 **Scénario 1 : Performance 5%** :
@@ -332,7 +379,7 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 - Déblocage progressif (si applicable)
 - Performance VNI (PGP)
 
-### 10.2 Allocation des Actifs
+### 11.2 Allocation des Actifs
 
 **Visibilité** :
 - Allocation précise (Actions HIGH et MEDIUM)
@@ -341,9 +388,9 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 
 ---
 
-## 11. Conformité Fiscale B2B
+## 12. Conformité Fiscale B2B
 
-### 11.1 Traitement Fiscal
+### 12.1 Traitement Fiscal
 
 **Entreprises** :
 - Pertes PGP : Charges financières déductibles
@@ -356,7 +403,18 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 
 ---
 
-## 12. Checklist Utilisateur
+## 13. Résumé de la Valeur Ajoutée pour FAN-Capital
+
+| Pilier | Description |
+|--------|-------------|
+| **Fidélisation** | L'utilisateur est incité à rester Premium pour bénéficier des taux bas (3% Diamond vs 5% Silver) |
+| **Croissance des AUM** | Puisque le retrait bancaire est impossible, **100% du crédit** est réinjecté dans l'achat de nouveaux jetons, augmentant les actifs sous gestion et les frais de transaction |
+| **Sécurité** | Le modèle "Credit Wallet" élimine le risque de fuite de capitaux |
+| **Conformité** | Simplifie la conformité avec le régulateur (CMF) |
+
+---
+
+## 14. Checklist Utilisateur
 
 ### Avant Demande
 
@@ -380,4 +438,4 @@ Quantité_liquidée = (Dette_totale × (1 + Frais_pénalité))
 ---
 
 *Document créé le 26 janvier 2026*
-*Version 1.0 - Ingénierie Avance sur Titres*
+*Version 4.51 - Ingénierie Avance sur Titres*

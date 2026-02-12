@@ -11,18 +11,19 @@ contract InvestorRegistry is IInvestorRegistry, AccessControl {
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-    // Tier groups aligned with the doc:
-    // Bronze (0-20), Silver/Gold (21-50), Platinum/Diamond (51+)
+    // Tier groups aligned with CREDIT_LOMBARD v4.51 (Score SCI):
+    // BRONZE 0-15, SILVER 16-35, GOLD 36-55, PLATINUM 56-84, DIAMOND 85+
     uint8 public constant TIER_BRONZE = 0;
-    uint8 public constant TIER_SILVER_GOLD = 1;
-    uint8 public constant TIER_PLATINUM_DIAMOND = 2;
+    uint8 public constant TIER_SILVER = 1;
+    uint8 public constant TIER_GOLD = 2;
+    uint8 public constant TIER_PLATINUM = 3;
+    uint8 public constant TIER_DIAMOND = 4;
 
     struct Investor {
         uint16 score; // 0..100 (or more if needed)
         bool subscriptionActive;
         uint64 lastUpdatedAt;
-        // Fee level for pricing/commissions (0..4):
-        // 0=BRONZE, 1=SILVER, 2=GOLD, 3=DIAMOND, 4=PLATINUM
+        // Fee level = effective tier (0..4): 0=BRONZE, 1=SILVER, 2=GOLD, 3=PLATINUM, 4=DIAMOND
         uint8 feeLevel;
     }
 
@@ -67,35 +68,35 @@ contract InvestorRegistry is IInvestorRegistry, AccessControl {
         return _investors[user].score;
     }
 
-    function getFeeLevel(address user) external view returns (uint8) {
+    function getFeeLevel(address user) public view returns (uint8) {
         return _investors[user].feeLevel;
     }
 
     function getTier(address user) public view returns (uint8) {
         uint16 s = _investors[user].score;
-        if (s <= 20) return TIER_BRONZE;
-        if (s <= 50) return TIER_SILVER_GOLD;
-        return TIER_PLATINUM_DIAMOND;
+        if (s <= 15) return TIER_BRONZE;
+        if (s <= 35) return TIER_SILVER;
+        if (s <= 55) return TIER_GOLD;
+        if (s <= 84) return TIER_PLATINUM;
+        return TIER_DIAMOND;
     }
 
     function isSubscriptionActive(address user) public view returns (bool) {
         return _investors[user].subscriptionActive;
     }
 
-    // Premium gates (30%)
+    // Premium gates - CREDIT_LOMBARD v4.51 / SCI v4.5
+    // feeLevel = effective tier = min(tier_score, tier_kyc) per Loi du minimum (conformité LBA/FT)
     function canUseCreditModelA(address user) external view returns (bool) {
-        // Silver/Gold+ and premium active
-        return getTier(user) >= TIER_SILVER_GOLD && isSubscriptionActive(user);
+        return getFeeLevel(user) >= TIER_SILVER && isSubscriptionActive(user);
     }
 
     function canUseReservation(address user) external view returns (bool) {
-        // Platinum/Diamond+ and premium active
-        return getTier(user) >= TIER_PLATINUM_DIAMOND && isSubscriptionActive(user);
+        return getFeeLevel(user) >= TIER_PLATINUM && isSubscriptionActive(user);
     }
 
     function canUseCreditModelB(address user) external view returns (bool) {
-        // Platinum/Diamond+ and premium active
-        return getTier(user) >= TIER_PLATINUM_DIAMOND && isSubscriptionActive(user);
+        return getFeeLevel(user) >= TIER_PLATINUM && isSubscriptionActive(user);
     }
 }
 

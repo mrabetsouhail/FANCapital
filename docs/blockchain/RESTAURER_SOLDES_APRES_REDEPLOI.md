@@ -35,6 +35,11 @@ cd blockchain
 $env:USER_ADDRESS="0xVOTRE_ADRESSE_WALLET"
 $env:USER_AMOUNT="5000"
 $env:POOL_AMOUNT="5000"
+npm run seed:cash
+```
+
+Ou via le script direct :
+```powershell
 npx hardhat run scripts/mint-tnd-for-testing.ts --network localhost
 ```
 
@@ -75,14 +80,25 @@ npx hardhat run scripts/mint-tnd-for-testing.ts --network localhost
 npx hardhat run scripts/whitelist-user.ts --network localhost
 ```
 
+## Attribution automatique (Backoffice KYC)
+
+**Jusqu’à l’intégration des API de paiement**, la validation KYC via le backoffice déclenche automatiquement :
+
+- **KYC1** : 5 000 TND mintés sur le Cash Wallet + whitelist
+- **KYC2** : 10 000 TND mintés sur le Cash Wallet + whitelist
+
+La **Ligne de crédit** affichée dans la navbar suit le même principe : 5 000 TND (KYC1) ou 10 000 TND (KYC2).
+
+Ainsi, après un redéploiement : **revalider le KYC** des utilisateurs depuis le backoffice suffit à recréer leur Cash Wallet (au lieu d’utiliser manuellement `mint-tnd-for-testing.ts` et `whitelist-user.ts`).
+
 ## Récapitulatif
 
 | Donnée              | Où elle est stockée | Après redéploi |
 |---------------------|----------------------|----------------|
 | Comptes / emails    | Base (H2 ou MariaDB)| Conservés      |
 | Lien user ↔ wallet  | Base                 | Conservé       |
-| Solde TND (cash)    | Blockchain           | **0** → à recréer avec mint |
+| Solde TND (cash)    | Blockchain           | **0** → à recréer (validation KYC ou mint manuel) |
 | Tokens CPEF         | Blockchain           | **0** → à recréer en faisant des achats |
-| Whitelist KYC       | Blockchain           | **Vide** → à recréer avec whitelist-user |
+| Whitelist KYC       | Blockchain           | **Vide** → à recréer (validation KYC ou whitelist-user) |
 
-En refaisant **mint TND** + **whitelist** pour les adresses utilisées dans l’app, les soldes Cash Wallet (et ensuite Token Wallet après achats) reviennent comme avant en environnement de test.
+En refaisant **validation KYC** (backoffice) ou **mint TND** + **whitelist** pour les adresses utilisées dans l’app, les soldes Cash Wallet (et ensuite Token Wallet après achats) reviennent comme avant en environnement de test.

@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { BLOCKCHAIN_API_BASE_URL } from '../blockchain-api.tokens';
 import type { Fund, FundsListResponse } from '../models/fund.models';
 import type {
+  AdvanceRequest,
   BuyRequest,
   QuoteBuyRequest,
   QuoteBuyResponse,
@@ -22,7 +23,7 @@ import type {
   CancelOrderResponse,
 } from '../models/orderbook.models';
 import type { PortfolioResponse } from '../models/portfolio.models';
-import type { InvestorProfileResponse } from '../models/investor.models';
+import type { InvestorProfileResponse, SciScoreResult, SciPushResult } from '../models/investor.models';
 import type { TxHistoryResponse } from '../models/tx-history.models';
 
 @Injectable({ providedIn: 'root' })
@@ -54,6 +55,23 @@ export class BlockchainApiService {
     return this.http.get<InvestorProfileResponse>(`${this.baseUrl}/investor/profile`, { params: { user } });
   }
 
+  /** SCI v4.5: calcul du score et tier effectif. */
+  getSciScore(user: string) {
+    return this.http.get<SciScoreResult>(`${this.baseUrl}/investor/sci`, { params: { user } });
+  }
+
+  /** SCI v4.5: push score + tier effectif vers la blockchain. */
+  pushSciScore(user: string) {
+    return this.http.post<SciPushResult>(`${this.baseUrl}/investor/sci/push`, null, { params: { user } });
+  }
+
+  /** Alimente la Cash Wallet (dev/test). Mint TND on-chain. */
+  seedCash(user: string, amount: number = 5000) {
+    return this.http.post<{ status: string; message: string }>(`${this.baseUrl}/seed/cash`, null, {
+      params: { user, amount },
+    });
+  }
+
   // ---------- Tx History ----------
   getTxHistory(user: string, limit: number = 150) {
     return this.http.get<TxHistoryResponse>(`${this.baseUrl}/tx/history`, { params: { user, limit } as any });
@@ -74,6 +92,11 @@ export class BlockchainApiService {
 
   sell(req: SellRequest) {
     return this.http.post<TxResponse>(`${this.baseUrl}/pool/sell`, req);
+  }
+
+  /** Demande d'avance sur titres (AST). Token: Atlas ou Didon. */
+  requestAdvance(req: AdvanceRequest) {
+    return this.http.post<TxResponse>(`${this.baseUrl}/advance/request`, req);
   }
 
   // ---------- P2P ----------

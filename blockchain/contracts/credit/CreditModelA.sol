@@ -19,7 +19,7 @@ contract CreditModelA is AccessControl, ReentrancyGuard {
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     uint256 internal constant PRICE_SCALE = 1e8; // TND
-    uint256 internal constant LTV_BPS = 5_000; // 50%
+    uint256 internal constant LTV_BPS = 7_000; // 70% (MAX_LTV_EMISSION rehaussé)
     uint256 internal constant BPS = 10_000;
 
     enum Status {
@@ -52,6 +52,7 @@ contract CreditModelA is AccessControl, ReentrancyGuard {
     event LoanActivated(uint256 indexed loanId, uint64 startAt, uint64 durationDays);
     event LoanClosed(uint256 indexed loanId);
     event LoanCancelled(uint256 indexed loanId);
+    event RepaymentRecorded(uint256 indexed loanId, uint256 amountRepaidTnd);
 
     constructor(address admin_, address oracle_, address escrow_) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
@@ -81,7 +82,7 @@ contract CreditModelA is AccessControl, ReentrancyGuard {
     function requestAdvance(address token, uint256 collateralAmount, uint64 durationDays) external nonReentrant returns (uint256 loanId) {
         require(address(kycRegistry) != address(0), "A: KYC not set");
         require(kycRegistry.isWhitelisted(msg.sender), "A: not whitelisted");
-        require(kycRegistry.getUserLevel(msg.sender) >= 2, "A: requires KYC level 2");
+        require(kycRegistry.getUserLevel(msg.sender) >= 1, "A: requires KYC 1 (Green List)");
 
         require(address(investorRegistry) != address(0), "A: investor registry not set");
         require(investorRegistry.canUseCreditModelA(msg.sender), "A: requires tier+sub");
@@ -123,11 +124,31 @@ contract CreditModelA is AccessControl, ReentrancyGuard {
         emit LoanActivated(loanId, l.startAt, l.durationDays);
     }
 
-    /// @notice Platform closes loan after full repayment off-chain.
+    /// @notice Record partial repayment and release collateral prorata.
+    /// Tokens_Libérés = (amountRepaidTnd / principalTnd) * collateralAmount
+    function recordRepayment(uint256 loanId, uint256 amountRepaidTnd) external onlyRole(OPERATOR_ROLE) {
+        Loan storage l = loans[loanId];
+        require(l.status == Status.Active, "A: not active");
+        require(amountRepaidTnd > 0, "A: amount=0");
+        require(amountRepaidTnd <= l.principalTnd, "A: overpaid");
+
+        escrow.unlockCollateralPartial(loanId, l.user, amountRepaidTnd, l.principalTnd);
+        l.principalTnd -= amountRepaidTnd;
+
+        emit RepaymentRecorded(loanId, amountRepaidTnd);
+
+        if (l.principalTnd == 0) {
+            l.status = Status.Closed;
+            emit LoanClosed(loanId);
+        }
+    }
+
+    /// @notice Platform closes loan after full repayment off-chain (legacy / manual).
     function closeAdvance(uint256 loanId) external onlyRole(OPERATOR_ROLE) {
         Loan storage l = loans[loanId];
         require(l.status == Status.Active, "A: not active");
         l.status = Status.Closed;
+        l.principalTnd = 0;
         escrow.unlockCollateral(loanId, l.user);
         emit LoanClosed(loanId);
     }

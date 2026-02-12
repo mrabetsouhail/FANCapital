@@ -23,7 +23,9 @@ public class PortfolioDtos {
   public record PortfolioResponse(
       String user,
       List<PortfolioPosition> positions,
-      String cashBalanceTnd,     // TND (1e8) on-chain CashTokenTND balance
+      String cashBalanceTnd,      // TND (1e8) on-chain CashTokenTND balance
+      String creditLineTnd,      // TND (1e8) plafond: KYC1=5000, KYC2=10000
+      String creditDebtTnd,      // TND (1e8) avance créditée (principal AST en cours) - 0 si pas d'avance
       String totalValueTnd,      // TND (1e8)
       String totalUnrealizedGainTnd // TND (1e8)
   ) {}

@@ -3,6 +3,7 @@ package com.fancapital.backend.blockchain.service;
 import com.fancapital.backend.auth.model.AppUser;
 import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.backoffice.service.DeploymentInfraService;
+import com.fancapital.backend.blockchain.service.SciScorePushService;
 import com.fancapital.backend.config.BlockchainProperties;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -29,17 +30,22 @@ import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 
 /**
- * Dev/MVP helper: when KYC Level 1 is validated, bootstrap on-chain state:
+ * Dev/MVP helper: when KYC Level 1+ is validated, bootstrap on-chain state:
  * - whitelist the user's WaaS wallet in KYCRegistry
- * - mint some on-chain TND to the wallet (to allow buys)
+ * - mint on-chain TND to the Cash Wallet (pour tester achats/ventes)
  * - approve pools to spend TND from the wallet
  *
- * This is ONLY for local testing.
+ * Montants Cash Wallet (tests jusqu'à implémentation des virements):
+ * - KYC1 (Green List): 5 000 TND
+ * - KYC2 (White List): 10 000 TND
  */
 @Service
 public class OnchainBootstrapService {
   private static final BigInteger PRICE_SCALE = BigInteger.valueOf(100_000_000L); // 1e8
-  private static final BigInteger BOOTSTRAP_TND = BigInteger.valueOf(10_000).multiply(PRICE_SCALE);
+  /** Cash Wallet KYC1: 5 000 TND (tests jusqu'à virements) */
+  private static final BigInteger BOOTSTRAP_TND_KYC1 = BigInteger.valueOf(5_000).multiply(PRICE_SCALE);
+  /** Cash Wallet KYC2: 10 000 TND (tests jusqu'à virements) */
+  private static final BigInteger BOOTSTRAP_TND_KYC2 = BigInteger.valueOf(10_000).multiply(PRICE_SCALE);
   private static final BigInteger MAX_APPROVE = new BigInteger("2").pow(255); // big enough
   private static final BigInteger MIN_GAS_ETH = new BigInteger("10000000000000000"); // 0.01 ETH
   private static final BigInteger TOPUP_GAS_ETH = new BigInteger("50000000000000000"); // 0.05 ETH
@@ -50,6 +56,8 @@ public class OnchainBootstrapService {
   private final DeploymentInfraService infra;
   private final AppUserRepository userRepo;
   private final WaasUserWalletService waasWallets;
+  private final SciScorePushService sciPush;
+  private final MintKeyService mintKeyService;
 
   public OnchainBootstrapService(
       Web3j web3j,
@@ -57,7 +65,9 @@ public class OnchainBootstrapService {
       DeploymentRegistry registry,
       DeploymentInfraService infra,
       AppUserRepository userRepo,
-      WaasUserWalletService waasWallets
+      WaasUserWalletService waasWallets,
+      SciScorePushService sciPush,
+      MintKeyService mintKeyService
   ) {
     this.web3j = web3j;
     this.props = props;
@@ -65,6 +75,48 @@ public class OnchainBootstrapService {
     this.infra = infra;
     this.userRepo = userRepo;
     this.waasWallets = waasWallets;
+    this.sciPush = sciPush;
+    this.mintKeyService = mintKeyService;
+  }
+
+  /**
+   * Alimente la Cash Wallet d'un utilisateur (pour tests). Mint TND on-chain.
+   * Utilise MINT_PRIVATE_KEY si configuré (MINTER_ROLE), sinon OPERATOR_PRIVATE_KEY en fallback.
+   */
+  public String seedCashToWallet(String walletAddress, long amountTnd) {
+    if (walletAddress == null || walletAddress.isBlank()) {
+      throw new IllegalArgumentException("walletAddress required");
+    }
+    if (amountTnd <= 0 || amountTnd > 1_000_000) {
+      throw new IllegalArgumentException("amountTnd must be 1..1000000");
+    }
+    String cash = infra.cashTokenAddress();
+    if (cash == null || cash.isBlank()) {
+      throw new IllegalStateException("CashTokenTND address not configured. Deploy contracts first.");
+    }
+    BigInteger amountWei = BigInteger.valueOf(amountTnd).multiply(PRICE_SCALE);
+    if (props.mintPrivateKey() != null && !props.mintPrivateKey().isBlank()) {
+      mintKeyService.mint(walletAddress, amountWei);
+    } else {
+      Credentials operator = operatorCredentials();
+      TransactionManager opTm = new RawTransactionManager(web3j, operator, chainId().longValue());
+      Function mint = new Function("mint", List.of(new Address(walletAddress), new Uint256(amountWei)), List.of());
+      sendTx(opTm, cash, mint, BigInteger.valueOf(250_000));
+    }
+    // Approve pools pour que l'utilisateur puisse acheter immédiatement (évite ERC20InsufficientAllowance)
+    userRepo.findByWalletAddressIgnoreCase(walletAddress).ifPresent(u -> {
+      try {
+        Credentials userCreds = waasWallets.credentialsForUser(u.getId());
+        TransactionManager userTm = new RawTransactionManager(web3j, userCreds, chainId().longValue());
+        for (var fund : registry.listFunds()) {
+          Function approve = new Function("approve", List.of(new Address(fund.pool()), new Uint256(MAX_APPROVE)), List.of());
+          sendTx(userTm, cash, approve, BigInteger.valueOf(120_000));
+        }
+      } catch (Exception e) {
+        System.err.println("Warning: Could not approve pools after seed for " + walletAddress + ": " + e.getMessage());
+      }
+    });
+    return "minted " + amountTnd + " TND to " + walletAddress;
   }
 
   @Transactional(readOnly = true)
@@ -95,16 +147,21 @@ public class OnchainBootstrapService {
       sendValue(opTm, wallet, TOPUP_GAS_ETH, BigInteger.valueOf(21_000));
     }
 
-    // 2) ensure some TND balance
+    // 2) ensure some TND balance (test amounts until payment API integration)
     String cash = infra.cashTokenAddress();
     if (cash == null || cash.isBlank()) {
       throw new IllegalStateException("CashTokenTND address not found in deployments. Ensure blockchain contracts are deployed and deployment JSON file exists.");
     }
+    BigInteger targetTnd = u.getKycLevel() >= 2 ? BOOTSTRAP_TND_KYC2 : BOOTSTRAP_TND_KYC1;
     BigInteger bal = erc20BalanceOf(cash, wallet);
-    if (bal.compareTo(BOOTSTRAP_TND) < 0) {
-      BigInteger mintAmt = BOOTSTRAP_TND.subtract(bal);
-      Function mint = new Function("mint", List.of(new Address(wallet), new Uint256(mintAmt)), List.of());
-      sendTx(opTm, cash, mint, BigInteger.valueOf(250_000));
+    if (bal.compareTo(targetTnd) < 0) {
+      BigInteger mintAmt = targetTnd.subtract(bal);
+      if (props.mintPrivateKey() != null && !props.mintPrivateKey().isBlank()) {
+        mintKeyService.mint(wallet, mintAmt);
+      } else {
+        Function mint = new Function("mint", List.of(new Address(wallet), new Uint256(mintAmt)), List.of());
+        sendTx(opTm, cash, mint, BigInteger.valueOf(250_000));
+      }
     }
 
     // 3) approve pools for spending user's TND (signed by user's WaaS key)
@@ -115,39 +172,11 @@ public class OnchainBootstrapService {
       sendTx(userTm, cash, approve, BigInteger.valueOf(120_000));
     }
 
-    // 4) Initialize feeLevel to 0 (BRONZE) in InvestorRegistry if not already set
-    // Note: In Solidity, uint8 defaults to 0, but we explicitly set it for clarity
-    String investorRegistry = infra.investorRegistryAddress();
-    if (investorRegistry != null && !investorRegistry.isBlank()) {
-      Function getFee = new Function(
-          "getFeeLevel",
-          List.of(new Address(wallet)),
-          List.of(new TypeReference<Uint256>() {})
-      );
-      String data = FunctionEncoder.encode(getFee);
-      Transaction call = Transaction.createEthCallTransaction(null, investorRegistry, data);
-      try {
-        EthCall res = web3j.ethCall(call, DefaultBlockParameterName.LATEST).send();
-        if (!res.hasError() && res.getValue() != null && !res.getValue().isBlank()) {
-          var decoded = org.web3j.abi.FunctionReturnDecoder.decode(res.getValue(), getFee.getOutputParameters());
-          if (decoded != null && !decoded.isEmpty()) {
-            BigInteger currentFeeLevel = (BigInteger) decoded.get(0).getValue();
-            // Only set if it's still 0 (default/uninitialized)
-            // If it's already been set to a different value, don't override
-            if (currentFeeLevel.equals(BigInteger.ZERO)) {
-              Function setFee = new Function(
-                  "setFeeLevel",
-                  List.of(new Address(wallet), new Uint8(BigInteger.ZERO)),
-                  List.of()
-              );
-              sendTx(opTm, investorRegistry, setFee, BigInteger.valueOf(250_000));
-            }
-          }
-        }
-      } catch (IOException e) {
-        // If InvestorRegistry is not available, skip feeLevel initialization (non-critical)
-        System.err.println("Warning: Could not initialize feeLevel for user " + wallet + ": " + e.getMessage());
-      }
+    // 4) SCI v4.5: calcul score + tier effectif (loi du minimum), push vers InvestorRegistry
+    try {
+      sciPush.pushForUser(userId);
+    } catch (Exception e) {
+      System.err.println("Warning: Could not push SCI/feeLevel for user " + wallet + ": " + e.getMessage());
     }
   }
 

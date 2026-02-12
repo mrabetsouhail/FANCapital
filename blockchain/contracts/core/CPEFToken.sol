@@ -43,6 +43,9 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     /// @notice Optional escrow registry: addresses locked (e.g. collateral)
     mapping(address => bool) public isEscrowLocked;
 
+    /// @notice Amount of tokens locked per user (for prorata release; overrides bool when > 0)
+    mapping(address => uint256) public escrowLockedAmount;
+
     /// @notice Address allowed to lock/unlock escrow (typically EscrowRegistry)
     address public escrowManager;
 
@@ -114,7 +117,28 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     /// @dev In production this should be controlled by an EscrowRegistry contract.
     function setEscrowLocked(address user, bool locked) external onlyEscrowManagerOrOwner {
         isEscrowLocked[user] = locked;
+        if (!locked) escrowLockedAmount[user] = 0;
         emit EscrowLockUpdated(user, locked);
+    }
+
+    /// @notice Add amount to user's locked escrow (prorata model).
+    function addEscrowLockedAmount(address user, uint256 amount) external onlyEscrowManagerOrOwner {
+        if (amount == 0) return;
+        escrowLockedAmount[user] += amount;
+        isEscrowLocked[user] = true;
+        emit EscrowLockUpdated(user, true);
+    }
+
+    /// @notice Reduce user's locked escrow by amount (prorata release).
+    function reduceEscrowLockedAmount(address user, uint256 amount) external onlyEscrowManagerOrOwner {
+        if (amount == 0) return;
+        uint256 current = escrowLockedAmount[user];
+        require(current >= amount, "CPEF: insufficient locked");
+        escrowLockedAmount[user] = current - amount;
+        if (escrowLockedAmount[user] == 0) {
+            isEscrowLocked[user] = false;
+        }
+        emit EscrowLockUpdated(user, escrowLockedAmount[user] > 0);
     }
 
     /// @notice Mint tokens; callable only by LiquidityPool.
@@ -142,7 +166,8 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
         if (address(circuitBreaker) != address(0)) {
             require(!circuitBreaker.isPaused(), "CPEF: global pause active");
         }
-        require(!isEscrowLocked[from], "CPEF: escrow locked");
+        uint256 locked = escrowLockedAmount[from];
+        require(locked == 0 || balanceOf(from) - locked >= amount, "CPEF: escrow locked");
         _burn(from, amount);
         // PRM is kept as-is; backend can compute gains using PRM and oracle VNI.
     }
@@ -161,8 +186,14 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
         // basic checks
         if (amount == 0) return RESTRICTION_NONE;
 
-        // escrow locks
-        if (isEscrowLocked[from] || isEscrowLocked[to]) return RESTRICTION_ESCROW_LOCKED;
+        // escrow locks (amount-based: only (balance - lockedAmount) is transferable)
+        uint256 fromLocked = escrowLockedAmount[from];
+        if (fromLocked > 0) {
+            uint256 fromFree = balanceOf(from) - fromLocked;
+            if (amount > fromFree) return RESTRICTION_ESCROW_LOCKED;
+        } else if (isEscrowLocked[from] || isEscrowLocked[to]) {
+            return RESTRICTION_ESCROW_LOCKED;
+        }
 
         // KYC checks
         if (address(kycRegistry) == address(0)) return RESTRICTION_NOT_WHITELISTED;

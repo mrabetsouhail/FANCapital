@@ -13,6 +13,7 @@ import { FiscalDashboardPage } from './components/backoffice/fiscal-dashboard-pa
 import { KycDashboardPage } from './components/backoffice/kyc-dashboard-page/kyc-dashboard-page';
 import { AuditRegistryPage } from './components/backoffice/audit-registry-page/audit-registry-page';
 import { FeeWalletPage } from './components/backoffice/fee-wallet-page/fee-wallet-page';
+import { MultiSigPage } from './components/backoffice/multisig-page/multisig-page';
 import { authGuard } from './auth/auth.guard';
 import { backofficeGuard } from './backoffice/backoffice.guard';
 export const routes: Routes = [
@@ -82,6 +83,11 @@ export const routes: Routes = [
   {
     path: 'backoffice/fees',
     component: FeeWalletPage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/multisig',
+    component: MultiSigPage,
     canActivate: [backofficeGuard],
   },
 ];

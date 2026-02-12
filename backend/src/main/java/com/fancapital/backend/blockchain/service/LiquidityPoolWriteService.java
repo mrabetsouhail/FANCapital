@@ -1,6 +1,8 @@
 package com.fancapital.backend.blockchain.service;
 
+import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.backoffice.audit.service.BusinessContextService;
+import com.fancapital.backend.backoffice.service.DeploymentInfraService;
 import com.fancapital.backend.blockchain.model.TxDtos.BuyRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.SellRequest;
 import com.fancapital.backend.config.BlockchainProperties;
@@ -9,11 +11,17 @@ import java.math.BigInteger;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
+import org.web3j.abi.FunctionReturnDecoder;
+import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.request.Transaction;
+import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.EthGasPrice;
 import org.web3j.tx.RawTransactionManager;
@@ -22,22 +30,32 @@ import org.web3j.tx.TransactionManager;
 @Service
 public class LiquidityPoolWriteService {
   private static final BigInteger PRICE_SCALE = BigInteger.valueOf(100_000_000L); // 1e8
+  private static final BigInteger MAX_APPROVE = new BigInteger("2").pow(255);
 
   private final Web3j web3j;
   private final DeploymentRegistry registry;
+  private final DeploymentInfraService infra;
   private final BlockchainProperties props;
   private final BusinessContextService businessContextService;
+  private final AppUserRepository userRepo;
+  private final WaasUserWalletService waasWallets;
 
   public LiquidityPoolWriteService(
       Web3j web3j,
       DeploymentRegistry registry,
+      DeploymentInfraService infra,
       BlockchainProperties props,
-      BusinessContextService businessContextService
+      BusinessContextService businessContextService,
+      AppUserRepository userRepo,
+      WaasUserWalletService waasWallets
   ) {
     this.web3j = web3j;
     this.registry = registry;
+    this.infra = infra;
     this.props = props;
     this.businessContextService = businessContextService;
+    this.userRepo = userRepo;
+    this.waasWallets = waasWallets;
   }
 
   public String buyFor(BuyRequest req) {
@@ -46,6 +64,9 @@ public class LiquidityPoolWriteService {
     String pool = fund.pool();
 
     BigInteger tndIn = parseUint(req.tndIn(), "tndIn");
+
+    // S'assurer que l'utilisateur a approve le pool pour dépenser ses TND (évite ERC20InsufficientAllowance)
+    ensureCashAllowance(req.user(), pool, tndIn);
 
     // Dev: ensure on-chain oracle has an initialized VNI (required by pool staleness guard).
     ensureOraclePriceInitialized(fund.oracle(), req.token(), fund.name(), fund.id());
@@ -157,6 +178,51 @@ public class LiquidityPoolWriteService {
       return web3j.ethChainId().send().getChainId();
     } catch (IOException e) {
       return BigInteger.valueOf(31337);
+    }
+  }
+
+  /** Vérifie que l'utilisateur a accordé au pool le droit de dépenser tndAmount TND. Si non, approve via WaaS. */
+  private void ensureCashAllowance(String userAddress, String poolAddress, BigInteger tndAmount) {
+    String cash = infra.cashTokenAddress();
+    if (cash == null || cash.isBlank()) return;
+    BigInteger allowance = allowanceOf(cash, userAddress, poolAddress);
+    if (allowance.compareTo(tndAmount) >= 0) return;
+    var userOpt = userRepo.findByWalletAddressIgnoreCase(userAddress);
+    if (userOpt.isEmpty()) {
+      throw new IllegalStateException(
+          "ERC20InsufficientAllowance: User " + userAddress + " must approve pool " + poolAddress + ". " +
+          "User not found in DB (WaaS) - ensure KYC validated and wallet provisioned."
+      );
+    }
+    try {
+      Credentials creds = waasWallets.credentialsForUser(userOpt.get().getId());
+      TransactionManager tm = new RawTransactionManager(web3j, creds, chainId().longValue());
+      Function approve = new Function("approve", List.of(new Address(poolAddress), new Uint256(MAX_APPROVE)), List.of());
+      String data = FunctionEncoder.encode(approve);
+      BigInteger gasPrice = suggestedGasPrice();
+      EthSendTransaction tx = (EthSendTransaction) tm.sendTransaction(gasPrice, BigInteger.valueOf(120_000), cash, data, BigInteger.ZERO);
+      if (tx.hasError()) {
+        throw new IllegalStateException("approve failed: " + tx.getError().getMessage());
+      }
+    } catch (IllegalStateException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not approve pool for user " + userAddress + ": " + e.getMessage(), e);
+    }
+  }
+
+  private BigInteger allowanceOf(String token, String owner, String spender) {
+    Function f = new Function("allowance", List.of(new Address(owner), new Address(spender)), List.of(new TypeReference<Uint256>() {}));
+    String data = FunctionEncoder.encode(f);
+    Transaction call = Transaction.createEthCallTransaction(null, token, data);
+    try {
+      EthCall res = web3j.ethCall(call, DefaultBlockParameterName.LATEST).send();
+      if (res.hasError() || res.getValue() == null || res.getValue().isBlank()) return BigInteger.ZERO;
+      @SuppressWarnings("rawtypes")
+      List<Type> decoded = FunctionReturnDecoder.decode(res.getValue(), f.getOutputParameters());
+      return decoded.isEmpty() ? BigInteger.ZERO : (BigInteger) decoded.get(0).getValue();
+    } catch (IOException e) {
+      return BigInteger.ZERO;
     }
   }
 

@@ -4,9 +4,11 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import type { PortfolioPosition } from '../../../blockchain/models/portfolio.models';
+import type { SciScoreResult } from '../../../blockchain/models/investor.models';
 import { SessionService } from '../../../auth/services/session.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LanguageService, type AppLang } from '../../../i18n/language.service';
+import { SciNudgeBanner } from '../sci-nudge-banner/sci-nudge-banner';
 
 interface Notification {
   id: number;
@@ -20,7 +22,7 @@ interface Notification {
 
 @Component({
   selector: 'app-navbar-client',
-  imports: [CommonModule, RouterLink, TranslateModule],
+  imports: [CommonModule, RouterLink, TranslateModule, SciNudgeBanner],
   templateUrl: './navbar-client.html',
   styleUrl: './navbar-client.css',
 })
@@ -30,9 +32,10 @@ export class NavbarClient implements OnInit {
   tokensBeta = signal<number>(0);
   cashAmount = signal<number>(0);
   creditAmount = signal<number>(0);
-  
+
   // Profile Data
   memberLevel = signal<string>('Gold'); // Silver, Gold, Platinum, etc.
+  sciScore = signal<SciScoreResult | null>(null);
   isBackofficeAdmin = signal<boolean>(false);
   backofficeRole = signal<string>('NONE');
   
@@ -114,8 +117,8 @@ export class NavbarClient implements OnInit {
     private session: SessionService,
     private language: LanguageService
   ) {
-    // credit remains off-chain for now (UI placeholder)
-    this.creditAmount.set(10000.0);
+    // creditLine from portfolio API (KYC1=5000, KYC2=10000)
+    this.creditAmount.set(0);
     this.hasNotifications.set(this.notifications().some((n) => !n.read));
   }
 
@@ -164,21 +167,25 @@ export class NavbarClient implements OnInit {
   }
 
   private refreshWallet(wallet: string) {
-    console.log('[NavbarClient] Refreshing wallet balance for:', wallet);
     this.blockchainApi.getPortfolio(wallet as any).subscribe({
       next: (p) => {
-        console.log('[NavbarClient] Portfolio received:', p);
         const atlas = this.pickFund(p.positions, 'atlas', 0);
         const didon = this.pickFund(p.positions, 'didon', 1);
         this.tokensAlpha.set(atlas ? this.from1e8(atlas.balanceTokens) : 0);
         this.tokensBeta.set(didon ? this.from1e8(didon.balanceTokens) : 0);
         const cashBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
-        console.log('[NavbarClient] Setting cashAmount to:', cashBalance, 'TND (raw:', p.cashBalanceTnd, ')');
+        const creditDebt = (p as any).creditDebtTnd ? this.from1e8((p as any).creditDebtTnd) : 0;
         this.cashAmount.set(cashBalance);
+        this.creditAmount.set(creditDebt);
       },
       error: (err) => {
         console.error('[NavbarClient] Error refreshing wallet:', err);
       },
+    });
+    // SCI v4.5: fetch score for nudge (near threshold + KYC1)
+    this.blockchainApi.getSciScore(wallet).subscribe({
+      next: (sci) => this.sciScore.set(sci),
+      error: () => this.sciScore.set(null),
     });
   }
 

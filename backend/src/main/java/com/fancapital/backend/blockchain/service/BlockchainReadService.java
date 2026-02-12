@@ -8,6 +8,7 @@ import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteBuyResponse;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteSellRequest;
 import com.fancapital.backend.blockchain.model.QuoteDtos.QuoteSellResponse;
 import com.fancapital.backend.blockchain.model.FundDto;
+import com.fancapital.backend.auth.repo.AppUserRepository;
 import com.fancapital.backend.blockchain.model.InvestorProfileDtos.InvestorProfileResponse;
 import com.fancapital.backend.blockchain.model.TxHistoryDtos.TxHistoryResponse;
 import com.fancapital.backend.blockchain.model.TxHistoryDtos.TxRow;
@@ -79,18 +80,25 @@ public class BlockchainReadService {
       )
   );
 
+  private static final BigInteger CREDIT_LINE_KYC1 = BigInteger.valueOf(5_000).multiply(PRICE_SCALE);
+  private static final BigInteger CREDIT_LINE_KYC2 = BigInteger.valueOf(10_000).multiply(PRICE_SCALE);
+
   private final DeploymentRegistry registry;
   private final EvmCallService evm;
   private final BlockchainProperties props;
   private final DeploymentInfraService infra;
   private final Web3j web3j;
+  private final AppUserRepository userRepo;
+  private final DebtManager debtManager;
 
-  public BlockchainReadService(DeploymentRegistry registry, EvmCallService evm, BlockchainProperties props, DeploymentInfraService infra, Web3j web3j) {
+  public BlockchainReadService(DeploymentRegistry registry, EvmCallService evm, BlockchainProperties props, DeploymentInfraService infra, Web3j web3j, AppUserRepository userRepo, DebtManager debtManager) {
     this.registry = registry;
     this.evm = evm;
     this.props = props;
     this.infra = infra;
     this.web3j = web3j;
+    this.userRepo = userRepo;
+    this.debtManager = debtManager;
   }
 
   public OracleVniResponse getVni(String tokenAddress) {
@@ -226,8 +234,19 @@ public class BlockchainReadService {
 
     String cashToken = infra.cashTokenAddress();
     BigInteger cashBal = (cashToken == null || cashToken.isBlank()) ? BigInteger.ZERO : balanceOf(cashToken, userAddress);
+    BigInteger creditLine = creditLineForWallet(userAddress);
+    BigInteger creditDebt = BigInteger.ZERO;
+    var activeLoan = debtManager.getActiveLoanForUser(userAddress);
+    if (activeLoan != null) creditDebt = activeLoan.principalTnd();
 
-    return new PortfolioResponse(userAddress, positions, cashBal.toString(), totalValue.toString(), totalGain.toString());
+    return new PortfolioResponse(userAddress, positions, cashBal.toString(), creditLine.toString(), creditDebt.toString(), totalValue.toString(), totalGain.toString());
+  }
+
+  /** Ligne de crédit test: KYC1=5000 TND, KYC2=10000 TND (jusqu'à intégration API paiement). */
+  private BigInteger creditLineForWallet(String walletAddress) {
+    return userRepo.findByWalletAddressIgnoreCase(walletAddress)
+        .map(u -> u.getKycLevel() >= 2 ? CREDIT_LINE_KYC2 : (u.getKycLevel() >= 1 ? CREDIT_LINE_KYC1 : BigInteger.ZERO))
+        .orElse(BigInteger.ZERO);
   }
 
   /**
@@ -273,8 +292,9 @@ public class BlockchainReadService {
     BigInteger cashBal = (cashToken == null || cashToken.isBlank())
         ? BigInteger.ZERO
         : balanceOfAtBlock(cashToken, userAddress, blockNumber);
+    BigInteger creditLine = creditLineForWallet(userAddress);
 
-    return new PortfolioResponse(userAddress, positions, cashBal.toString(), totalValue.toString(), totalGain.toString());
+    return new PortfolioResponse(userAddress, positions, cashBal.toString(), creditLine.toString(), "0", totalValue.toString(), totalGain.toString());
   }
 
   public InvestorProfileResponse investorProfile(String userAddress) {

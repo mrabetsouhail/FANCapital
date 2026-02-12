@@ -43,12 +43,16 @@ public class MultiSigService {
     this.evm = evm;
   }
 
-  private String councilAddress() {
+  public String councilAddress() {
     String addr = infra.multiSigCouncilAddress();
     if (addr == null || addr.isBlank()) {
       throw new IllegalStateException("MultiSigCouncil address not configured. Add MultiSigCouncil to deployments infra or use localhost.council.json.");
     }
     return addr;
+  }
+
+  private String councilAddressPrivate() {
+    return councilAddress();
   }
 
   /** Envoie une transaction (submit) au council. Nécessite une clé propriétaire (governance). */
@@ -80,7 +84,7 @@ public class MultiSigService {
     }
   }
 
-  public void confirmTransaction(BigInteger txId) {
+  public String confirmTransaction(BigInteger txId) {
     String govPk = props.operatorPrivateKey();
     if (govPk == null || govPk.isBlank()) {
       throw new IllegalStateException("Governance key not configured for MultiSig confirm.");
@@ -94,6 +98,7 @@ public class MultiSigService {
     try {
       EthSendTransaction tx = (EthSendTransaction) tm.sendTransaction(gasPrice, gasLimit, councilAddress(), encoded, BigInteger.ZERO);
       if (tx.hasError()) throw new IllegalStateException("confirmTransaction failed: " + tx.getError().getMessage());
+      return tx.getTransactionHash();
     } catch (IOException e) {
       throw new IllegalStateException("confirmTransaction RPC error: " + e.getMessage(), e);
     }

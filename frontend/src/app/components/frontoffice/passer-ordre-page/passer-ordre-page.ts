@@ -47,6 +47,7 @@ export class PasserOrdrePage implements OnInit {
   quoteError = signal<string | null>(null);
   isQuoting = signal<boolean>(false);
   isSubmitting = signal<boolean>(false);
+  isSeeding = signal<boolean>(false);
   submitMessage = signal<string | null>(null);
   isConfirmOpen = signal<boolean>(false);
 
@@ -56,7 +57,7 @@ export class PasserOrdrePage implements OnInit {
   // Fallback fee rate used only for P2P mode in this UI (until we wire P2P quotes)
   feeRate = 0.005;
   
-  cashBalance = signal<number>(5000.00);
+  cashBalance = signal<number>(0);
   
   currentPrice = computed(() => {
     return this.tokenType() === 'Atlas' ? this.alphaPrice() : this.betaPrice();
@@ -396,6 +397,22 @@ export class PasserOrdrePage implements OnInit {
 
   onCancel() {
     this.router.navigate(['/acceuil-client']);
+  }
+
+  /** Alimente le Cash Wallet (10 000 TND) pour pouvoir effectuer les transactions. */
+  onSeedCash() {
+    const user = this.userAddress();
+    if (!user || !user.startsWith('0x') || user.length !== 42) return;
+    this.isSeeding.set(true);
+    this.quoteError.set(null);
+    this.api.seedCash(user, 10_000).subscribe({
+      next: () => {
+        this.refreshCashBalance();
+        this.navbarClient?.refreshWalletBalance();
+      },
+      error: (e) => this.quoteError.set(this.formatErr(e)),
+      complete: () => this.isSeeding.set(false),
+    });
   }
 
   Math = Math; // Expose Math to template

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.generated.Uint16;
 import org.web3j.abi.datatypes.generated.Uint8;
 import org.web3j.crypto.Credentials;
@@ -66,6 +67,23 @@ public class InvestorRegistryWriteService {
         List.of()
     );
     return send(investorRegistry, fn, BigInteger.valueOf(250_000));
+  }
+
+  /**
+   * Active/désactive l'abonnement premium (subscriptionActive on-chain).
+   * Requis pour AST et tiers Platinum/Diamond (Mod AST 5).
+   */
+  public String setSubscriptionActive(String userWallet, boolean active) {
+    String investorRegistry = infra.investorRegistryAddress();
+    if (investorRegistry == null || investorRegistry.isBlank()) {
+      throw new IllegalStateException("InvestorRegistry address not configured.");
+    }
+    Function fn = new Function(
+        "setSubscriptionActive",
+        List.of(new Address(userWallet), new Bool(active)),
+        List.of()
+    );
+    return send(investorRegistry, fn, BigInteger.valueOf(150_000));
   }
 
   private String send(String to, Function fn, BigInteger gasLimit) {

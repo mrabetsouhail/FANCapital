@@ -71,6 +71,18 @@ public class DeploymentInfraService {
     return null;
   }
 
+  public String creditModelAAddress() {
+    String from = load().infra().get("CreditModelA");
+    if (from != null && !from.isBlank()) return from.trim();
+    return fromLocalhostJson("CreditModelA");
+  }
+
+  public String escrowRegistryAddress() {
+    String from = load().infra().get("EscrowRegistry");
+    if (from != null && !from.isBlank()) return from.trim();
+    return fromLocalhostJson("EscrowRegistry");
+  }
+
   public String priceOracleAddress() {
     // PriceOracle is per-fund, but we can return the first one found
     // For shared oracle, it should be in infra
@@ -134,6 +146,24 @@ public class DeploymentInfraService {
       cache = c;
       return c;
     }
+  }
+
+  private String fromLocalhostJson(String contract) {
+    try {
+      Path p = Path.of("..", "blockchain", "deployments", "localhost.json");
+      if (Files.exists(p)) {
+        String raw = Files.readString(p);
+        DeploymentsFile df = objectMapper.readValue(raw, DeploymentsFile.class);
+        Map<String, String> c = df.contracts() != null ? df.contracts() : df.infra();
+        if (c != null) {
+          String v = c.get(contract);
+          if (v != null && !v.isBlank()) return v.trim();
+        }
+      }
+    } catch (IOException e) {
+      // ignore
+    }
+    return null;
   }
 
   private String findDeploymentsFile() {

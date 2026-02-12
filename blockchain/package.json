@@ -16,11 +16,16 @@
     "deploy:council:local": "hardhat run scripts/deploy-multisig-council.ts --network hardhat",
     "deploy:council:localhost": "hardhat run scripts/deploy-multisig-council.ts --network localhost",
     "deploy:council-funds:localhost": "hardhat run scripts/council-deploy-funds.ts --network localhost",
+    "seed:cash": "hardhat run scripts/mint-tnd-for-testing.ts --network localhost",
+    "seed:whitelist": "hardhat run scripts/whitelist-user.ts --network localhost",
+    "grant-minter": "hardhat run scripts/grant-minter-role.ts --network localhost",
+    "grant-kyc-validator": "hardhat run scripts/grant-kyc-validator-role.ts --network localhost",
     "keeper:price": "ts-node keepers/price-bot.ts --config keepers/price-bot.example.json",
     "keeper:watchdog": "ts-node keepers/circuit-breaker-watchdog.ts --config keepers/circuit-breaker-watchdog.example.json",
     "keeper:subscriptions": "ts-node keepers/subscription-manager.ts --config keepers/subscription-manager.example.json"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@openzeppelin/contracts": "^5.0.2",
     "hardhat": "^2.28.0",

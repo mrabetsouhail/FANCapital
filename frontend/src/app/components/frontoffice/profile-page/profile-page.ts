@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { NavbarClient } from '../navbar-client/navbar-client';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
@@ -21,7 +22,7 @@ type MemberLevel = 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [CommonModule, FormsModule, NavbarClient, DatePipe],
+  imports: [CommonModule, FormsModule, RouterModule, NavbarClient, DatePipe],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.css',
 })
@@ -113,6 +114,13 @@ export class ProfilePage implements OnInit {
   newPassword = signal<string>('');
   confirmPassword = signal<string>('');
 
+  // Premium activation (versement via Cash Wallet)
+  cashBalanceTnd = signal<number>(0);
+  premiumActivationLoading = signal<boolean>(false);
+  premiumActivationError = signal<string>('');
+  /** Montant minimum Cash Wallet pour activer Premium (TND). 1 TND min = versement symbolique. */
+  private readonly PREMIUM_MIN_TND = 1;
+
   constructor(private authApi: AuthApiService, private blockchainApi: BlockchainApiService) {}
 
   ngOnInit(): void {
@@ -137,6 +145,7 @@ export class ProfilePage implements OnInit {
         this.wallet.set(w);
         if (w && w.startsWith('0x') && w.length === 42) {
           this.loadHistory(w);
+          this.loadCashBalance(w);
           this.blockchainApi.getInvestorProfile(w).subscribe({
             next: (p) => {
               this.investor.set(p);
@@ -293,5 +302,40 @@ export class ProfilePage implements OnInit {
 
   getTotalFilteredAmount(): number {
     return this.filteredTransactions().reduce((total, transaction) => total + transaction.amount, 0);
+  }
+
+  private loadCashBalance(wallet: string): void {
+    this.blockchainApi.getPortfolio(wallet).subscribe({
+      next: (p) => {
+        const cash = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
+        this.cashBalanceTnd.set(cash);
+      },
+      error: () => this.cashBalanceTnd.set(0),
+    });
+  }
+
+  canActivatePremium(): boolean {
+    return this.cashBalanceTnd() >= this.PREMIUM_MIN_TND && !!this.wallet();
+  }
+
+  onActivatePremium(): void {
+    const w = this.wallet();
+    if (!w || !w.startsWith('0x')) return;
+    this.premiumActivationLoading.set(true);
+    this.premiumActivationError.set('');
+    this.authApi.activatePremium().subscribe({
+      next: () => {
+        this.premiumActivationLoading.set(false);
+        this.premiumActivationError.set('');
+        this.loadCashBalance(w);
+        this.blockchainApi.getInvestorProfile(w).subscribe({
+          next: (p) => this.investor.set(p),
+        });
+      },
+      error: (e: any) => {
+        this.premiumActivationLoading.set(false);
+        this.premiumActivationError.set(e?.error?.message ?? e?.message ?? 'Erreur lors de l\'activation');
+      },
+    });
   }
 }

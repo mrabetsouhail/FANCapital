@@ -7,6 +7,13 @@ public class TxDtos {
 
   public record SellRequest(@NotBlank String token, @NotBlank String user, @NotBlank String tokenAmount) {}
 
+  public record AdvanceRequest(
+      @NotBlank String user,
+      @NotBlank String token,        // Atlas ou Didon
+      long collateralAmount,        // nombre de tokens
+      long durationDays
+  ) {}
+
   public record P2PSettleRequest(
       @NotBlank String token,
       @NotBlank String seller,

@@ -152,11 +152,18 @@
           </p>
         </div>
       </div>
-      @if (orderType() === 'buy' && cashAfter() < 0) {
-        <div class="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-          <p class="text-sm text-red-700">
-            ⚠️ Solde insuffisant. Vous avez besoin de {{ Math.abs(cashAfter()) | number:'1.2-2' }} TND supplémentaires.
+      @if (orderType() === 'buy' && (cashAfter() < 0 || cashBalance() === 0)) {
+        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-sm text-amber-800 mb-3">
+            ⚠️ Solde insuffisant. Alimentez votre Cash Wallet pour effectuer vos transactions.
           </p>
+          <button
+            (click)="onSeedCash()"
+            [disabled]="isSeeding()"
+            class="px-4 py-2 bg-[#22c55e] text-white rounded-lg font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {{ isSeeding() ? 'Alimentation...' : 'Alimenter 10 000 TND' }}
+          </button>
         </div>
       }
     </div>

@@ -49,9 +49,7 @@ contract EscrowRegistry is AccessControl {
         locks[loanId] = LockInfo({token: token, amount: amount, active: true});
 
         activeLocksCount[user] += 1;
-        if (activeLocksCount[user] == 1) {
-            CPEFToken(token).setEscrowLocked(user, true);
-        }
+        CPEFToken(token).addEscrowLockedAmount(user, amount);
 
         emit CollateralLocked(loanId, user, token, amount);
     }
@@ -60,15 +58,45 @@ contract EscrowRegistry is AccessControl {
         LockInfo storage info = locks[loanId];
         require(info.active, "ESCROW: not active");
 
+        uint256 amt = info.amount;
         info.active = false;
+        info.amount = 0;
 
         require(activeLocksCount[user] > 0, "ESCROW: bad count");
         activeLocksCount[user] -= 1;
-        if (activeLocksCount[user] == 0) {
-            CPEFToken(info.token).setEscrowLocked(user, false);
-        }
+        CPEFToken(info.token).reduceEscrowLockedAmount(user, amt);
 
-        emit CollateralUnlocked(loanId, user, info.token, info.amount);
+        emit CollateralUnlocked(loanId, user, info.token, amt);
+    }
+
+    /// @notice Release collateral proportionally to repayment (prorata).
+    /// Tokens_Libérés = (Montant_Remboursé / Dette_Totale) × Tokens_Séquestrés
+    function unlockCollateralPartial(
+        uint256 loanId,
+        address user,
+        uint256 amountRepaidTnd,
+        uint256 totalDebtTnd
+    ) external onlyAuthorized {
+        LockInfo storage info = locks[loanId];
+        require(info.active, "ESCROW: not active");
+        require(totalDebtTnd > 0, "ESCROW: totalDebt=0");
+        require(amountRepaidTnd > 0, "ESCROW: amountRepaid=0");
+
+        uint256 tokensToRelease = (amountRepaidTnd * info.amount) / totalDebtTnd;
+        if (tokensToRelease == 0) return;
+
+        require(info.amount >= tokensToRelease, "ESCROW: overflow");
+        info.amount -= tokensToRelease;
+
+        CPEFToken(info.token).reduceEscrowLockedAmount(user, tokensToRelease);
+
+        emit CollateralUnlocked(loanId, user, info.token, tokensToRelease);
+
+        if (info.amount == 0) {
+            info.active = false;
+            require(activeLocksCount[user] > 0, "ESCROW: bad count");
+            activeLocksCount[user] -= 1;
+        }
     }
 }
 

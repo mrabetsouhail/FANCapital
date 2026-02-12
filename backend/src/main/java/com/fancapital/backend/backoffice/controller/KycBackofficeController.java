@@ -94,6 +94,21 @@ public class KycBackofficeController {
     return ResponseEntity.ok(authService.toUserResponse(u));
   }
 
+  /**
+   * Re-synchronise la whitelist on-chain pour un utilisateur (utile après redéploiement de la chaîne).
+   * Refait whitelist + mint TND + approve pools. Résout "CPEF: recipient not whitelisted".
+   */
+  @PostMapping("/re-bootstrap")
+  public ResponseEntity<?> reBootstrap(@RequestBody SetLevelRequest req) {
+    authz.requireAdmin();
+    var u = repo.findById(req.userId()).orElseThrow(() -> new IllegalArgumentException("Unknown user"));
+    if (u.getWalletAddress() == null || u.getWalletAddress().isBlank()) {
+      throw new IllegalArgumentException("User has no wallet (validate KYC1 first)");
+    }
+    kycService.reBootstrapUser(req.userId());
+    return ResponseEntity.ok(Map.of("status", "ok", "message", "Whitelist + TND + approve re-synchronized for " + u.getWalletAddress()));
+  }
+
   @PostMapping("/set-score")
   public TxResponse setScore(@RequestBody SetScoreRequest req) {
     authz.requireAdmin();

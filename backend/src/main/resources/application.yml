@@ -52,6 +52,16 @@ blockchain:
   # According to Dossier de Sécurité v2.0, this key is used exclusively for KYC validation.
   # In production, this key should be stored in a Hardware Security Module (HSM).
   onboarding-private-key: ${ONBOARDING_PRIVATE_KEY:}
+  # Credit/AST scheduler (Mod AST 2.2 - Calendrier de collecte)
+  credit:
+    scheduler-enabled: ${CREDIT_SCHEDULER_ENABLED:false}
+    scheduler-cron: ${CREDIT_SCHEDULER_CRON:0 0 2 * * ?}
+    # Auto-activation des demandes Requested : crédite Credit Wallet puis lock collatéral (toutes les 60s).
+    auto-activate: ${CREDIT_AUTO_ACTIVATE:true}
+    auto-activate-interval-ms: ${CREDIT_AUTO_ACTIVATE_INTERVAL_MS:60000}
+  # AUM 90j snapshot (Spécifications Financières v4.7 - Inertie AUM)
+  aum:
+    snapshot-cron: ${AUM_SNAPSHOT_CRON:0 0 1 * * ?}
   # Dev helper: fixed prices to unblock UI testing (until oracle/API is wired)
   price-overrides:
     enabled: ${FIXED_VNI_ENABLED:true}

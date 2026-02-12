@@ -41,5 +41,13 @@ public class KycService {
     }
     return u;
   }
+
+  /**
+   * Re-synchronise la whitelist on-chain (utile après redéploiement chaîne).
+   * Résout l'erreur "CPEF: recipient not whitelisted" quand KYC est déjà validé en base.
+   */
+  public void reBootstrapUser(String userId) {
+    onchainBootstrapService.bootstrapUser(userId);
+  }
 }
 

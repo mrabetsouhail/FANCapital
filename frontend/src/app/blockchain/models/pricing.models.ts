@@ -41,6 +41,13 @@ export interface SellRequest {
   tokenAmount: string;
 }
 
+export interface AdvanceRequest {
+  user: string;   // wallet address
+  token: string;  // Atlas ou Didon
+  collateralAmount: number;
+  durationDays: number;
+}
+
 export interface TxResponse {
   txHash?: string;
   status: 'submitted' | 'mined' | 'failed';

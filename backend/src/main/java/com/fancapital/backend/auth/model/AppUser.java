@@ -92,6 +92,10 @@ public class AppUser {
   @Column(length = 500)
   private String walletPrivateKeyEnc;
 
+  /** Mod AST 5: Abonnement Premium - requis pour AST et tiers Platinum/Diamond */
+  @Column(nullable = false, columnDefinition = "boolean default false")
+  private boolean premium = false;
+
   public String getId() {
     return id;
   }
@@ -274,6 +278,14 @@ public class AppUser {
 
   public void setWalletPrivateKeyEnc(String walletPrivateKeyEnc) {
     this.walletPrivateKeyEnc = walletPrivateKeyEnc;
+  }
+
+  public boolean isPremium() {
+    return premium;
+  }
+
+  public void setPremium(boolean premium) {
+    this.premium = premium;
   }
 }
 
