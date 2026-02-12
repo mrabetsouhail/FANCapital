@@ -57,19 +57,39 @@ public class DeploymentRegistry {
     return load().pathUsed();
   }
 
-  /** Adresse CreditModelA depuis localhost.json (fallback pour AST). */
+  /** Adresse CreditModelA — depuis le fichier deployments actif (infra) ou localhost.json. */
   public String getCreditModelAAddress() {
-    return getContractFromLocalhost("CreditModelA");
+    String v = getContractFromLoadedDeployments("CreditModelA");
+    if (v != null) return v;
+    return getContractFromPath(Path.of("..", "blockchain", "deployments", "localhost.json"), "CreditModelA");
   }
 
-  /** Adresse EscrowRegistry depuis localhost.json. */
+  /** Adresse EscrowRegistry — depuis le fichier deployments actif (infra) ou localhost.json. */
   public String getEscrowRegistryAddress() {
-    return getContractFromLocalhost("EscrowRegistry");
+    String v = getContractFromLoadedDeployments("EscrowRegistry");
+    if (v != null) return v;
+    return getContractFromPath(Path.of("..", "blockchain", "deployments", "localhost.json"), "EscrowRegistry");
   }
 
-  private String getContractFromLocalhost(String name) {
+  private String getContractFromLoadedDeployments(String name) {
     try {
-      Path p = Path.of("..", "blockchain", "deployments", "localhost.json");
+      String pathUsed = load().pathUsed();
+      if (pathUsed == null || pathUsed.isBlank()) return null;
+      String raw = Files.readString(Path.of(pathUsed));
+      var tree = objectMapper.readTree(raw);
+      var contracts = tree.has("contracts") ? tree.get("contracts") : tree.get("infra");
+      if (contracts != null && contracts.has(name)) {
+        String v = contracts.get(name).asText();
+        return (v != null && !v.isBlank()) ? v.trim() : null;
+      }
+    } catch (IOException e) {
+      // ignore
+    }
+    return null;
+  }
+
+  private String getContractFromPath(Path p, String name) {
+    try {
       if (!Files.exists(p)) return null;
       String raw = Files.readString(p);
       var tree = objectMapper.readTree(raw);

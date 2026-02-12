@@ -36,7 +36,7 @@ interface RepaymentSchedule {
   date: Date;
   amount: number;
   type: 'coupon' | 'echeance';
-  status: 'pending' | 'completed';
+  status: 'pending' | 'completed' | 'overdue';
 }
 
 const FEE_TO_TIER: Tier[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
@@ -109,13 +109,77 @@ export class AvanceSurTitrePage implements OnInit {
     return points;
   });
 
-  // Repayment schedule
-  repaymentSchedule = signal<RepaymentSchedule[]>([
-    { id: 1, date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), amount: 500, type: 'coupon', status: 'pending' },
-    { id: 2, date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), amount: 500, type: 'coupon', status: 'pending' },
-    { id: 3, date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), amount: 2000, type: 'echeance', status: 'pending' },
-    { id: 4, date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), amount: 2000, type: 'echeance', status: 'pending' },
-  ]);
+  /** Calendrier de remboursement calculé (Spec v4.7, CREDIT_LOMBARD).
+   * Intérêts = Principal × Taux × (Durée/365). Coupons = intérêts mensuels, Échéance = principal.
+   * Utilise l'avance active si présente (dates réelles), sinon simulation.
+   * Statut: completed si date passée (coupons) ou principal=0 (échéance), overdue si échéance passée et principal>0. */
+  repaymentSchedule = computed<RepaymentSchedule[]>(() => {
+    const loan = this.activeLoan();
+    const principal = loan ? loan.principalTnd : this.loanAmount();
+    const durationDays = loan ? loan.durationDays : this.tierDurationDays();
+    const rate = this.interestRate() / 100;
+    if (principal <= 0 || durationDays <= 0) return [];
+    const now = Date.now();
+    const startMs = loan ? loan.startAt * 1000 : now;
+    const start = new Date(startMs);
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const totalInterest = principal * rate * (durationDays / 365);
+    const nbMonths = Math.max(1, Math.floor(durationDays / 30));
+    const couponAmount = totalInterest / nbMonths;
+    const items: RepaymentSchedule[] = [];
+    let id = 0;
+    for (let i = 1; i <= nbMonths; i++) {
+      const dueDate = new Date(start.getTime() + i * 30 * MS_PER_DAY);
+      if (dueDate.getTime() <= start.getTime() + durationDays * MS_PER_DAY) {
+        const status: RepaymentSchedule['status'] = dueDate.getTime() < now ? 'completed' : 'pending';
+        items.push({ id: ++id, date: dueDate, amount: Math.round(couponAmount * 100) / 100, type: 'coupon', status });
+      }
+    }
+    const maturityDate = new Date(start.getTime() + durationDays * MS_PER_DAY);
+    let echeanceStatus: RepaymentSchedule['status'] = 'pending';
+    if (loan) {
+      if (principal <= 0) echeanceStatus = 'completed';
+      else if (maturityDate.getTime() < now) echeanceStatus = 'overdue';
+    }
+    items.push({ id: ++id, date: maturityDate, amount: Math.round(principal * 100) / 100, type: 'echeance', status: echeanceStatus });
+    return items;
+  });
+
+  /** Date d'échéance (dernier élément du calendrier). */
+  maturityDate = computed(() => {
+    const s = this.repaymentSchedule();
+    const echeance = s.find(i => i.type === 'echeance');
+    return echeance ? echeance.date : null;
+  });
+
+  /** Jours restants jusqu'à l'échéance (négatif si dépassée). */
+  daysUntilMaturity = computed(() => {
+    const m = this.maturityDate();
+    if (!m) return null;
+    const diff = m.getTime() - Date.now();
+    return Math.floor(diff / (24 * 60 * 60 * 1000));
+  });
+
+  /** Prochaine échéance à payer (premier item en attente). */
+  nextDuePayment = computed(() => {
+    return this.repaymentSchedule().find(i => i.status === 'pending' || i.status === 'overdue') ?? null;
+  });
+
+  /** Montant intérêts total (pour détail du remboursement). */
+  totalInterestAmount = computed(() => {
+    const principal = this.activeLoan()?.principalTnd ?? this.loanAmount();
+    const durationDays = this.activeLoan()?.durationDays ?? this.tierDurationDays();
+    const rate = this.interestRate() / 100;
+    if (principal <= 0 || durationDays <= 0) return 0;
+    return Math.round(principal * rate * (durationDays / 365) * 100) / 100;
+  });
+
+  /** Montant principal (pour détail du remboursement). */
+  totalPrincipalAmount = computed(() => {
+    const loan = this.activeLoan();
+    const principal = loan ? loan.principalTnd : this.loanAmount();
+    return Math.round(principal * 100) / 100;
+  });
 
   // Taux annuel selon tier (Modèle A) - CREDIT_LOMBARD v4.51
   interestRate = computed(() => {
@@ -139,6 +203,7 @@ export class AvanceSurTitrePage implements OnInit {
   requestError = signal<string | null>(null);
   requestSuccess = signal<{ txHash: string } | null>(null);
   userWallet = signal<string>('');
+  activeLoan = signal<{ principalTnd: number; startAt: number; durationDays: number } | null>(null);
 
   constructor(
     private authApi: AuthApiService,
@@ -152,10 +217,34 @@ export class AvanceSurTitrePage implements OnInit {
       next: (u) => {
         const w = (u as any)?.walletAddress ?? localStorage.getItem('walletAddress') ?? '';
         this.userWallet.set(w ?? '');
+        if (w && w.startsWith('0x')) this.loadActiveLoan(w);
       },
     });
     this.loadUserTier();
     this.loadTokensData();
+  }
+
+  private loadActiveLoan(wallet: string): void {
+    this.blockchainApi.getActiveAdvance(wallet).subscribe({
+      next: (loan) => {
+        if (loan) {
+          this.activeLoan.set({
+            principalTnd: Number(loan.principalTnd) / 1e8,
+            startAt: loan.startAt,
+            durationDays: loan.durationDays,
+          });
+        } else {
+          this.activeLoan.set(null);
+        }
+      },
+      error: () => this.activeLoan.set(null),
+    });
+  }
+
+  /** Rafraîchir l'avance active (après activation). */
+  refreshActiveLoan(): void {
+    const w = this.userWallet();
+    if (w && w.startsWith('0x')) this.loadActiveLoan(w);
   }
 
   private loadTokensData(): void {
@@ -267,6 +356,18 @@ export class AvanceSurTitrePage implements OnInit {
     return type === 'coupon' ? 'Coupon' : 'Échéance';
   }
 
+  getStatusLabel(status: RepaymentSchedule['status']): string {
+    if (status === 'completed') return 'Complété';
+    if (status === 'overdue') return 'En retard';
+    return 'En attente';
+  }
+
+  /** Indique si cet item est la prochaine échéance à payer. */
+  isNextDue(item: RepaymentSchedule): boolean {
+    const next = this.nextDuePayment();
+    return next !== null && item.id === next.id;
+  }
+
   getMaxPrice(): number {
     const token = this.availableTokens().find(t => t.type === this.selectedTokenType());
     return token ? token.price : 0;
@@ -363,6 +464,8 @@ export class AvanceSurTitrePage implements OnInit {
           this.requestInProgress.set(false);
           if (res.txHash) {
             this.requestSuccess.set({ txHash: res.txHash });
+            // Rafraîchir le calendrier après activation (sous 1-2 min)
+            setTimeout(() => this.refreshActiveLoan(), 90_000);
           }
         },
         error: (err) => {

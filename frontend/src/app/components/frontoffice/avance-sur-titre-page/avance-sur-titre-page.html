@@ -385,11 +385,58 @@
 
         <!-- Repayment Schedule -->
         <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 class="text-xl font-semibold text-primary mb-4">Calendrier de Remboursement</h2>
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-xl font-semibold text-primary">Calendrier de Remboursement</h2>
+              @if (activeLoan()) {
+                <p class="text-xs text-green-600 mt-1">Calendrier de votre avance en cours</p>
+                @if (maturityDate()) {
+                  <p class="text-xs text-gray-600 mt-0.5">
+                    Échéance: {{ maturityDate() | date:'longDate' }}
+                    @if (daysUntilMaturity() !== null) {
+                      <span [class]="daysUntilMaturity()! >= 0 ? 'text-gray-600' : 'text-red-600'">
+                        ({{ daysUntilMaturity()! >= 0 ? daysUntilMaturity() + ' jours restants' : (-daysUntilMaturity()!) + ' jours de retard' }})
+                      </span>
+                    }
+                  </p>
+                }
+              } @else if (loanAmount() > 0) {
+                <p class="text-xs text-gray-500 mt-1">Simulation (Spec v4.7, CREDIT_LOMBARD)</p>
+              }
+            </div>
+            @if (activeLoan()) {
+              <button
+                (click)="refreshActiveLoan()"
+                class="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700"
+              >
+                Rafraîchir
+              </button>
+            }
+          </div>
           
           <div class="space-y-3">
+            @if (repaymentSchedule().length === 0) {
+              <div class="text-center py-8 text-gray-500">
+                @if (userTier() === 'BRONZE') {
+                  <p>Tier BRONZE : aucune avance disponible. Passez en Silver ou supérieur pour demander une avance.</p>
+                } @else if (loanAmount() <= 0 && !activeLoan()) {
+                  <p>Sélectionnez un montant d'avance pour afficher le calendrier</p>
+                } @else if (activeLoan()) {
+                  <p>Calendrier en cours de chargement…</p>
+                } @else {
+                  <p>Sélectionnez un montant d'avance pour afficher le calendrier</p>
+                }
+              </div>
+            }
             @for (item of repaymentSchedule(); track item.id) {
-              <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-tertiary transition duration-150">
+              <div class="border-2 rounded-lg p-4 transition duration-150"
+                [class.border-amber-400]="isNextDue(item)"
+                [class.bg-amber-50]="isNextDue(item)"
+                [class.border-gray-200]="!isNextDue(item)"
+                [class.hover:border-tertiary]="!isNextDue(item)">
+                @if (isNextDue(item)) {
+                  <span class="text-xs font-medium text-amber-700 mb-2 block">Prochaine échéance</span>
+                }
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <div [class]="item.type === 'coupon' 
@@ -414,8 +461,10 @@
                     <p class="text-lg font-bold text-primary">{{ item.amount | number:'1.2-2' }} TND</p>
                     <span [class]="item.status === 'completed' 
                       ? 'text-xs text-green-600 font-medium' 
+                      : item.status === 'overdue' 
+                      ? 'text-xs text-red-600 font-medium' 
                       : 'text-xs text-gray-500'">
-                      {{ item.status === 'completed' ? 'Complété' : 'En attente' }}
+                      {{ getStatusLabel(item.status) }}
                     </span>
                   </div>
                 </div>
@@ -425,12 +474,24 @@
 
           <!-- Total Repayment -->
           <div class="mt-4 pt-4 border-t border-gray-200">
-            <div class="flex justify-between items-center">
-              <span class="text-base font-semibold text-primary">Total à rembourser:</span>
-              <span class="text-xl font-bold text-primary">
-                {{ getTotalRepayment() | number:'1.2-2' }} TND
-              </span>
-            </div>
+            @if (repaymentSchedule().length > 0) {
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">Principal:</span>
+                  <span class="font-medium">{{ totalPrincipalAmount() | number:'1.2-2' }} TND</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">Intérêts (taux {{ interestRate() }}%):</span>
+                  <span class="font-medium">{{ totalInterestAmount() | number:'1.2-2' }} TND</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                <span class="text-base font-semibold text-primary">Total à rembourser:</span>
+                <span class="text-xl font-bold text-primary">
+                  {{ getTotalRepayment() | number:'1.2-2' }} TND
+                </span>
+              </div>
+            }
             <p class="text-xs text-gray-500 mt-1">
               Les coupons couvrent automatiquement le crédit
             </p>

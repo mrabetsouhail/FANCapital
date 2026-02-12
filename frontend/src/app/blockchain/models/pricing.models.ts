@@ -48,6 +48,19 @@ export interface AdvanceRequest {
   durationDays: number;
 }
 
+/** Avance active (prêt en cours) — pour calendrier réel. */
+export interface ActiveLoanInfo {
+  loanId: string;
+  user: string;
+  token: string;
+  collateralAmount: string;
+  vniAtStart: string;
+  principalTnd: string;  // 1e8
+  startAt: number;       // epoch seconds
+  durationDays: number;
+  status: number;
+}
+
 export interface TxResponse {
   txHash?: string;
   status: 'submitted' | 'mined' | 'failed';

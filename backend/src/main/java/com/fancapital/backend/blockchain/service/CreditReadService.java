@@ -94,6 +94,18 @@ public class CreditReadService {
   }
 
   /**
+   * Get active loan for a user, or null if none.
+   */
+  public LoanInfo getActiveLoanForUser(String userWallet) {
+    if (userWallet == null || userWallet.isBlank()) return null;
+    String n = userWallet.trim().toLowerCase();
+    return listActiveLoans().stream()
+        .filter(l -> l.user() != null && l.user().equalsIgnoreCase(n))
+        .findFirst()
+        .orElse(null);
+  }
+
+  /**
    * List all active loans (status = Active).
    */
   public List<LoanInfo> listActiveLoans() {

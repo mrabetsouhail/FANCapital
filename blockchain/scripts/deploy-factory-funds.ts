@@ -74,11 +74,38 @@ async function main() {
   const fund0 = await factory.getFund(0);
   const fund1 = await factory.getFund(1);
 
+  // AST (Avance sur Titres): shared PriceOracle + EscrowRegistry + CreditModelA
+  const PriceOracle = await ethers.getContractFactory("PriceOracle");
+  const astOracle = await PriceOracle.deploy(deployer.address);
+  await astOracle.waitForDeployment();
+  const PRICE_SCALE = BigInt(1e8);
+  await (await astOracle.updateVNI(fund0.token, BigInt(10) * PRICE_SCALE)).wait(); // 10 TND Atlas
+  await (await astOracle.updateVNI(fund1.token, BigInt(5) * PRICE_SCALE)).wait();  // 5 TND Didon
+
+  const EscrowRegistry = await ethers.getContractFactory("EscrowRegistry");
+  const escrow = await EscrowRegistry.deploy(deployer.address);
+  await escrow.waitForDeployment();
+
+  const CreditModelA = await ethers.getContractFactory("CreditModelA");
+  const creditA = await CreditModelA.deploy(deployer.address, await astOracle.getAddress(), await escrow.getAddress());
+  await creditA.waitForDeployment();
+  await (await creditA.setKYCRegistry(await kyc.getAddress())).wait();
+  await (await creditA.setInvestorRegistry(await investors.getAddress())).wait();
+  await (await escrow.setAuthorizedCaller(await creditA.getAddress(), true)).wait();
+
+  const CPEFToken = await ethers.getContractFactory("CPEFToken");
+  const atlasToken = CPEFToken.attach(fund0.token) as { setEscrowManager: (a: string) => Promise<unknown> };
+  const didonToken = CPEFToken.attach(fund1.token) as { setEscrowManager: (a: string) => Promise<unknown> };
+  await (await atlasToken.setEscrowManager(await escrow.getAddress())).wait();
+  await (await didonToken.setEscrowManager(await escrow.getAddress())).wait();
+
   console.log("Network:", network.name);
   console.log("Deployer:", deployer.address);
   console.log("CPEFFactory:", await factory.getAddress());
   console.log("CPEF Atlas:", fund0);
   console.log("CPEF Didon:", fund1);
+  console.log("CreditModelA:", await creditA.getAddress());
+  console.log("EscrowRegistry:", await escrow.getAddress());
 
   const deployment = {
     network: network.name,
@@ -89,6 +116,8 @@ async function main() {
       CashTokenTND: await tnd.getAddress(),
       TaxVault: await taxVault.getAddress(),
       CircuitBreaker: await cb.getAddress(),
+      CreditModelA: await creditA.getAddress(),
+      EscrowRegistry: await escrow.getAddress(),
     },
     deployers: {
       OracleDeployer: await oracleDeployer.getAddress(),

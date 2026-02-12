@@ -1,9 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
 
 import { BLOCKCHAIN_API_BASE_URL } from '../blockchain-api.tokens';
 import type { Fund, FundsListResponse } from '../models/fund.models';
 import type {
+  ActiveLoanInfo,
   AdvanceRequest,
   BuyRequest,
   QuoteBuyRequest,
@@ -97,6 +99,13 @@ export class BlockchainApiService {
   /** Demande d'avance sur titres (AST). Token: Atlas ou Didon. */
   requestAdvance(req: AdvanceRequest) {
     return this.http.post<TxResponse>(`${this.baseUrl}/advance/request`, req);
+  }
+
+  /** Avance active de l'utilisateur (pour calendrier réel). Émet null si 404. */
+  getActiveAdvance(user: string) {
+    return this.http.get<ActiveLoanInfo>(`${this.baseUrl}/advance/active`, { params: { user } }).pipe(
+      catchError(() => of<ActiveLoanInfo | null>(null))
+    );
   }
 
   // ---------- P2P ----------

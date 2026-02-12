@@ -183,6 +183,15 @@ public class BlockchainController {
 
   // ---- Execution endpoints (stubs until we implement signing + role separation) ----
   /**
+   * Avance active de l'utilisateur (pour afficher le calendrier réel).
+   */
+  @GetMapping("/advance/active")
+  public ResponseEntity<CreditReadService.LoanInfo> getActiveAdvance(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user) {
+    CreditReadService.LoanInfo loan = creditRead.getActiveLoanForUser(user);
+    return loan != null ? ResponseEntity.ok(loan) : ResponseEntity.notFound().build();
+  }
+
+  /**
    * Liste des demandes d'avance en attente (opérateur).
    */
   @GetMapping("/advance/requested")
