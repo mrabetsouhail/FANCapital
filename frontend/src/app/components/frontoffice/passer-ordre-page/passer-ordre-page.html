@@ -4,6 +4,9 @@
 
   <!-- Main Content -->
   <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-4">
+      <app-back-button fallbackRoute="/acceuil-client"></app-back-button>
+    </div>
     <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6 sm:p-8">
     <!-- Header -->
     <div class="mb-8">
@@ -44,10 +47,29 @@
           @if (orderMode() === 'piscine') {
             <span class="font-semibold text-[#22c55e]">Piscine de Liquidité:</span> Exécution immédiate au prix du marché
           } @else {
-            <span class="font-semibold text-[#00204A]">P2P:</span> Carnet d'ordres - Correspondance avec d'autres traders
+            <span class="font-semibold text-[#00204A]">P2P Hybrid Order Book:</span> Correspondance avec d'autres traders. À l'expiration, le reliquat non matché est exécuté via la piscine.
           }
         </p>
       </div>
+
+      @if (orderMode() === 'p2p') {
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Période de validité</label>
+          <div class="flex gap-2">
+            @for (p of validityPeriodOptions; track p) {
+              <button
+                type="button"
+                (click)="selectValidityPeriod(p)"
+                [class]="validityPeriod() === p 
+                  ? 'px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#00204A]' 
+                  : 'px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200'"
+              >
+                {{ p === '24h' ? '24 heures' : p === '48h' ? '48 heures' : '7 jours' }}
+              </button>
+            }
+          </div>
+        </div>
+      }
     </div>
 
     <!-- Amount Input Section -->
@@ -106,6 +128,13 @@
         </div>
       }
 
+      <!-- Vérification des frais piscine -->
+      @if (orderMode() === 'piscine' && amount() > 0 && poolFeesWarning()) {
+        <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-sm text-amber-800">⚠️ {{ poolFeesWarning() }}</p>
+        </div>
+      }
+
       <!-- Fees Calculator -->
       @if (amount() > 0) {
         <div class="border-t border-gray-200 pt-4">
@@ -119,7 +148,7 @@
                 @if (orderMode() === 'piscine') {
                   Frais + TVA (quote):
                 } @else {
-                  Frais de transaction (0.5%):
+                  Frais de transaction ({{ p2pFeePercent() }}%):
                 }
               </span>
               <span class="font-medium text-gray-900">-{{ fees() | number:'1.2-2' }} TND</span>
@@ -137,13 +166,53 @@
       }
     </div>
 
-    <!-- Cash Wallet Impact -->
+    <!-- Cash Wallet / Credit Wallet Impact -->
     <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">Impact sur le Cash Wallet</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        @if (orderType() === 'buy' && creditDebt() > 0 && cashBalance() > 0) {
+          Source de paiement : Cash Wallet ou Credit Wallet
+        } @else {
+          Impact sur le Cash Wallet
+        }
+      </h2>
+      @if (orderType() === 'buy' && creditDebt() > 0 && cashBalance() > 0) {
+        <div class="mb-4 space-y-3">
+          <label class="flex items-center gap-3 cursor-pointer p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <input
+              type="checkbox"
+              [checked]="priorityCredit()"
+              (change)="priorityCredit.set(!priorityCredit())"
+              class="w-4 h-4 text-[#00204A] rounded border-gray-300 focus:ring-[#00204A]"
+            />
+            <span class="text-sm font-medium text-gray-900">
+              Priorité Crédit (Recommandée)
+            </span>
+            <span class="text-xs text-gray-600">
+              Utiliser le Credit Wallet en premier, compléter avec le Cash Wallet
+            </span>
+          </label>
+          @if (totalCost() > 0) {
+            <p class="text-sm text-gray-700">
+              <strong>Répartition :</strong>
+              <span class="text-[#00204A]">Credit Wallet : {{ fromCreditWallet() | number:'1.2-2' }} TND</span>
+              @if (fromCashWallet() > 0) {
+                <span> · </span>
+                <span>Cash Wallet : {{ fromCashWallet() | number:'1.2-2' }} TND</span>
+              }
+            </p>
+          }
+        </div>
+      }
       <div class="grid grid-cols-2 gap-4">
         <div class="bg-gray-50 rounded-lg p-4">
           <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Solde actuel</p>
           <p class="text-2xl font-bold text-gray-900">{{ cashBalance() | number:'1.2-2' }} TND</p>
+          @if (creditDebt() > 0) {
+            <p class="text-xs text-gray-500 mt-1">Credit : {{ creditDisplay() | number:'1.2-2' }} TND · Cash : {{ cashDisplay() | number:'1.2-2' }} TND</p>
+          }
+          @if (orderType() === 'buy' && p2pReservedCash() > 0) {
+            <p class="text-xs text-amber-600 mt-1">Disponible : {{ availableCash() | number:'1.2-2' }} TND ({{ p2pReservedCash() | number:'1.2-2' }} TND réservés par ordres P2P)</p>
+          }
         </div>
         <div [class]="orderType() === 'buy' ? 'bg-red-50 rounded-lg p-4' : 'bg-green-50 rounded-lg p-4'">
           <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Solde après transaction</p>
@@ -152,10 +221,16 @@
           </p>
         </div>
       </div>
-      @if (orderType() === 'buy' && (cashAfter() < 0 || cashBalance() === 0)) {
+      @if (orderType() === 'buy' && p2pReservedCash() > 0) {
+        <p class="text-xs text-gray-500 mt-2">Réservé par ordres P2P en attente : {{ p2pReservedCash() | number:'1.2-2' }} TND</p>
+      }
+      @if (orderType() === 'buy' && (cashAfter() < 0 || cashBalance() === 0 || totalCost() > availableCash())) {
         <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p class="text-sm text-amber-800 mb-3">
-            ⚠️ Solde insuffisant. Alimentez votre Cash Wallet pour effectuer vos transactions.
+            ⚠️ Solde insuffisant. @if (p2pReservedCash() > 0) {
+              {{ p2pReservedCash() | number:'1.2-2' }} TND sont réservés par vos ordres P2P en attente.
+            }
+            Alimentez votre Cash Wallet pour effectuer vos transactions.
           </p>
           <button
             (click)="onSeedCash()"

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 
 type TransactionType = 'depot' | 'retrait';
 type DepositMethod = 'virement' | 'carte';
@@ -17,7 +18,7 @@ interface BankAccount {
 
 @Component({
   selector: 'app-transaction-page',
-  imports: [CommonModule, FormsModule, NavbarClient],
+  imports: [CommonModule, FormsModule, NavbarClient, BackButton],
   templateUrl: './transaction-page.html',
   styleUrl: './transaction-page.css',
 })

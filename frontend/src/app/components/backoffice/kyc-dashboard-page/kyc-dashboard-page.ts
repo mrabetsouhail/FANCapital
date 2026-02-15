@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { BackofficeApiService } from '../../../backoffice/services/backoffice-api.service';
+import { BackButton } from '../../shared/back-button/back-button';
 import type { KycUserRow, KycLevel } from '../../../backoffice/models/kyc.models';
 
 @Component({
   selector: 'app-kyc-dashboard-page',
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, BackButton, DatePipe],
   templateUrl: './kyc-dashboard-page.html',
   styleUrl: './kyc-dashboard-page.css',
 })

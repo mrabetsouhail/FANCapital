@@ -28,7 +28,7 @@
           @for (point of alphaSparkline(); track $index) {
             <div 
               class="bg-[#00204A] rounded-t flex-1 mx-0.5"
-              [style.height.%]="((point - 120) / (125.5 - 120)) * 100"
+              [style.height.%]="getSparklineHeight(alphaSparkline(), point)"
             ></div>
           }
         </div>
@@ -42,26 +42,30 @@
             </span>
           </div>
           <p class="text-sm text-gray-600">Valeur totale: {{ (alphaPrice() * alphaOwned()) | number:'1.2-2' }} TND</p>
-          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ alphaOwned() }} tokens Alpha</p>
+          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ alphaOwned() }} tokens Atlas</p>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-3">
-          <a
-            [routerLink]="['/passer-ordre']"
-            [queryParams]="{ token: 'Atlas', action: 'buy' }"
-            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
-          >
-            Acheter
-          </a>
-          <a
-            [routerLink]="['/passer-ordre']"
-            [queryParams]="{ token: 'Atlas', action: 'sell' }"
-            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
-          >
-            Vendre
-          </a>
-        </div>
+        <!-- Action Buttons (cachés pour admin backoffice) -->
+        @if (!isBackofficeAdmin()) {
+          <div class="flex gap-3">
+            <a
+              [routerLink]="['/passer-ordre']"
+              [queryParams]="{ token: 'Atlas', action: 'buy' }"
+              class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+              Acheter
+            </a>
+            <a
+              [routerLink]="['/passer-ordre']"
+              [queryParams]="{ token: 'Atlas', action: 'sell' }"
+              class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+              Vendre
+            </a>
+          </div>
+        } @else {
+          <p class="text-sm text-gray-500 italic">Passage d'ordres réservé aux investisseurs.</p>
+        }
       </div>
 
       <!-- Token Beta Card -->
@@ -81,7 +85,7 @@
           @for (point of betaSparkline(); track $index) {
             <div 
               class="bg-[#22c55e] rounded-t flex-1 mx-0.5"
-              [style.height.%]="((point - 85) / (86 - 85)) * 100"
+              [style.height.%]="getSparklineHeight(betaSparkline(), point)"
             ></div>
           }
         </div>
@@ -95,26 +99,30 @@
             </span>
           </div>
           <p class="text-sm text-gray-600">Valeur totale: {{ (betaPrice() * betaOwned()) | number:'1.2-2' }} TND</p>
-          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ betaOwned() }} tokens Beta</p>
+          <p class="text-xs text-gray-500 mt-1">Vous possédez: {{ betaOwned() }} tokens Didon</p>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-3">
-          <a
-            [routerLink]="['/passer-ordre']"
-            [queryParams]="{ token: 'Didon', action: 'buy' }"
-            class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
-          >
-            Acheter
-          </a>
-          <a
-            [routerLink]="['/passer-ordre']"
-            [queryParams]="{ token: 'Didon', action: 'sell' }"
-            class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
-          >
-            Vendre
-          </a>
-        </div>
+        <!-- Action Buttons (cachés pour admin backoffice) -->
+        @if (!isBackofficeAdmin()) {
+          <div class="flex gap-3">
+            <a
+              [routerLink]="['/passer-ordre']"
+              [queryParams]="{ token: 'Didon', action: 'buy' }"
+              class="flex-1 px-4 py-3 bg-[#22c55e] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-green-600 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+              Acheter
+            </a>
+            <a
+              [routerLink]="['/passer-ordre']"
+              [queryParams]="{ token: 'Didon', action: 'sell' }"
+              class="flex-1 px-4 py-3 bg-[#00204A] text-white rounded-lg font-semibold shadow-sm hover:shadow-md hover:bg-blue-900 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+              Vendre
+            </a>
+          </div>
+        } @else {
+          <p class="text-sm text-gray-500 italic">Passage d'ordres réservé aux investisseurs.</p>
+        }
       </div>
     </div>
     </main>

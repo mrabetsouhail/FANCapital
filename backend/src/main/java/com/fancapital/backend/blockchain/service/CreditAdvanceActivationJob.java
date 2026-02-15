@@ -27,13 +27,20 @@ public class CreditAdvanceActivationJob {
 
   @Scheduled(fixedDelayString = "${blockchain.credit.auto-activate-interval-ms:60000}") // 1 min default
   public void processRequestedAdvances() {
-    List<CreditReadService.LoanInfo> requested = creditRead.listRequestedLoans();
-    for (CreditReadService.LoanInfo loan : requested) {
+    for (CreditReadService.LoanInfo loan : creditRead.listRequestedLoans()) {
       try {
-        String txHash = activation.activateAndCredit(loan.loanId());
-        log.info("AST auto-activated loan {}: tx={}, user={}", loan.loanId(), txHash, loan.user());
+        String txHash = activation.activateAndCredit(loan.loanId(), "A");
+        log.info("AST (A) auto-activated loan {}: tx={}, user={}", loan.loanId(), txHash, loan.user());
       } catch (Exception e) {
-        log.warn("AST auto-activation failed for loan {}: {}", loan.loanId(), e.getMessage());
+        log.warn("AST (A) auto-activation failed for loan {}: {}", loan.loanId(), e.getMessage());
+      }
+    }
+    for (CreditReadService.LoanInfo loan : creditRead.listRequestedLoansB()) {
+      try {
+        String txHash = activation.activateAndCredit(loan.loanId(), "B");
+        log.info("AST (B/PGP) auto-activated loan {}: tx={}, user={}", loan.loanId(), txHash, loan.user());
+      } catch (Exception e) {
+        log.warn("AST (B/PGP) auto-activation failed for loan {}: {}", loan.loanId(), e.getMessage());
       }
     }
   }

@@ -64,6 +64,13 @@ public class DeploymentRegistry {
     return getContractFromPath(Path.of("..", "blockchain", "deployments", "localhost.json"), "CreditModelA");
   }
 
+  /** Adresse CreditModelBPGP (modèle PGP) — depuis le fichier deployments actif ou localhost.json. */
+  public String getCreditModelBAddress() {
+    String v = getContractFromLoadedDeployments("CreditModelBPGP");
+    if (v != null) return v;
+    return getContractFromPath(Path.of("..", "blockchain", "deployments", "localhost.json"), "CreditModelBPGP");
+  }
+
   /** Adresse EscrowRegistry — depuis le fichier deployments actif (infra) ou localhost.json. */
   public String getEscrowRegistryAddress() {
     String v = getContractFromLoadedDeployments("EscrowRegistry");

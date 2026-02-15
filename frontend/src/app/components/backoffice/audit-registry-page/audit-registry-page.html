@@ -2,11 +2,14 @@
   <app-navbar-client></app-navbar-client>
 
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-4">
+      <app-back-button fallbackRoute="/acceuil-client"></app-back-button>
+    </div>
     <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-primary">Registre d'Audit (DLT)</h1>
-          <p class="text-sm text-gray-600">Réconciliation Identité (KYC) + Soldes on-chain (Atlas/Didon).</p>
+          <p class="text-sm text-gray-600">Réconciliation Identité (KYC) + Soldes on-chain (Atlas/Didon) + Tokens bloqués pour l'avance.</p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -77,12 +80,17 @@
               <th class="text-left py-2 pr-3">ID (CIN/Passeport/NIF)</th>
               <th class="text-left py-2 pr-3">Wallet</th>
               <th class="text-right py-2 pr-3">Atlas</th>
-              <th class="text-right py-2">Didon</th>
+              <th class="text-right py-2 pr-3">Didon</th>
+              <th class="text-right py-2 pr-3">Atlas bloqués</th>
+              <th class="text-right py-2">Didon bloqués</th>
             </tr>
           </thead>
           <tbody>
             @for (r of filtered(); track r.userId) {
-              <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+              <tr
+                class="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
+                [class.bg-blue-50]="selectedUser()?.userId === r.userId"
+                (click)="selectUser(r)">
                 <td class="py-2 pr-3">
                   <div class="font-semibold text-primary">{{ r.fullNameOrCompany || r.email }}</div>
                   <div class="text-xs text-gray-500">{{ r.email }} · {{ r.type }}</div>
@@ -90,16 +98,78 @@
                 <td class="py-2 pr-3 font-mono text-xs text-gray-700">{{ r.cinOrPassportOrFiscalId || '-' }}</td>
                 <td class="py-2 pr-3 font-mono text-xs text-gray-700 break-all">{{ r.walletAddress || '-' }}</td>
                 <td class="py-2 pr-3 text-right font-semibold text-primary">{{ from1e8(r.atlasBalanceToken1e8) }}</td>
-                <td class="py-2 text-right font-semibold text-primary">{{ from1e8(r.didonBalanceToken1e8) }}</td>
+                <td class="py-2 pr-3 text-right font-semibold text-primary">{{ from1e8(r.didonBalanceToken1e8) }}</td>
+                <td class="py-2 pr-3 text-right">
+                  @if (hasLocked(r.atlasLocked1e8)) {
+                    <span class="text-amber-600 font-medium">{{ from1e8(r.atlasLocked1e8!) }}</span>
+                  } @else {
+                    <span class="text-gray-400">—</span>
+                  }
+                </td>
+                <td class="py-2 text-right">
+                  @if (hasLocked(r.didonLocked1e8)) {
+                    <span class="text-amber-600 font-medium">{{ from1e8(r.didonLocked1e8!) }}</span>
+                  } @else {
+                    <span class="text-gray-400">—</span>
+                  }
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="py-10 text-center text-gray-500">Aucun résultat.</td>
+                <td colspan="7" class="py-10 text-center text-gray-500">Aucun résultat.</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+
+      @if (selectedUser(); as user) {
+        <div class="mt-6 rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-primary">
+              Historique achats/ventes — {{ user.fullNameOrCompany || user.email }}
+            </h2>
+            <button
+              type="button"
+              (click)="closeUserHistory()"
+              class="px-3 py-1 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-100 transition">
+              Fermer
+            </button>
+          </div>
+          @if (txHistoryLoading()) {
+            <div class="px-4 py-6 text-sm text-gray-500">Chargement…</div>
+          } @else if (txHistoryError()) {
+            <div class="px-4 py-4 text-sm text-red-600">{{ txHistoryError() }}</div>
+          } @else if (filteredTxHistory().length === 0) {
+            <div class="px-4 py-6 text-sm text-gray-500">Aucun achat ni vente.</div>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200 text-primary bg-gray-50">
+                    <th class="text-left py-2 px-3">Date</th>
+                    <th class="text-left py-2 px-3">Type</th>
+                    <th class="text-left py-2 px-3">Token</th>
+                    <th class="text-right py-2 px-3">Montant TND</th>
+                    <th class="text-left py-2 px-3 font-mono text-xs">Tx Hash</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (tx of filteredTxHistory(); track tx.txHash + tx.timestampSec) {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                      <td class="py-2 px-3 text-gray-700">{{ tx.timestampSec * 1000 | date:'short' }}</td>
+                      <td class="py-2 px-3 font-medium">{{ getTxKindLabel(tx.kind) }}</td>
+                      <td class="py-2 px-3">{{ tx.fundSymbol || '-' }}</td>
+                      <td class="py-2 px-3 text-right font-semibold">{{ from1e8ToNumber(tx.amountTnd1e8) | number:'1.2-2' }} TND</td>
+                      <td class="py-2 px-3 font-mono text-xs text-gray-500 break-all">{{ tx.txHash }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
 
       @if (logs().length) {
         <div class="mt-8">

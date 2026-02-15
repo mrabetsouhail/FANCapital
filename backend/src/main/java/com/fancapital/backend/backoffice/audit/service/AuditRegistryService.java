@@ -48,6 +48,8 @@ public class AuditRegistryService {
     String wallet = u.getWalletAddress();
     String atlas = "0";
     String didon = "0";
+    String atlasLocked = "0";
+    String didonLocked = "0";
 
     if (wallet != null && wallet.startsWith("0x") && wallet.length() == 42) {
       var portfolio = (atBlockNumber == null)
@@ -58,6 +60,8 @@ public class AuditRegistryService {
       PortfolioPosition pDidon = pickFund(portfolio.positions(), "didon", 1);
       atlas = pAtlas != null ? pAtlas.balanceTokens() : "0";
       didon = pDidon != null ? pDidon.balanceTokens() : "0";
+      atlasLocked = pAtlas != null ? pAtlas.lockedTokens1e8() : "0";
+      didonLocked = pDidon != null ? pDidon.lockedTokens1e8() : "0";
     }
 
     String idValue = pickFiscalOrCinOrPassport(u);
@@ -72,7 +76,9 @@ public class AuditRegistryService {
         displayName,
         wallet,
         atlas,
-        didon
+        didon,
+        atlasLocked,
+        didonLocked
     );
   }
 

@@ -44,12 +44,14 @@ public class DebtManager {
     }
   }
 
+  /** Avance active (Model A ou B). */
+  public CreditReadService.ActiveAdvanceResult getActiveAdvanceForUser(String userWallet) {
+    return creditRead.getActiveAdvanceForUser(userWallet);
+  }
+
+  /** @deprecated Préférer getActiveAdvanceForUser pour le modèle. */
   public CreditReadService.LoanInfo getActiveLoanForUser(String userWallet) {
-    if (userWallet == null || userWallet.isBlank()) return null;
-    String n = userWallet.trim().toLowerCase();
-    return creditRead.listActiveLoans().stream()
-        .filter(l -> l.user().equalsIgnoreCase(n))
-        .findFirst()
-        .orElse(null);
+    CreditReadService.ActiveAdvanceResult r = getActiveAdvanceForUser(userWallet);
+    return r != null ? r.loan() : null;
   }
 }

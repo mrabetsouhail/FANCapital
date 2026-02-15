@@ -6,6 +6,9 @@ import type { KycUserRow, SetInvestorScoreRequest, SetKycLevelRequest } from '..
 import type { AuditLogsResponse, AuditRegistryResponse } from '../models/audit.models';
 import type { FeeWalletDashboard } from '../models/fee-wallet.models';
 import type { MultiSigInfo, MultiSigTransactionsList, SubmitTransactionRequest } from '../models/multisig.models';
+import type { PendingOrdersResponse, MatchedOrdersResponse, FallbackAuditResponse } from '../models/orderbook.models';
+import type { SubscriptionsMonitorResponse, ExpiringSubscriptionsResponse } from '../models/subscription.models';
+import type { LockedAssetsResponse, RepaymentTrackingResponse } from '../models/escrow.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -81,6 +84,37 @@ export class BackofficeApiService {
 
   executeMultiSigTransaction(txId: string) {
     return this.http.post<TxResponse>(`/api/backoffice/multisig/execute/${txId}`, {});
+  }
+
+  // Order Book P2P & Fallback
+  listPendingOrders() {
+    return this.http.get<PendingOrdersResponse>('/api/backoffice/orderbook/pending');
+  }
+
+  listMatchedOrders() {
+    return this.http.get<MatchedOrdersResponse>('/api/backoffice/orderbook/matched');
+  }
+
+  listFallbackAudit() {
+    return this.http.get<FallbackAuditResponse>('/api/backoffice/orderbook/fallback');
+  }
+
+  // Abonnements Premium
+  getSubscriptionsMonitor() {
+    return this.http.get<SubscriptionsMonitorResponse>('/api/backoffice/subscriptions/monitor');
+  }
+
+  getExpiringSubscriptions() {
+    return this.http.get<ExpiringSubscriptionsResponse>('/api/backoffice/subscriptions/expiring-soon');
+  }
+
+  // Escrow & Libération au Prorata
+  getLockedAssets() {
+    return this.http.get<LockedAssetsResponse>('/api/backoffice/escrow/locked-assets');
+  }
+
+  getRepaymentTracking() {
+    return this.http.get<RepaymentTrackingResponse>('/api/backoffice/escrow/repayment-tracking');
   }
 }
 

@@ -1,5 +1,9 @@
-<div class="min-h-screen fc-premium-bg flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-xl bg-white rounded-xl shadow-md border border-gray-200 p-6">
+<div class="min-h-screen fc-premium-bg px-4 py-10">
+  <div class="max-w-xl mx-auto">
+    <div class="mb-4">
+      <app-back-button fallbackRoute="/acceuil-client" label="Revenir"></app-back-button>
+    </div>
+  <div class="w-full bg-white rounded-xl shadow-md border border-gray-200 p-6">
     <h1 class="text-2xl font-bold text-primary mb-2">Phase KYC</h1>
     <p class="text-gray-600 text-sm mb-6">
       Merci. Pour activer toutes les fonctionnalités (P2P, limites plus élevées, services premium), veuillez compléter
@@ -17,12 +21,6 @@
       </div>
 
       <div class="flex gap-3 pt-2">
-        <a
-          routerLink="/acceuil-client"
-          class="inline-flex justify-center px-4 py-2 rounded-lg border border-gray-300 text-primary hover:bg-gray-50 transition"
-        >
-          Revenir
-        </a>
         <button
           type="button"
           class="inline-flex justify-center px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
@@ -34,5 +32,5 @@
       </div>
     </div>
   </div>
+  </div>
 </div>
-

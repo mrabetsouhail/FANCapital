@@ -16,13 +16,19 @@ import com.fancapital.backend.blockchain.model.TxDtos.P2PSettleRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.SellRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.TxResponse;
 import com.fancapital.backend.blockchain.service.BlockchainReadService;
+import com.fancapital.backend.auth.repo.AppUserRepository;
+import com.fancapital.backend.blockchain.service.AdvanceRepaymentService;
 import com.fancapital.backend.blockchain.service.CreditAdvanceActivationService;
 import com.fancapital.backend.blockchain.service.CreditAdvanceRequestService;
 import com.fancapital.backend.blockchain.service.CreditReadService;
 import com.fancapital.backend.blockchain.service.DeploymentRegistry;
 import com.fancapital.backend.blockchain.service.LiquidityPoolWriteService;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.fancapital.backend.blockchain.service.P2PExchangeWriteService;
 import com.fancapital.backend.blockchain.service.OnchainBootstrapService;
 import com.fancapital.backend.blockchain.service.OperatorDiagnosticsService;
@@ -39,6 +45,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/blockchain")
@@ -49,6 +57,8 @@ public class BlockchainController {
   private final CreditAdvanceRequestService creditAdvanceRequest;
   private final CreditAdvanceActivationService creditAdvanceActivation;
   private final CreditReadService creditRead;
+  private final AdvanceRepaymentService advanceRepayment;
+  private final AppUserRepository userRepo;
   private final LiquidityPoolWriteService poolWriteService;
   private final P2PExchangeWriteService p2pWriteService;
   private final OperatorDiagnosticsService operatorDiagnostics;
@@ -62,6 +72,8 @@ public class BlockchainController {
       CreditAdvanceRequestService creditAdvanceRequest,
       CreditAdvanceActivationService creditAdvanceActivation,
       CreditReadService creditRead,
+      AdvanceRepaymentService advanceRepayment,
+      AppUserRepository userRepo,
       LiquidityPoolWriteService poolWriteService,
       P2PExchangeWriteService p2pWriteService,
       OperatorDiagnosticsService operatorDiagnostics,
@@ -74,6 +86,8 @@ public class BlockchainController {
     this.creditAdvanceRequest = creditAdvanceRequest;
     this.creditAdvanceActivation = creditAdvanceActivation;
     this.creditRead = creditRead;
+    this.advanceRepayment = advanceRepayment;
+    this.userRepo = userRepo;
     this.poolWriteService = poolWriteService;
     this.p2pWriteService = p2pWriteService;
     this.operatorDiagnostics = operatorDiagnostics;
@@ -124,6 +138,9 @@ public class BlockchainController {
           else if (credit1e8 >= 500_000_000_000L) amount = 5_000L;
         }
         onchainBootstrap.seedCashToWallet(user, amount);
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+          try { sciPush.pushForWallet(user); } catch (Exception ex) { /* ignore */ }
+        });
         return readService.portfolio(user);
       } catch (Exception e) {
         // ignore seed errors (ex: MINTER_ROLE manquant), return initial response
@@ -160,6 +177,9 @@ public class BlockchainController {
       @RequestParam(required = false, defaultValue = "5000") int amount
   ) {
     String result = onchainBootstrap.seedCashToWallet(walletAddress, amount);
+    java.util.concurrent.CompletableFuture.runAsync(() -> {
+      try { sciPush.pushForWallet(walletAddress); } catch (Exception ex) { /* ignore */ }
+    });
     return Map.of("status", "ok", "message", result != null ? result : "done");
   }
 
@@ -183,29 +203,53 @@ public class BlockchainController {
 
   // ---- Execution endpoints (stubs until we implement signing + role separation) ----
   /**
-   * Avance active de l'utilisateur (pour afficher le calendrier réel).
+   * Avance active de l'utilisateur (Model A ou B) pour affichage calendrier.
    */
   @GetMapping("/advance/active")
-  public ResponseEntity<CreditReadService.LoanInfo> getActiveAdvance(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user) {
-    CreditReadService.LoanInfo loan = creditRead.getActiveLoanForUser(user);
-    return loan != null ? ResponseEntity.ok(loan) : ResponseEntity.notFound().build();
+  public ResponseEntity<Map<String, Object>> getActiveAdvance(@RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user) {
+    CreditReadService.ActiveAdvanceResult adv = creditRead.getActiveAdvanceForUser(user);
+    if (adv == null) return ResponseEntity.notFound().build();
+    CreditReadService.LoanInfo loan = adv.loan();
+    Map<String, Object> body = new java.util.HashMap<>(Map.of(
+        "model", adv.model(),
+        "loanId", loan.loanId().toString(),
+        "user", loan.user(),
+        "token", loan.token(),
+        "collateralAmount", loan.collateralAmount().toString(),
+        "vniAtStart", loan.vniAtStart().toString(),
+        "principalTnd", loan.principalTnd().toString(),
+        "startAt", loan.startAt(),
+        "durationDays", loan.durationDays(),
+        "status", loan.status()
+    ));
+    return ResponseEntity.ok(body);
   }
 
   /**
-   * Liste des demandes d'avance en attente (opérateur).
+   * Liste des demandes d'avance en attente (opérateur) — Modèle A et B (PGP).
+   * Chaque entrée inclut le modèle pour l'activation.
    */
   @GetMapping("/advance/requested")
-  public List<CreditReadService.LoanInfo> listRequestedAdvances() {
-    return creditRead.listRequestedLoans();
+  public List<Map<String, Object>> listRequestedAdvances() {
+    List<Map<String, Object>> result = new java.util.ArrayList<>();
+    for (CreditReadService.LoanInfo loan : creditRead.listRequestedLoans()) {
+      result.add(Map.of("model", "A", "loan", loan));
+    }
+    for (CreditReadService.LoanInfo loan : creditRead.listRequestedLoansB()) {
+      result.add(Map.of("model", "B", "loan", loan));
+    }
+    return result;
   }
 
   /**
    * Active une avance : crédite le Credit Wallet (mint TND) puis lock collatéral (opérateur).
-   * Ex: POST /api/blockchain/advance/activate?loanId=1
+   * Ex: POST /api/blockchain/advance/activate?loanId=1&model=A
    */
   @PostMapping("/advance/activate")
-  public TxResponse activateAdvance(@RequestParam long loanId) {
-    String txHash = creditAdvanceActivation.activateAndCredit(BigInteger.valueOf(loanId));
+  public TxResponse activateAdvance(
+      @RequestParam long loanId,
+      @RequestParam(required = false, defaultValue = "A") String model) {
+    String txHash = creditAdvanceActivation.activateAndCredit(BigInteger.valueOf(loanId), model);
     return new TxResponse("submitted", txHash, "Avance activée. Credit Wallet crédité, collatéral verrouillé.");
   }
 
@@ -213,6 +257,38 @@ public class BlockchainController {
    * Demande d'avance sur titres (AST). L'utilisateur signe via WaaS.
    * Token: Atlas ou Didon. Après validation, l'opérateur appelle activateAdvance pour créditer le Credit Wallet.
    */
+  /**
+   * Remboursement partiel depuis le Cash Wallet.
+   * Burn les TND de l'utilisateur et enregistre le remboursement on-chain.
+   */
+  @PostMapping("/advance/repay")
+  public TxResponse repayAdvance(
+      @RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user,
+      @RequestParam @NotBlank String amount) throws IOException {
+    // Vérifier que le wallet correspond à l'utilisateur connecté
+    String userId = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+        .map(a -> a.getName())
+        .orElse(null);
+    if (userId != null && !userId.isBlank()) {
+      com.fancapital.backend.auth.model.AppUser appUser = userRepo.findById(userId).orElse(null);
+      String userWallet = appUser != null ? appUser.getWalletAddress() : null;
+      if (userWallet == null || userWallet.isBlank()) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            "Aucun wallet associé à votre compte. Contactez le support.");
+      }
+      if (!userWallet.equalsIgnoreCase(user.trim())) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            "Le wallet indiqué ne correspond pas à votre compte. Vous ne pouvez rembourser que votre propre avance.");
+      }
+    }
+    BigInteger amount1e8 = new BigInteger(amount.trim());
+    if (amount1e8.signum() <= 0) {
+      throw new IllegalArgumentException("Montant invalide.");
+    }
+    String txHash = advanceRepayment.repayFromCashWallet(user, amount1e8);
+    return new TxResponse("submitted", txHash, "Remboursement enregistré. Le collatéral sera libéré au prorata.");
+  }
+
   @PostMapping("/advance/request")
   public TxResponse requestAdvance(@Valid @RequestBody AdvanceRequest req) {
     String tokenAddr = registry.getTokenAddressForSymbol(req.token());
@@ -220,7 +296,7 @@ public class BlockchainController {
       throw new IllegalArgumentException("Token invalide: " + req.token() + ". Utilisez Atlas ou Didon.");
     }
     String txHash = creditAdvanceRequest.requestAdvanceForUser(
-        req.user(), tokenAddr, req.collateralAmount(), req.durationDays());
+        req.user(), tokenAddr, req.collateralAmount(), req.durationDays(), req.model());
     return new TxResponse("submitted", txHash, "Demande d'avance soumise. En attente d'activation par l'opérateur.");
   }
 

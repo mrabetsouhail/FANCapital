@@ -1,6 +1,9 @@
 package com.fancapital.backend.blockchain.service;
 
+import com.fancapital.backend.auth.model.Notification;
+import com.fancapital.backend.auth.model.Notification.Priority;
 import com.fancapital.backend.auth.repo.AppUserRepository;
+import com.fancapital.backend.auth.service.NotificationService;
 import com.fancapital.backend.backoffice.audit.service.BusinessContextService;
 import com.fancapital.backend.backoffice.service.DeploymentInfraService;
 import com.fancapital.backend.blockchain.model.TxDtos.BuyRequest;
@@ -9,6 +12,9 @@ import com.fancapital.backend.config.BlockchainProperties;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.FunctionReturnDecoder;
@@ -29,8 +35,11 @@ import org.web3j.tx.TransactionManager;
 
 @Service
 public class LiquidityPoolWriteService {
+  private static final Logger log = LoggerFactory.getLogger(LiquidityPoolWriteService.class);
   private static final BigInteger PRICE_SCALE = BigInteger.valueOf(100_000_000L); // 1e8
   private static final BigInteger MAX_APPROVE = new BigInteger("2").pow(255);
+  private static final BigInteger MIN_GAS_ETH = new BigInteger("10000000000000000");   // 0.01 ETH
+  private static final BigInteger TOPUP_GAS_ETH = new BigInteger("50000000000000000");  // 0.05 ETH
 
   private final Web3j web3j;
   private final DeploymentRegistry registry;
@@ -39,6 +48,8 @@ public class LiquidityPoolWriteService {
   private final BusinessContextService businessContextService;
   private final AppUserRepository userRepo;
   private final WaasUserWalletService waasWallets;
+  private final NotificationService notificationService;
+  private final SciScorePushService sciPush;
 
   public LiquidityPoolWriteService(
       Web3j web3j,
@@ -47,7 +58,9 @@ public class LiquidityPoolWriteService {
       BlockchainProperties props,
       BusinessContextService businessContextService,
       AppUserRepository userRepo,
-      WaasUserWalletService waasWallets
+      WaasUserWalletService waasWallets,
+      NotificationService notificationService,
+      SciScorePushService sciPush
   ) {
     this.web3j = web3j;
     this.registry = registry;
@@ -56,6 +69,8 @@ public class LiquidityPoolWriteService {
     this.businessContextService = businessContextService;
     this.userRepo = userRepo;
     this.waasWallets = waasWallets;
+    this.notificationService = notificationService;
+    this.sciPush = sciPush;
   }
 
   public String buyFor(BuyRequest req) {
@@ -94,7 +109,23 @@ public class LiquidityPoolWriteService {
       // Log l'erreur mais ne fait pas échouer la transaction
       System.err.println("Failed to register business context for transaction " + txHash + ": " + e.getMessage());
     }
-    
+
+    userRepo.findByWalletAddressIgnoreCase(req.user()).ifPresent(u -> {
+      double tnd = tndIn.doubleValue() / 100_000_000.0;
+      String fundName = fund.name() != null ? fund.name() : "CPEF";
+      try {
+        notificationService.create(u.getId(), Notification.Type.PRICE,
+            "Achat effectué - " + fundName,
+            String.format("Vous avez acheté des tokens %s pour %.2f TND.", fundName, tnd),
+            Priority.LOW);
+      } catch (Exception ex) {
+        System.err.println("Failed to create buy notification: " + ex.getMessage());
+      }
+    });
+
+    // Mise à jour temps réel du score SCI (async, sans bloquer la réponse)
+    scheduleScoreUpdate(req.user());
+
     return txHash;
   }
 
@@ -130,8 +161,35 @@ public class LiquidityPoolWriteService {
       // Log l'erreur mais ne fait pas échouer la transaction
       System.err.println("Failed to register business context for transaction " + txHash + ": " + e.getMessage());
     }
-    
+
+    userRepo.findByWalletAddressIgnoreCase(req.user()).ifPresent(u -> {
+      String fundName = fund.name() != null ? fund.name() : "CPEF";
+      try {
+        notificationService.create(u.getId(), Notification.Type.PRICE,
+            "Vente effectuée - " + fundName,
+            String.format("Vous avez vendu des tokens %s.", fundName),
+            Priority.LOW);
+      } catch (Exception ex) {
+        System.err.println("Failed to create sell notification: " + ex.getMessage());
+      }
+    });
+
+    // Mise à jour temps réel du score SCI (async, sans bloquer la réponse)
+    scheduleScoreUpdate(req.user());
+
     return txHash;
+  }
+
+  /** Lance le push du score SCI en arrière-plan après achat/vente. */
+  private void scheduleScoreUpdate(String walletAddress) {
+    CompletableFuture.runAsync(() -> {
+      try {
+        sciPush.pushForWallet(walletAddress);
+        log.debug("SCI score pushed for {}", walletAddress);
+      } catch (Exception e) {
+        log.warn("SCI score push failed for {}: {}", walletAddress, e.getMessage());
+      }
+    });
   }
 
   private String send(String to, Function fn, BigInteger gasLimit) {
@@ -194,6 +252,9 @@ public class LiquidityPoolWriteService {
           "User not found in DB (WaaS) - ensure KYC validated and wallet provisioned."
       );
     }
+    // Alimenter le wallet en ETH pour le gas si nécessaire (circuit fermé : la plateforme paie)
+    ensureUserHasGasForTx(userAddress);
+
     try {
       Credentials creds = waasWallets.credentialsForUser(userOpt.get().getId());
       TransactionManager tm = new RawTransactionManager(web3j, creds, chainId().longValue());
@@ -208,6 +269,26 @@ public class LiquidityPoolWriteService {
       throw e;
     } catch (Exception e) {
       throw new IllegalStateException("Could not approve pool for user " + userAddress + ": " + e.getMessage(), e);
+    }
+  }
+
+  /** Alimente le wallet utilisateur en ETH natif si solde insuffisant pour le gas (plateforme paie). */
+  private void ensureUserHasGasForTx(String userAddress) {
+    String opPk = props.operatorPrivateKey();
+    if (opPk == null || opPk.isBlank()) return;
+    try {
+      BigInteger ethBal = web3j.ethGetBalance(userAddress, DefaultBlockParameterName.LATEST).send().getBalance();
+      if (ethBal.compareTo(MIN_GAS_ETH) >= 0) return;
+      Credentials op = Credentials.create(opPk.trim());
+      TransactionManager opTm = new RawTransactionManager(web3j, op, chainId().longValue());
+      BigInteger gasPrice = suggestedGasPrice();
+      EthSendTransaction tx = (EthSendTransaction) opTm.sendTransaction(gasPrice, BigInteger.valueOf(21_000), userAddress, "", TOPUP_GAS_ETH);
+      if (tx.hasError()) {
+        System.err.println("Gas topup failed for " + userAddress + ": " + tx.getError().getMessage());
+        return;
+      }
+    } catch (Exception e) {
+      System.err.println("Gas topup error for " + userAddress + ": " + e.getMessage());
     }
   }
 

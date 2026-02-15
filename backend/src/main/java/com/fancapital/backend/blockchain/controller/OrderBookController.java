@@ -67,6 +67,29 @@ public class OrderBookController {
   }
 
   /**
+   * Probabilité de matching (heuristique basée sur l'historique des ordres ouverts).
+   * Pour une période choisie, informe l'utilisateur de la probabilité estimée.
+   */
+  @GetMapping("/matching-probability")
+  public OrderBookDtos.MatchingProbabilityResponse getMatchingProbability(
+      @RequestParam(required = false) @Pattern(regexp = ETH_ADDRESS_RX) String token,
+      @RequestParam(required = false, defaultValue = "24") int periodHours
+  ) {
+    return orderBookService.getMatchingProbability(token, periodHours);
+  }
+
+  /**
+   * Montants réservés par les ordres P2P en attente (cash pour achats, tokens pour ventes).
+   * Ces montants ne sont pas utilisables pour d'autres ordres jusqu'à exécution/annulation.
+   */
+  @GetMapping("/reservations")
+  public OrderBookDtos.P2PReservationsResponse getReservations(
+      @RequestParam @Pattern(regexp = ETH_ADDRESS_RX) String user
+  ) {
+    return orderBookService.getReservations(user);
+  }
+
+  /**
    * Annule un ordre (seulement si PENDING).
    * L'utilisateur connecté doit être le maker de l'ordre.
    */

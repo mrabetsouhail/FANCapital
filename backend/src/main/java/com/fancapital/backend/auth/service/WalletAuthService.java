@@ -2,6 +2,8 @@ package com.fancapital.backend.auth.service;
 
 import com.fancapital.backend.auth.dto.AuthDtos;
 import com.fancapital.backend.auth.model.AppUser;
+import com.fancapital.backend.auth.model.Notification.Priority;
+import com.fancapital.backend.auth.model.Notification.Type;
 import com.fancapital.backend.auth.repo.AppUserRepository;
 import java.security.SecureRandom;
 import java.time.Duration;

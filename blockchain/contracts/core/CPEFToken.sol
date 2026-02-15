@@ -122,9 +122,12 @@ contract CPEFToken is ERC20, IERC1404, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Add amount to user's locked escrow (prorata model).
+    /// @dev Require user has sufficient free balance (balance - already locked).
     function addEscrowLockedAmount(address user, uint256 amount) external onlyEscrowManagerOrOwner {
         if (amount == 0) return;
-        escrowLockedAmount[user] += amount;
+        uint256 newLocked = escrowLockedAmount[user] + amount;
+        require(balanceOf(user) >= newLocked, "CPEF: insufficient balance for escrow");
+        escrowLockedAmount[user] = newLocked;
         isEscrowLocked[user] = true;
         emit EscrowLockUpdated(user, true);
     }

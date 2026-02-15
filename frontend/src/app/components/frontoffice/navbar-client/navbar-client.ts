@@ -1,28 +1,21 @@
 import { Component, signal, HostListener, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import { NotificationApiService } from '../../../auth/services/notification-api.service';
+import { CreditWalletTrackingService } from '../../../auth/services/credit-wallet-tracking.service';
 import type { PortfolioPosition } from '../../../blockchain/models/portfolio.models';
 import type { SciScoreResult } from '../../../blockchain/models/investor.models';
+import type { Notification } from '../../../auth/models/notification.models';
 import { SessionService } from '../../../auth/services/session.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { LanguageService, type AppLang } from '../../../i18n/language.service';
 import { SciNudgeBanner } from '../sci-nudge-banner/sci-nudge-banner';
 
-interface Notification {
-  id: number;
-  type: 'price' | 'security' | 'margin';
-  title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-  priority: 'low' | 'medium' | 'high';
-}
-
 @Component({
   selector: 'app-navbar-client',
-  imports: [CommonModule, RouterLink, TranslateModule, SciNudgeBanner],
+  imports: [CommonModule, RouterLink, RouterLinkActive, TranslateModule, SciNudgeBanner],
   templateUrl: './navbar-client.html',
   styleUrl: './navbar-client.css',
 })
@@ -43,64 +36,9 @@ export class NavbarClient implements OnInit {
   logoPath: string = 'assets/images/fancapital_logo.svg';
   private readonly fallbackLogoPath: string = 'assets/images/fancapital_logo.jpg';
   
-  // Notifications
+  // Notifications (chargées depuis l'API)
   hasNotifications = signal<boolean>(false);
-  notifications = signal<Notification[]>([
-    {
-      id: 1,
-      type: 'price',
-      title: 'Token Alpha - Seuil atteint',
-      message: 'Le Token Alpha a atteint 130.00 TND (votre seuil: 130.00 TND)',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000), // Il y a 15 minutes
-      read: false,
-      priority: 'high'
-    },
-    {
-      id: 2,
-      type: 'security',
-      title: 'Nouvelle connexion détectée',
-      message: 'Connexion depuis un nouvel appareil à Tunis, Tunisie',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // Il y a 2 heures
-      read: false,
-      priority: 'medium'
-    },
-    {
-      id: 3,
-      type: 'margin',
-      title: 'Alerte de Marge - LTV Critique',
-      message: 'Votre ratio LTV est à 82.5%. Risque de liquidation si le prix baisse de 8%',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000), // Il y a 30 minutes
-      read: false,
-      priority: 'high'
-    },
-    {
-      id: 4,
-      type: 'price',
-      title: 'Token Beta - Hausse significative',
-      message: 'Le Token Beta a augmenté de 5.2% en 24h (85.25 TND → 89.68 TND)',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // Il y a 4 heures
-      read: true,
-      priority: 'medium'
-    },
-    {
-      id: 5,
-      type: 'security',
-      title: 'Retrait important effectué',
-      message: 'Un retrait de 2,500.00 TND a été effectué vers votre compte bancaire',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // Il y a 6 heures
-      read: true,
-      priority: 'medium'
-    },
-    {
-      id: 6,
-      type: 'price',
-      title: 'Token Alpha - Objectif de prix',
-      message: 'Le Token Alpha approche votre objectif de vente à 140.00 TND (actuel: 135.50 TND)',
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Il y a 1 jour
-      read: true,
-      priority: 'low'
-    }
-  ]);
+  notifications = signal<Notification[]>([]);
   
   // Menu state
   isMenuOpen = signal<boolean>(false);
@@ -114,12 +52,12 @@ export class NavbarClient implements OnInit {
     private router: Router,
     private authApi: AuthApiService,
     private blockchainApi: BlockchainApiService,
+    private notificationApi: NotificationApiService,
     private session: SessionService,
-    private language: LanguageService
+    private language: LanguageService,
+    private creditTracking: CreditWalletTrackingService
   ) {
-    // creditLine from portfolio API (KYC1=5000, KYC2=10000)
     this.creditAmount.set(0);
-    this.hasNotifications.set(this.notifications().some((n) => !n.read));
   }
 
   onLogoError() {
@@ -128,10 +66,11 @@ export class NavbarClient implements OnInit {
     }
   }
 
-  unreadCount = signal<number>(this.notifications().filter(n => !n.read).length);
+  unreadCount = signal<number>(0);
 
   ngOnInit(): void {
     this.lang.set(this.language.current);
+    this.loadNotifications();
     // Best-effort: if user is logged in and has a WaaS wallet, load on-chain balances.
     this.authApi.me().subscribe({
       next: (u) => {
@@ -146,6 +85,7 @@ export class NavbarClient implements OnInit {
         setInterval(() => {
           this.refreshWalletBalance();
         }, 5000);
+        setInterval(() => this.loadNotifications(), 60_000);
       },
       error: () => {},
     });
@@ -175,8 +115,9 @@ export class NavbarClient implements OnInit {
         this.tokensBeta.set(didon ? this.from1e8(didon.balanceTokens) : 0);
         const cashBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
         const creditDebt = (p as any).creditDebtTnd ? this.from1e8((p as any).creditDebtTnd) : 0;
-        this.cashAmount.set(cashBalance);
-        this.creditAmount.set(creditDebt);
+        this.creditTracking.syncWithCreditDebt(wallet, creditDebt);
+        this.cashAmount.set(this.creditTracking.getCashDisplay(cashBalance, creditDebt, wallet));
+        this.creditAmount.set(this.creditTracking.getCreditDisplay(cashBalance, creditDebt, wallet));
       },
       error: (err) => {
         console.error('[NavbarClient] Error refreshing wallet:', err);
@@ -250,16 +191,34 @@ export class NavbarClient implements OnInit {
     return 'bg-gray-400';
   }
 
-  markAsRead(notificationId: number) {
-    const updated = this.notifications().map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    );
-    this.notifications.set(updated);
-    this.hasNotifications.set(updated.some(n => !n.read));
-    this.unreadCount.set(updated.filter(n => !n.read).length);
+  loadNotifications(): void {
+    this.notificationApi.getNotifications(50).subscribe({
+      next: (res) => {
+        this.notifications.set(res.items);
+        this.unreadCount.set(res.unreadCount);
+        this.hasNotifications.set(res.unreadCount > 0);
+      },
+      error: () => {},
+    });
   }
 
-  getTimeAgo(date: Date): string {
+  markAsRead(notificationId: string): void {
+    this.notificationApi.markAsRead(notificationId).subscribe({
+      next: () => {
+        const updated = this.notifications().map(n =>
+          n.id === notificationId ? { ...n, read: true } : n
+        );
+        this.notifications.set(updated);
+        const unread = updated.filter(n => !n.read).length;
+        this.unreadCount.set(unread);
+        this.hasNotifications.set(unread > 0);
+      },
+      error: () => {},
+    });
+  }
+
+  getTimeAgo(timestamp: string): string {
+    const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -287,10 +246,10 @@ export class NavbarClient implements OnInit {
   }
 
   toggleMenu() {
-    this.isMenuOpen.set(!this.isMenuOpen());
-    if (!this.isMenuOpen()) {
-      this.isNotificationsSubmenuOpen.set(false);
-    }
+    const willOpen = !this.isMenuOpen();
+    this.isMenuOpen.set(willOpen);
+    if (willOpen) this.loadNotifications();
+    if (!willOpen) this.isNotificationsSubmenuOpen.set(false);
   }
 
   toggleNotificationsSubmenu() {

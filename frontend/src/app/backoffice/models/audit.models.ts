@@ -8,6 +8,8 @@ export interface AuditRegistryRow {
   walletAddress?: string | null;
   atlasBalanceToken1e8: string;
   didonBalanceToken1e8: string;
+  atlasLocked1e8?: string; // tokens bloqués pour AST
+  didonLocked1e8?: string; // tokens bloqués pour AST
 }
 
 export interface AuditRegistryResponse {

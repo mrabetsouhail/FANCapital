@@ -1,5 +1,21 @@
 # Configuration Complète IntelliJ IDEA - Toutes les Variables d'Environnement
 
+## 🔑 Tableau des Clés Blockchain (Variables d'environnement IntelliJ)
+
+| Variable | Usage | Rôle on-chain | Exemple adresse |
+|----------|-------|---------------|-----------------|
+| **OPERATOR_PRIVATE_KEY** | LiquidityPool (achat/vente), InvestorRegistry, Oracle (si non défini) | OPERATOR_ROLE sur pools, OPERATOR sur InvestorRegistry | `0xf39Fd...` |
+| **BURN_PRIVATE_KEY** | Prélèvement Cash Wallet (abonnement Premium, rachats) | BURNER_ROLE sur CashTokenTND | `0x90F79b...` |
+| **MINT_PRIVATE_KEY** | Création de TND (alimentation Cash Wallet, AST) | MINTER_ROLE sur CashTokenTND | `0x3C44Cd...` |
+| **GOV_PRIVATE_KEY** | Retraits TaxVault vers fisc | GOVERNANCE_ROLE sur TaxVault | idem Operator en dev |
+| **PANIC_PRIVATE_KEY** | Arrêt d'urgence global | PANIC_KEY_ROLE sur CircuitBreaker | — |
+| **ORACLE_PRIVATE_KEY** | Mise à jour prix VNI | ORACLE_ROLE sur PriceOracle | (optionnel) |
+| **ONBOARDING_PRIVATE_KEY** | Validation KYC | KYC_VALIDATOR_ROLE | (optionnel) |
+
+**Important** : `OPERATOR_PRIVATE_KEY` et `BURN_PRIVATE_KEY` sont deux clés **distinctes**. La Burn Key sert au prélèvement Cash Wallet (ex : abonnement Premium). Accorder les rôles : `npm run grant-minter` (Mint), `npm run grant-burner` (Burn).
+
+---
+
 ## ✅ Variables Déjà Configurées
 
 Vous avez déjà configuré :
@@ -157,6 +173,13 @@ Après configuration, redémarrez le backend et vérifiez :
 
 ### "OPERATOR_PRIVATE_KEY not configured"
 → Ajoutez `OPERATOR_PRIVATE_KEY` dans les variables d'environnement
+
+### "AccessControlUnauthorizedAccount" (burn failed)
+→ L'adresse dérivée de `BURN_PRIVATE_KEY` n'a pas `BURNER_ROLE` sur CashTokenTND. Exécuter :
+  `cd blockchain` puis `$env:BURN_PRIVATE_KEY="<votre_clé>"; npm run grant-burner`
+
+### "approve failed: Sender doesn't have enough funds... balance is: 0"
+→ Le wallet utilisateur (WaaS) n'a pas d'ETH pour payer le gas. Sur Hardhat local : `cd blockchain` puis `$env:USER_ADDRESS="0x<adresse>"; npm run fund-eth`
 
 ### "JWT_SECRET not configured"
 → Ajoutez `JWT_SECRET` avec une valeur de 48+ caractères

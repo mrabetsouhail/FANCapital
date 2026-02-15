@@ -5,6 +5,7 @@ import { AcceuilClientPage } from './components/frontoffice/acceuil-client-page/
 import { PasserOrdrePage } from './components/frontoffice/passer-ordre-page/passer-ordre-page';
 import { TransactionPage } from './components/frontoffice/transaction-page/transaction-page';
 import { ProfilePage } from './components/frontoffice/profile-page/profile-page';
+import { NotificationsPage } from './components/frontoffice/notifications-page/notifications-page';
 import { CreditPage } from './components/frontoffice/credit-page/credit-page';
 import { AvanceSurTitrePage } from './components/frontoffice/avance-sur-titre-page/avance-sur-titre-page';
 import { KycPage } from './components/frontoffice/kyc-page/kyc-page';
@@ -14,7 +15,11 @@ import { KycDashboardPage } from './components/backoffice/kyc-dashboard-page/kyc
 import { AuditRegistryPage } from './components/backoffice/audit-registry-page/audit-registry-page';
 import { FeeWalletPage } from './components/backoffice/fee-wallet-page/fee-wallet-page';
 import { MultiSigPage } from './components/backoffice/multisig-page/multisig-page';
+import { OrderBookBackofficePage } from './components/backoffice/order-book-backoffice-page/order-book-backoffice-page';
+import { SubscriptionsBackofficePage } from './components/backoffice/subscriptions-backoffice-page/subscriptions-backoffice-page';
+import { EscrowBackofficePage } from './components/backoffice/escrow-backoffice-page/escrow-backoffice-page';
 import { authGuard } from './auth/auth.guard';
+import { clientOnlyGuard } from './auth/client-only.guard';
 import { backofficeGuard } from './backoffice/backoffice.guard';
 export const routes: Routes = [
   {
@@ -38,7 +43,7 @@ export const routes: Routes = [
   {
     path: 'passer-ordre',
     component: PasserOrdrePage,
-    canActivate: [authGuard],
+    canActivate: [authGuard, clientOnlyGuard],
   },
   {
     path: 'transaction',
@@ -48,6 +53,11 @@ export const routes: Routes = [
   {
     path: 'profil',
     component: ProfilePage,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'notifications',
+    component: NotificationsPage,
     canActivate: [authGuard],
   },
   {
@@ -88,6 +98,21 @@ export const routes: Routes = [
   {
     path: 'backoffice/multisig',
     component: MultiSigPage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/orderbook',
+    component: OrderBookBackofficePage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/subscriptions',
+    component: SubscriptionsBackofficePage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/escrow',
+    component: EscrowBackofficePage,
     canActivate: [backofficeGuard],
   },
 ];

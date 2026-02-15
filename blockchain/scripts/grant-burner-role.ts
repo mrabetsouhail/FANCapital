@@ -3,19 +3,31 @@ import * as fs from "fs";
 import * as path from "path";
 
 async function main() {
-  const BURN_KEY_ADDRESS = process.env.BURN_KEY_ADDRESS;
-  
+  // Priorité : BURN_KEY_ADDRESS > BURN_PRIVATE_KEY > OPERATOR_PRIVATE_KEY (fallback)
+  let BURN_KEY_ADDRESS = process.env.BURN_KEY_ADDRESS;
   if (!BURN_KEY_ADDRESS || !ethers.isAddress(BURN_KEY_ADDRESS)) {
-    throw new Error("BURN_KEY_ADDRESS environment variable must be set to a valid Ethereum address");
+    const BURN_PK = process.env.BURN_PRIVATE_KEY;
+    const OPERATOR_PK = process.env.OPERATOR_PRIVATE_KEY;
+    if (BURN_PK && BURN_PK.startsWith("0x") && BURN_PK.length === 66) {
+      BURN_KEY_ADDRESS = new ethers.Wallet(BURN_PK.trim()).address;
+      console.log("Derived address from BURN_PRIVATE_KEY:", BURN_KEY_ADDRESS);
+    } else if (OPERATOR_PK && OPERATOR_PK.startsWith("0x") && OPERATOR_PK.length === 66) {
+      BURN_KEY_ADDRESS = new ethers.Wallet(OPERATOR_PK.trim()).address;
+      console.log("Derived address from OPERATOR_PRIVATE_KEY (fallback):", BURN_KEY_ADDRESS);
+    } else {
+      throw new Error(
+        "Set BURN_KEY_ADDRESS, BURN_PRIVATE_KEY (recommended), or OPERATOR_PRIVATE_KEY as fallback"
+      );
+    }
   }
 
   console.log("Granting BURNER_ROLE to:", BURN_KEY_ADDRESS);
 
-  // Try to load deployments from localhost.json or localhost.factory-funds.json
+  // Même priorité que grant-minter : factory-funds d'abord
   const deploymentsDir = path.join(__dirname, "..", "deployments");
   let cashTokenAddr: string | null = null;
 
-  const files = ["localhost.json", "localhost.factory-funds.json", "localhost.council-funds.json"];
+  const files = ["localhost.factory-funds.json", "localhost.json", "localhost.council-funds.json"];
   for (const file of files) {
     const filePath = path.join(deploymentsDir, file);
     if (fs.existsSync(filePath)) {

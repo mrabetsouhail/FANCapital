@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { BackofficeApiService } from '../../../backoffice/services/backoffice-api.service';
+import { BackButton } from '../../shared/back-button/back-button';
 import type { FeeWalletDashboard } from '../../../backoffice/models/fee-wallet.models';
 
 @Component({
   selector: 'app-fee-wallet-page',
-  imports: [CommonModule],
+  imports: [CommonModule, BackButton],
   templateUrl: './fee-wallet-page.html',
   styleUrl: './fee-wallet-page.css',
 })

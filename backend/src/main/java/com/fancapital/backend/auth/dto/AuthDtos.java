@@ -77,6 +77,11 @@ public class AuthDtos {
       @NotBlank @Pattern(regexp = PHONE_RX) String telephone
   ) {}
 
+  /** Activation Premium: durée de l'abonnement (trimestriel, semestriel, annuel). */
+  public record ActivatePremiumRequest(
+      String duration  // "trimestriel" | "semestriel" | "annuel" — défaut: annuel
+  ) {}
+
   // Signup Entreprise: keep same attribute names as in SigninPage.entrepriseForm
   public record RegisterEntrepriseRequest(
       @NotBlank @Size(min = 2, max = 200) String denominationSociale,

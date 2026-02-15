@@ -23,6 +23,7 @@ import type {
   OrdersListResponse,
   Order,
   CancelOrderResponse,
+  P2PReservationsResponse,
 } from '../models/orderbook.models';
 import type { PortfolioResponse } from '../models/portfolio.models';
 import type { InvestorProfileResponse, SciScoreResult, SciPushResult } from '../models/investor.models';
@@ -108,6 +109,14 @@ export class BlockchainApiService {
     );
   }
 
+  /** Demande de remboursement partiel (TND). Déduit du Cash Wallet et enregistre on-chain. */
+  repayAdvance(user: string, amountTnd: number) {
+    const amount1e8 = Math.round(amountTnd * 1e8).toString();
+    return this.http.post<TxResponse>(`${this.baseUrl}/advance/repay`, null, {
+      params: { user, amount: amount1e8 },
+    });
+  }
+
   // ---------- P2P ----------
   p2pSettle(req: P2PSettleRequest) {
     return this.http.post<P2PSettleResponse>(`${this.baseUrl}/p2p/settle`, req);
@@ -127,6 +136,10 @@ export class BlockchainApiService {
 
   getOrder(orderId: string) {
     return this.http.get<Order>(`${this.baseUrl}/p2p/order/${orderId}`);
+  }
+
+  getP2PReservations(user: string) {
+    return this.http.get<P2PReservationsResponse>(`${this.baseUrl}/p2p/reservations`, { params: { user } });
   }
 
   cancelOrder(orderId: string, maker: string) {

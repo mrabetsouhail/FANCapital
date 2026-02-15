@@ -2,13 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import type { PortfolioResponse, PortfolioPosition } from '../../../blockchain/models/portfolio.models';
 
 @Component({
   selector: 'app-portfolio-page',
-  imports: [CommonModule, RouterModule, NavbarClient],
+  imports: [CommonModule, RouterModule, NavbarClient, BackButton],
   templateUrl: './portfolio-page.html',
   styleUrl: './portfolio-page.css',
 })
@@ -94,6 +95,11 @@ export class PortfolioPage implements OnInit {
 
   from1e8(v: string): number {
     return Number(v) / 1e8;
+  }
+
+  /** Retourne true si les tokens bloqués (1e8) sont > 0. */
+  hasLocked(v: string | undefined): boolean {
+    return (v ? Number(v) : 0) > 0;
   }
 
   cleanSymbol(symbol: string | null | undefined): string {

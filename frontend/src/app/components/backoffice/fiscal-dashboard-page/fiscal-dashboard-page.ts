@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { BackofficeApiService } from '../../../backoffice/services/backoffice-api.service';
+import { BackButton } from '../../shared/back-button/back-button';
 import type { FiscalDashboardResponse } from '../../../backoffice/models/fiscal.models';
 
 @Component({
   selector: 'app-fiscal-dashboard-page',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackButton],
   templateUrl: './fiscal-dashboard-page.html',
   styleUrl: './fiscal-dashboard-page.css',
 })

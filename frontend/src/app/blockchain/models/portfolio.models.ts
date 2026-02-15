@@ -9,6 +9,7 @@ export interface PortfolioPosition {
   oracle: Address;
 
   balanceTokens: string; // 1e8
+  lockedTokens1e8: string; // 1e8 - tokens bloqués pour l'avance sur titres
   vni: string; // 1e8 (TND per token)
   prm: string; // 1e8 (TND per token)
   positionValueTnd: string; // 1e8

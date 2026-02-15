@@ -23,12 +23,13 @@ export interface Order {
   tokenAmount: string; // 1e8
   pricePerToken: string; // 1e8
   nonce: string;
-  deadline: number; // unix timestamp
+  deadline: number; // unix timestamp - période de validité (TTL)
   status: OrderStatus;
   createdAt: string; // ISO timestamp
   signature?: string;
   matchedOrderId?: string;
   settlementTxHash?: string;
+  filledTokenAmount?: string; // 1e8 - montant déjà exécuté (matching partiel)
 }
 
 export interface SubmitOrderResponse {
@@ -36,6 +37,7 @@ export interface SubmitOrderResponse {
   status: OrderStatus;
   message: string;
   matchedOrder: Order | null; // Si l'ordre a été immédiatement matché
+  poolSpreadWarning?: string | null; // Avertissement fallback piscine (spread différent P2P)
 }
 
 export interface OrdersListResponse {
@@ -47,4 +49,11 @@ export interface CancelOrderResponse {
   orderId: string;
   cancelled: boolean;
   message: string;
+}
+
+/** Montants réservés par les ordres P2P en attente (non utilisables pour d'autres ordres). */
+export interface P2PReservationsResponse {
+  wallet: string;
+  reservedCashTnd1e8: string;
+  reservedTokens1e8: Record<string, string>; // token -> amount 1e8
 }

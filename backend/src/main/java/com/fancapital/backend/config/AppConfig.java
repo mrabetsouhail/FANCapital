@@ -1,8 +1,10 @@
 package com.fancapital.backend.config;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import com.fancapital.backend.auth.config.SecurityJwtProperties;
 import com.fancapital.backend.backoffice.config.BackofficeProperties;
+import okhttp3.OkHttpClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,9 +18,17 @@ import org.web3j.protocol.http.HttpService;
 @EnableConfigurationProperties({AppProperties.class, BlockchainProperties.class, WalletProperties.class, SecurityJwtProperties.class, BackofficeProperties.class})
 public class AppConfig {
 
+  /** Timeout RPC blockchain (connexion + lecture). 30s pour éviter les timeouts sur nœuds lents. */
+  private static final int RPC_TIMEOUT_SECONDS = 30;
+
   @Bean
   public Web3j web3j(BlockchainProperties props) {
-    return Web3j.build(new HttpService(props.rpcUrl()));
+    OkHttpClient client = new OkHttpClient.Builder()
+        .connectTimeout(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build();
+    return Web3j.build(new HttpService(props.rpcUrl(), client));
   }
 
   @Bean

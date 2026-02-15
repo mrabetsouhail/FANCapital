@@ -46,6 +46,7 @@ export interface AdvanceRequest {
   token: string;  // Atlas ou Didon
   collateralAmount: number;
   durationDays: number;
+  model?: 'A' | 'B';  // A = taux fixe, B = PGP
 }
 
 /** Avance active (prêt en cours) — pour calendrier réel. */
@@ -59,6 +60,7 @@ export interface ActiveLoanInfo {
   startAt: number;       // epoch seconds
   durationDays: number;
   status: number;
+  model?: 'A' | 'B';    // A = taux fixe, B = PGP
 }
 
 export interface TxResponse {

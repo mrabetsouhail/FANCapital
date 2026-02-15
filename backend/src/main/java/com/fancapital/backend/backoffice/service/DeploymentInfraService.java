@@ -48,6 +48,12 @@ public class DeploymentInfraService {
     return load().infra().get("P2PExchange");
   }
 
+  /** OrderFallbackExecutor — fallback P2P → piscine (Hybrid Order Book). Null si non déployé. */
+  public String orderFallbackExecutorAddress() {
+    String a = load().infra().get("OrderFallbackExecutor");
+    return (a != null && !a.isBlank()) ? a.trim() : null;
+  }
+
   public String circuitBreakerAddress() {
     return load().infra().get("CircuitBreaker");
   }

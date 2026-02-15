@@ -238,7 +238,7 @@ public class AuditRegistryController {
     var res = registry.registry(null, block);
 
     StringBuilder sb = new StringBuilder();
-    sb.append("generatedAtSec,atBlock,userId,type,email,resident,idValue,displayName,walletAddress,atlasBalanceToken1e8,didonBalanceToken1e8\n");
+    sb.append("generatedAtSec,atBlock,userId,type,email,resident,idValue,displayName,walletAddress,atlasBalanceToken1e8,didonBalanceToken1e8,atlasLocked1e8,didonLocked1e8\n");
     for (var r : res.rows()) {
       sb.append(res.generatedAtSec()).append(",");
       sb.append(res.atBlockNumber() == null ? "" : res.atBlockNumber()).append(",");
@@ -250,7 +250,9 @@ public class AuditRegistryController {
       sb.append(csv(r.fullNameOrCompany())).append(",");
       sb.append(csv(r.walletAddress())).append(",");
       sb.append(csv(r.atlasBalanceToken1e8())).append(",");
-      sb.append(csv(r.didonBalanceToken1e8())).append("\n");
+      sb.append(csv(r.didonBalanceToken1e8())).append(",");
+      sb.append(csv(r.atlasLocked1e8())).append(",");
+      sb.append(csv(r.didonLocked1e8())).append("\n");
     }
     byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
     String hash = sha256Hex(bytes);
@@ -297,7 +299,7 @@ public class AuditRegistryController {
       y = writeLine(cs, margin, y, 14, true, "FAN-Capital — Export PDF Scellé (Audit)");
       y = writeLine(cs, margin, y - 6, 10, false, "generatedAt: " + Instant.ofEpochSecond(res.generatedAtSec()));
       y = writeLine(cs, margin, y, 10, false, "atBlock: " + (res.atBlockNumber() == null ? "latest" : res.atBlockNumber()));
-      y = writeLine(cs, margin, y - 6, 9, true, "userId | idValue | wallet | atlas(1e8) | didon(1e8)");
+      y = writeLine(cs, margin, y - 6, 9, true, "userId | idValue | wallet | atlas | didon | atlasLock | didonLock");
 
       // Rows
       for (var r : res.rows()) {
@@ -306,7 +308,9 @@ public class AuditRegistryController {
             safe(r.cinOrPassportOrFiscalId()) + " | " +
             safe(r.walletAddress()) + " | " +
             safe(r.atlasBalanceToken1e8()) + " | " +
-            safe(r.didonBalanceToken1e8());
+            safe(r.didonBalanceToken1e8()) + " | " +
+            safe(r.atlasLocked1e8()) + " | " +
+            safe(r.didonLocked1e8());
         if (line.length() > 170) line = line.substring(0, 167) + "...";
 
         if (y - leading < margin) {

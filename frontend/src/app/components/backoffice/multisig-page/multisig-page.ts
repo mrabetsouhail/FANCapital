@@ -5,12 +5,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { BackofficeApiService } from '../../../backoffice/services/backoffice-api.service';
 import { NavbarClient } from '../../frontoffice/navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import type { MultiSigInfo, MultiSigTransaction, SubmitTransactionRequest } from '../../../backoffice/models/multisig.models';
 import type { TxResponse } from '../../../backoffice/models/fiscal.models';
 
 @Component({
   selector: 'app-multisig-page',
-  imports: [CommonModule, FormsModule, NavbarClient],
+  imports: [CommonModule, FormsModule, NavbarClient, BackButton],
   templateUrl: './multisig-page.html',
   styleUrl: './multisig-page.css',
 })

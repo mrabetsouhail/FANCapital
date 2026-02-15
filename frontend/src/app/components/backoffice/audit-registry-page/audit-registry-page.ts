@@ -1,14 +1,17 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BackofficeApiService } from '../../../backoffice/services/backoffice-api.service';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
+import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import { NavbarClient } from '../../frontoffice/navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import type { AuditLogRow, AuditRegistryRow } from '../../../backoffice/models/audit.models';
+import type { TxRow, TxKind } from '../../../blockchain/models/tx-history.models';
 
 @Component({
   selector: 'app-audit-registry-page',
-  imports: [CommonModule, FormsModule, NavbarClient],
+  imports: [CommonModule, FormsModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './audit-registry-page.html',
   styleUrl: './audit-registry-page.css',
 })
@@ -21,6 +24,17 @@ export class AuditRegistryPage implements OnInit {
   logs = signal<AuditLogRow[]>([]);
 
   canExport = signal<boolean>(false);
+
+  /** Utilisateur sélectionné (clic sur une ligne). */
+  selectedUser = signal<AuditRegistryRow | null>(null);
+  userTxHistory = signal<TxRow[]>([]);
+  txHistoryLoading = signal<boolean>(false);
+  txHistoryError = signal<string>('');
+
+  /** Historique filtré : achat et vente uniquement. */
+  filteredTxHistory = computed(() =>
+    this.userTxHistory().filter((t) => t.kind === 'BUY' || t.kind === 'SELL')
+  );
 
   filtered = computed(() => {
     const needle = this.q().trim().toLowerCase();
@@ -40,7 +54,11 @@ export class AuditRegistryPage implements OnInit {
     });
   });
 
-  constructor(private backofficeApi: BackofficeApiService, private authApi: AuthApiService) {}
+  constructor(
+    private backofficeApi: BackofficeApiService,
+    private authApi: AuthApiService,
+    private blockchainApi: BlockchainApiService,
+  ) {}
 
   ngOnInit(): void {
     this.loading.set(true);
@@ -107,6 +125,51 @@ export class AuditRegistryPage implements OnInit {
     const n = Number(v);
     if (!Number.isFinite(n)) return '0';
     return (n / 1e8).toFixed(4);
+  }
+
+  /** Retourne true si la valeur 1e8 est > 0 (pour afficher les tokens bloqués). */
+  hasLocked(v: string | undefined): boolean {
+    return (v ? Number(v) : 0) > 0;
+  }
+
+  /** Clic sur une ligne : charge l'historique des transactions (achat/vente) de l'utilisateur. */
+  selectUser(r: AuditRegistryRow) {
+    const wallet = r.walletAddress?.trim();
+    if (!wallet || !wallet.startsWith('0x') || wallet.length !== 42) {
+      this.selectedUser.set(null);
+      this.userTxHistory.set([]);
+      return;
+    }
+    this.selectedUser.set(r);
+    this.txHistoryLoading.set(true);
+    this.txHistoryError.set('');
+    this.blockchainApi.getTxHistory(wallet, 200).subscribe({
+      next: (res) => {
+        this.userTxHistory.set(res.items ?? []);
+        this.txHistoryLoading.set(false);
+      },
+      error: (e: any) => {
+        this.txHistoryError.set(e?.error?.message ?? e?.message ?? 'Erreur chargement historique');
+        this.userTxHistory.set([]);
+        this.txHistoryLoading.set(false);
+      },
+    });
+  }
+
+  closeUserHistory() {
+    this.selectedUser.set(null);
+    this.userTxHistory.set([]);
+    this.txHistoryError.set('');
+  }
+
+  getTxKindLabel(kind: TxKind): string {
+    if (kind === 'BUY') return 'Achat';
+    if (kind === 'SELL') return 'Vente';
+    return kind;
+  }
+
+  from1e8ToNumber(v: string): number {
+    return Number(v) / 1e8;
   }
 }
 

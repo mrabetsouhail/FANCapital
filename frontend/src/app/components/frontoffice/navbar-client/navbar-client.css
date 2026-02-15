@@ -1,0 +1,163 @@
+/* Navbar moderne - Glassmorphism & design innovant */
+
+.nav-modern {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 32, 74, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Liens de navigation */
+.nav-link {
+  position: relative;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1e293b;
+  border-radius: 0.5rem;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.nav-link:hover {
+  color: #00204A;
+  background: rgba(0, 32, 74, 0.06);
+}
+
+.nav-link-active {
+  color: #00204A;
+  font-weight: 600;
+  background: rgba(0, 32, 74, 0.08);
+}
+
+.nav-link-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* Logo : coins arrondis (plus de rectangle aux angles vifs) */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.nav-logo:focus {
+  outline: none;
+}
+
+.nav-logo-img {
+  height: 2.5rem;
+  width: auto;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  transition: transform 0.3s ease;
+  background: transparent;
+}
+
+.nav-logo-small {
+  height: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .nav-logo-small {
+    height: 3rem;
+  }
+}
+
+.nav-logo:hover .nav-logo-img {
+  transform: scale(1.05);
+  animation: none;
+}
+
+@keyframes logo-breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+}
+
+/* Sélecteur de langue */
+.nav-lang-wrapper {
+  position: relative;
+}
+
+.nav-lang-select {
+  appearance: none;
+  padding: 0.5rem 2rem 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 32, 74, 0.12);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nav-lang-select:hover {
+  border-color: rgba(0, 32, 74, 0.25);
+}
+
+.nav-lang-select:focus {
+  outline: none;
+  border-color: #00204A;
+  box-shadow: 0 0 0 3px rgba(0, 32, 74, 0.12);
+}
+
+/* Bouton déconnexion */
+.nav-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.nav-logout-btn:hover {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Bouton menu notifications */
+.nav-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 32, 74, 0.1);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.nav-menu-btn:hover {
+  background: rgba(0, 32, 74, 0.06);
+  border-color: rgba(0, 32, 74, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 32, 74, 0.08);
+}

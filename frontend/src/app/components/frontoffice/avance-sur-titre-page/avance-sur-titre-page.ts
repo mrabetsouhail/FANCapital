@@ -1,9 +1,11 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, computed, OnInit, effect } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
+import { NotificationApiService } from '../../../auth/services/notification-api.service';
 import type { PortfolioPosition } from '../../../blockchain/models/portfolio.models';
 
 /** Spécifications Financières v4.7 - Sans frais de dossier */
@@ -43,7 +45,7 @@ const FEE_TO_TIER: Tier[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
 
 @Component({
   selector: 'app-avance-sur-titre-page',
-  imports: [CommonModule, FormsModule, NavbarClient, DatePipe],
+  imports: [CommonModule, FormsModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './avance-sur-titre-page.html',
   styleUrl: './avance-sur-titre-page.css',
 })
@@ -110,29 +112,31 @@ export class AvanceSurTitrePage implements OnInit {
   });
 
   /** Calendrier de remboursement calculé (Spec v4.7, CREDIT_LOMBARD).
-   * Intérêts = Principal × Taux × (Durée/365). Coupons = intérêts mensuels, Échéance = principal.
-   * Utilise l'avance active si présente (dates réelles), sinon simulation.
-   * Statut: completed si date passée (coupons) ou principal=0 (échéance), overdue si échéance passée et principal>0. */
+   * Modèle A: Coupons mensuels + échéance principal. Modèle B (PGP): uniquement échéance (clôture à maturité).
+   * Utilise l'avance active si présente (dates réelles), sinon simulation. */
   repaymentSchedule = computed<RepaymentSchedule[]>(() => {
     const loan = this.activeLoan();
     const principal = loan ? loan.principalTnd : this.loanAmount();
     const durationDays = loan ? loan.durationDays : this.tierDurationDays();
-    const rate = this.interestRate() / 100;
+    const isPgp = loan?.model === 'B' || this.creditModel() === 'B';
     if (principal <= 0 || durationDays <= 0) return [];
     const now = Date.now();
     const startMs = loan ? loan.startAt * 1000 : now;
     const start = new Date(startMs);
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
-    const totalInterest = principal * rate * (durationDays / 365);
-    const nbMonths = Math.max(1, Math.floor(durationDays / 30));
-    const couponAmount = totalInterest / nbMonths;
     const items: RepaymentSchedule[] = [];
     let id = 0;
-    for (let i = 1; i <= nbMonths; i++) {
-      const dueDate = new Date(start.getTime() + i * 30 * MS_PER_DAY);
-      if (dueDate.getTime() <= start.getTime() + durationDays * MS_PER_DAY) {
-        const status: RepaymentSchedule['status'] = dueDate.getTime() < now ? 'completed' : 'pending';
-        items.push({ id: ++id, date: dueDate, amount: Math.round(couponAmount * 100) / 100, type: 'coupon', status });
+    if (!isPgp) {
+      const rate = this.interestRate() / 100;
+      const totalInterest = principal * rate * (durationDays / 365);
+      const nbMonths = Math.max(1, Math.floor(durationDays / 30));
+      const couponAmount = totalInterest / nbMonths;
+      for (let i = 1; i <= nbMonths; i++) {
+        const dueDate = new Date(start.getTime() + i * 30 * MS_PER_DAY);
+        if (dueDate.getTime() <= start.getTime() + durationDays * MS_PER_DAY) {
+          const status: RepaymentSchedule['status'] = dueDate.getTime() < now ? 'completed' : 'pending';
+          items.push({ id: ++id, date: dueDate, amount: Math.round(couponAmount * 100) / 100, type: 'coupon', status });
+        }
       }
     }
     const maturityDate = new Date(start.getTime() + durationDays * MS_PER_DAY);
@@ -203,13 +207,23 @@ export class AvanceSurTitrePage implements OnInit {
   requestError = signal<string | null>(null);
   requestSuccess = signal<{ txHash: string } | null>(null);
   userWallet = signal<string>('');
-  activeLoan = signal<{ principalTnd: number; startAt: number; durationDays: number } | null>(null);
+  activeLoan = signal<{ principalTnd: number; startAt: number; durationDays: number; model?: 'A' | 'B' } | null>(null);
+
+  private marginAlertSent = false;
 
   constructor(
     private authApi: AuthApiService,
-    private blockchainApi: BlockchainApiService
+    private blockchainApi: BlockchainApiService,
+    private notificationApi: NotificationApiService
   ) {
     this.selectedTokenAmount.set(0);
+    effect(() => {
+      const ltv = this.ltvVariablePercent();
+      if (ltv >= 75 && !this.marginAlertSent && this.loanAmount() > 0 && this.selectedTokenAmount() > 0) {
+        this.marginAlertSent = true;
+        this.notificationApi.reportMarginAlert(ltv).subscribe({ error: () => {} });
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -232,6 +246,7 @@ export class AvanceSurTitrePage implements OnInit {
             principalTnd: Number(loan.principalTnd) / 1e8,
             startAt: loan.startAt,
             durationDays: loan.durationDays,
+            model: loan.model,
           });
         } else {
           this.activeLoan.set(null);
@@ -260,9 +275,13 @@ export class AvanceSurTitrePage implements OnInit {
           next: (p) => {
             const atlas = this.pickPosition(p.positions, 'atlas', 0);
             const didon = this.pickPosition(p.positions, 'didon', 1);
+            const atlasBal = atlas ? this.from1e8(atlas.balanceTokens) : 0;
+            const atlasLocked = atlas?.lockedTokens1e8 ? this.from1e8(atlas.lockedTokens1e8) : 0;
+            const didonBal = didon ? this.from1e8(didon.balanceTokens) : 0;
+            const didonLocked = didon?.lockedTokens1e8 ? this.from1e8(didon.lockedTokens1e8) : 0;
             const tokens: { type: 'Atlas' | 'Didon'; amount: number; price: number }[] = [
-              { type: 'Atlas', amount: atlas ? this.from1e8(atlas.balanceTokens) : 0, price: atlas ? this.from1e8(atlas.vni) : 0 },
-              { type: 'Didon', amount: didon ? this.from1e8(didon.balanceTokens) : 0, price: didon ? this.from1e8(didon.vni) : 0 },
+              { type: 'Atlas', amount: Math.max(0, atlasBal - atlasLocked), price: atlas ? this.from1e8(atlas.vni) : 0 },
+              { type: 'Didon', amount: Math.max(0, didonBal - didonLocked), price: didon ? this.from1e8(didon.vni) : 0 },
             ];
             this.availableTokens.set(tokens);
             const maxForSelected = tokens.find((t) => t.type === this.selectedTokenType());
@@ -441,12 +460,12 @@ export class AvanceSurTitrePage implements OnInit {
       this.requestError.set('Sélectionnez un nombre de tokens > 0.');
       return;
     }
-    if (this.userTier() === 'BRONZE') {
+    if (this.creditModel() === 'A' && this.userTier() === 'BRONZE') {
       this.requestError.set('Le modèle A nécessite un tier Silver ou supérieur.');
       return;
     }
-    if (this.creditModel() === 'B') {
-      this.requestError.set('Le modèle B (PGP) n\'est pas encore implémenté.');
+    if (this.creditModel() === 'B' && (this.userTier() === 'BRONZE' || this.userTier() === 'SILVER' || this.userTier() === 'GOLD')) {
+      this.requestError.set('Le modèle PGP (B) nécessite un tier Platinum ou Diamond.');
       return;
     }
     this.requestError.set(null);
@@ -458,6 +477,7 @@ export class AvanceSurTitrePage implements OnInit {
         token: this.selectedTokenType(),
         collateralAmount: amount,
         durationDays: this.tierDurationDays(),
+        model: this.creditModel(),
       })
       .subscribe({
         next: (res) => {

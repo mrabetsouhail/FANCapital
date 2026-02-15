@@ -12,7 +12,9 @@ public class AuditDtos {
       String fullNameOrCompany,
       String walletAddress,
       String atlasBalanceToken1e8,
-      String didonBalanceToken1e8
+      String didonBalanceToken1e8,
+      String atlasLocked1e8,
+      String didonLocked1e8
   ) {}
 
   public record AuditRegistryResponse(

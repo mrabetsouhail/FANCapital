@@ -14,6 +14,7 @@ public class PortfolioDtos {
       String pool,
       String oracle,
       String balanceTokens,      // token units (1e8)
+      String lockedTokens1e8,    // tokens bloqués pour AST (1e8)
       String vni,                // TND per token (1e8)
       String prm,                // TND per token (1e8)
       String positionValueTnd,   // TND (1e8)

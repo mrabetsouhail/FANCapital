@@ -11,7 +11,8 @@ public class TxDtos {
       @NotBlank String user,
       @NotBlank String token,        // Atlas ou Didon
       long collateralAmount,        // nombre de tokens
-      long durationDays
+      long durationDays,
+      String model                  // "A" ou "B" (PGP), défaut "A"
   ) {}
 
   public record P2PSettleRequest(

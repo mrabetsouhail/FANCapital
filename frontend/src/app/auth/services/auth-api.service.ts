@@ -52,9 +52,19 @@ export class AuthApiService {
     return this.http.post<AuthResponse>(`${this.baseUrl}/wallet/login`, req);
   }
 
+  /** Tarifs d'abonnement Premium selon le tier (TND). */
+  getPremiumPrices() {
+    return this.http.get<{ trimestriel: number; semestriel: number; annuel: number }>(
+      `${this.baseUrl}/premium/prices`
+    );
+  }
+
   /** Active l'abonnement Premium (versement via Cash Wallet). */
-  activatePremium() {
-    return this.http.post<{ status: string; message: string }>(`${this.baseUrl}/premium/activate`, {});
+  activatePremium(duration: 'trimestriel' | 'semestriel' | 'annuel') {
+    return this.http.post<{ status: string; message: string }>(
+      `${this.baseUrl}/premium/activate`,
+      { duration }
+    );
   }
 }
 

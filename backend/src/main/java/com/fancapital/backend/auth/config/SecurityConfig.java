@@ -36,15 +36,19 @@ public class SecurityConfig {
     return new BCryptPasswordEncoder();
   }
 
-  /** Chaîne prioritaire : /api/blockchain/** est entièrement public (GET + POST : portfolio, quote-buy, quote-sell, buy, sell, etc.). */
+  /** Chaîne prioritaire : /api/blockchain/** — parse JWT pour P2P/order (contexte utilisateur).
+   * advance/repay requiert une authentification (débit depuis Cash Wallet). */
   @Bean
   @Order(0)
-  public SecurityFilterChain blockchainSecurityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain blockchainSecurityFilterChain(HttpSecurity http, JwtService jwtService) throws Exception {
     return http
         .securityMatcher("/api/blockchain/**")
         .csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
-        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/blockchain/advance/repay").authenticated()
+            .anyRequest().permitAll())
         .build();
   }
 

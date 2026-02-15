@@ -20,7 +20,7 @@ import org.web3j.tx.TransactionManager;
 
 /**
  * Demande d'avance sur titres (AST) — signée par l'utilisateur via WaaS.
- * Appelle CreditModelA.requestAdvance(token, collateralAmount, durationDays).
+ * Modèle A: CreditModelA.requestAdvance. Modèle B (PGP): CreditModelBPGP.requestAdvance.
  */
 @Service
 public class CreditAdvanceRequestService {
@@ -31,13 +31,16 @@ public class CreditAdvanceRequestService {
   private final DeploymentRegistry registry;
   private final AppUserRepository userRepo;
   private final WaasUserWalletService waasWallets;
+  private final BlockchainReadService blockchainRead;
 
   public CreditAdvanceRequestService(Web3j web3j, DeploymentRegistry registry,
-      AppUserRepository userRepo, WaasUserWalletService waasWallets) {
+      AppUserRepository userRepo, WaasUserWalletService waasWallets,
+      BlockchainReadService blockchainRead) {
     this.web3j = web3j;
     this.registry = registry;
     this.userRepo = userRepo;
     this.waasWallets = waasWallets;
+    this.blockchainRead = blockchainRead;
   }
 
   /**
@@ -47,9 +50,10 @@ public class CreditAdvanceRequestService {
    * @param tokenAddr   adresse du token collatéral (Atlas ou Didon)
    * @param collateralAmountTokens quantité de tokens (entier, ex: 67)
    * @param durationDays durée en jours (ex: 90)
+   * @param model       "A" (taux fixe) ou "B" (PGP)
    * @return hash de la transaction
    */
-  public String requestAdvanceForUser(String userWallet, String tokenAddr, long collateralAmountTokens, long durationDays) {
+  public String requestAdvanceForUser(String userWallet, String tokenAddr, long collateralAmountTokens, long durationDays, String model) {
     if (userWallet == null || userWallet.isBlank() || !userWallet.startsWith("0x") || userWallet.length() != 42) {
       throw new IllegalArgumentException("Wallet utilisateur invalide");
     }
@@ -59,6 +63,7 @@ public class CreditAdvanceRequestService {
     if (collateralAmountTokens <= 0 || durationDays <= 0) {
       throw new IllegalArgumentException("Collatéral et durée doivent être > 0");
     }
+    String m = (model != null && !model.isBlank()) ? model.trim().toUpperCase() : "A";
 
     AppUser user = userRepo.findByWalletAddressIgnoreCase(userWallet)
         .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé. Liez un wallet à votre compte."));
@@ -66,9 +71,20 @@ public class CreditAdvanceRequestService {
       throw new IllegalStateException("Wallet WaaS non configuré. Complétez le KYC pour créer votre wallet.");
     }
 
-    String creditAddr = registry.getCreditModelAAddress();
+    String creditAddr = "B".equals(m)
+        ? registry.getCreditModelBAddress()
+        : registry.getCreditModelAAddress();
     if (creditAddr == null || creditAddr.isBlank()) {
-      throw new IllegalStateException("CreditModelA non déployé. Déployez les contrats d'abord.");
+      throw new IllegalStateException("Modèle " + m + " non déployé. Déployez les contrats d'abord.");
+    }
+
+    // Vérifier que l'utilisateur possède suffisamment de tokens
+    BigInteger collateralAmount1e8 = BigInteger.valueOf(collateralAmountTokens).multiply(PRICE_SCALE);
+    BigInteger available = blockchainRead.getAvailableTokenBalance(tokenAddr, userWallet);
+    if (available.compareTo(collateralAmount1e8) < 0) {
+      throw new IllegalArgumentException(
+          "Vous ne possédez pas suffisamment de tokens " + collateralAmountTokens
+              + " pour cette avance. Solde disponible (tokens): " + available.divide(PRICE_SCALE));
     }
 
     // collateralAmount en 1e8 (CPEF decimals)

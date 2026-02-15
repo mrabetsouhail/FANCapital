@@ -96,6 +96,16 @@ public class AppUser {
   @Column(nullable = false, columnDefinition = "boolean default false")
   private boolean premium = false;
 
+  /** Date de début de l'abonnement Premium actuel */
+  private Instant premiumStartAt;
+
+  /** Date d'expiration de l'abonnement Premium */
+  private Instant premiumExpiresAt;
+
+  /** Durée souscrite: trimestriel, semestriel, annuel */
+  @Column(length = 20)
+  private String premiumDuration;
+
   public String getId() {
     return id;
   }
@@ -286,6 +296,30 @@ public class AppUser {
 
   public void setPremium(boolean premium) {
     this.premium = premium;
+  }
+
+  public Instant getPremiumStartAt() {
+    return premiumStartAt;
+  }
+
+  public void setPremiumStartAt(Instant premiumStartAt) {
+    this.premiumStartAt = premiumStartAt;
+  }
+
+  public Instant getPremiumExpiresAt() {
+    return premiumExpiresAt;
+  }
+
+  public void setPremiumExpiresAt(Instant premiumExpiresAt) {
+    this.premiumExpiresAt = premiumExpiresAt;
+  }
+
+  public String getPremiumDuration() {
+    return premiumDuration;
+  }
+
+  public void setPremiumDuration(String premiumDuration) {
+    this.premiumDuration = premiumDuration;
   }
 }
 

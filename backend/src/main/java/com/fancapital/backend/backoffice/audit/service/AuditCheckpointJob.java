@@ -2,6 +2,7 @@ package com.fancapital.backend.backoffice.audit.service;
 
 import com.fancapital.backend.backoffice.config.BackofficeProperties;
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,6 +37,8 @@ public class AuditCheckpointJob {
     } catch (Exception e) {
       if (isConnectionRefused(e)) {
         log.warn("Audit checkpoints skipped: blockchain node unreachable (e.g. 127.0.0.1:8545). Start the node to enable audit proof.");
+      } else if (isTimeout(e)) {
+        log.warn("Audit checkpoints skipped: blockchain node timeout (node may be slow or unreachable). {}", e.getMessage());
       } else {
         log.error("Failed to generate audit checkpoints: {}", e.getMessage(), e);
       }
@@ -48,6 +51,17 @@ public class AuditCheckpointJob {
       if (t instanceof ConnectException) return true;
       String msg = t.getMessage();
       if (msg != null && (msg.contains("Failed to connect") || msg.contains("Connection refused"))) return true;
+      t = t.getCause();
+    }
+    return false;
+  }
+
+  private static boolean isTimeout(Exception e) {
+    Throwable t = e;
+    while (t != null) {
+      if (t instanceof SocketTimeoutException) return true;
+      String msg = t.getMessage();
+      if (msg != null && msg.toLowerCase().contains("timeout")) return true;
       t = t.getCause();
     }
     return false;

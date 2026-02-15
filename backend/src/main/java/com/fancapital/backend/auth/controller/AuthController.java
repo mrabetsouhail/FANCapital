@@ -106,10 +106,19 @@ public class AuthController {
     return walletAuthService.loginWithWallet(req);
   }
 
-  @PostMapping("/premium/activate")
-  public ResponseEntity<?> activatePremium() {
+  @GetMapping("/premium/prices")
+  public ResponseEntity<?> premiumPrices() {
     String userId = currentUserIdOrThrow();
-    String message = premiumActivationService.activateForUser(userId);
+    var prices = premiumActivationService.getSubscriptionPricesForUser(userId);
+    return ResponseEntity.ok(prices);
+  }
+
+  @PostMapping("/premium/activate")
+  public ResponseEntity<?> activatePremium(@RequestBody(required = false) java.util.Map<String, String> body) {
+    String userId = currentUserIdOrThrow();
+    String duration = body != null ? body.getOrDefault("duration", "annuel") : "annuel";
+    var d = com.fancapital.backend.auth.service.PremiumActivationService.SubscriptionDuration.from(duration);
+    String message = premiumActivationService.activateForUser(userId, d);
     return ResponseEntity.ok(Map.of("status", "ok", "message", message));
   }
 

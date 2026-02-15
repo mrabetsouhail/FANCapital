@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import { ConfirmOrderModal, type ConfirmOrderSummary } from '../confirm-order-modal/confirm-order-modal';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
+import { CreditWalletTrackingService } from '../../../auth/services/credit-wallet-tracking.service';
 import type { Fund } from '../../../blockchain/models/fund.models';
 import type { QuoteBuyResponse, QuoteSellResponse } from '../../../blockchain/models/pricing.models';
 
@@ -13,23 +15,37 @@ type OrderMode = 'piscine' | 'p2p';
 type OrderType = 'buy' | 'sell';
 type TokenType = 'Atlas' | 'Didon';
 type AmountType = 'tnd' | 'tokens';
+type ValidityPeriod = '24h' | '48h' | '7d';
+
+const VALIDITY_SECONDS: Record<ValidityPeriod, number> = {
+  '24h': 24 * 3600,
+  '48h': 48 * 3600,
+  '7d': 7 * 24 * 3600,
+};
 
 @Component({
   selector: 'app-passer-ordre-page',
-  imports: [CommonModule, FormsModule, NavbarClient, ConfirmOrderModal],
+  imports: [CommonModule, FormsModule, NavbarClient, BackButton, ConfirmOrderModal],
   templateUrl: './passer-ordre-page.html',
   styleUrl: './passer-ordre-page.css',
 })
 export class PasserOrdrePage implements OnInit {
   private readonly api = inject(BlockchainApiService);
   private readonly authApi = inject(AuthApiService);
+  private readonly creditTracking = inject(CreditWalletTrackingService);
   @ViewChild(NavbarClient) navbarClient?: NavbarClient;
 
   tokenType = signal<TokenType>('Atlas');
   orderType = signal<OrderType>('buy');
   
   orderMode = signal<OrderMode>('piscine');
-  
+
+  /** Période de validité pour P2P Hybrid Order Book (24h, 48h, 7j). */
+  validityPeriod = signal<ValidityPeriod>('24h');
+
+  /** Options pour le sélecteur de période (exposé au template). */
+  validityPeriodOptions: ValidityPeriod[] = ['24h', '48h', '7d'];
+
   amountType = signal<AmountType>('tnd');
   amount = signal<number>(0);
   
@@ -53,11 +69,77 @@ export class PasserOrdrePage implements OnInit {
 
   // Wallet context (temporary; backend can also infer from session later)
   userAddress = signal<string>('0x0000000000000000000000000000000000000000');
-  
-  // Fallback fee rate used only for P2P mode in this UI (until we wire P2P quotes)
-  feeRate = 0.005;
-  
+
+  /** Niveau de frais on-chain (0=Bronze, 1=Silver, 2=Gold, 3=Diamond, 4=Platinum). */
+  feeLevel = signal<number>(0);
+
+  /** Frais P2P par tier (bps) — P2PExchange.sol: Bronze 80, Silver 75, Gold 70, Diamond 60, Platinum 50. */
+  private static readonly P2P_FEE_BPS = [80, 75, 70, 60, 50];
+
+  /** Frais Piscine par tier (bps) — LiquidityPool.sol: Bronze 100, Silver 95, Gold 90, Diamond 85, Platinum 80. */
+  private static readonly POOL_FEE_BPS = [100, 95, 90, 85, 80];
+
+  /** Vérifie si les frais du devis piscine correspondent au tier attendu (tolerance 5%). */
+  poolFeesValid = computed(() => {
+    if (this.orderMode() !== 'piscine' || this.amount() <= 0) return true;
+    const level = Math.min(Math.max(this.feeLevel(), 0), 4);
+    const bps = PasserOrdrePage.POOL_FEE_BPS[level];
+    const expectedRate = (bps / 10_000) * 1.19;
+
+    if (this.orderType() === 'buy') {
+      const q = this.lastQuoteBuy();
+      if (!q) return true;
+      const tndIn = this.amountType() === 'tnd' ? this.amount() : this.amount() * this.currentPrice();
+      const quoteFee = this.from1e8(q.totalFee);
+      const expectedFee = tndIn * expectedRate;
+      return this.feesWithinTolerance(quoteFee, expectedFee);
+    } else {
+      const q = this.lastQuoteSell();
+      if (!q) return true;
+      const tokenAmt = this.amountType() === 'tokens' ? this.amount() : this.amount() / Math.max(this.currentPrice(), 1e-9);
+      const grossTnd = tokenAmt * this.from1e8(q.priceClient);
+      const quoteFee = this.from1e8(q.totalFee);
+      const expectedFee = grossTnd * expectedRate;
+      return this.feesWithinTolerance(quoteFee, expectedFee);
+    }
+  });
+
+  /** Message d'avertissement si les frais piscine semblent incohérents. */
+  poolFeesWarning = computed(() => {
+    if (this.poolFeesValid()) return null;
+    return 'Les frais du devis semblent incohérents avec votre tier. Vérifiez votre profil ou actualisez.';
+  });
+
+  private feesWithinTolerance(actual: number, expected: number): boolean {
+    if (expected <= 0) return actual <= 0;
+    const ratio = actual / expected;
+    return ratio >= 0.95 && ratio <= 1.05;
+  }
+
+  /** Taux effectif P2P (base + TVA 19%) pour l'affichage et le calcul. */
+  p2pFeeRate = computed(() => {
+    const level = Math.min(Math.max(this.feeLevel(), 0), 4);
+    const bps = PasserOrdrePage.P2P_FEE_BPS[level];
+    return (bps / 10_000) * 1.19; // base + TVA
+  });
+
+  /** Pourcentage affiché (base + TVA, ex: 0.95 pour Bronze). */
+  p2pFeePercent = computed(() => {
+    const level = Math.min(Math.max(this.feeLevel(), 0), 4);
+    const bps = PasserOrdrePage.P2P_FEE_BPS[level];
+    return ((bps / 10_000) * 1.19 * 100).toFixed(2);
+  });
+
   cashBalance = signal<number>(0);
+  creditDebt = signal<number>(0);  // Avance en cours (Credit Wallet)
+  /** Montants réservés par ordres P2P en attente (non utilisables pour d'autres ordres). */
+  p2pReservedCash = signal<number>(0);
+  p2pReservedTokens = signal<Record<string, number>>({});  // token addr -> amount
+  /** Soldes token par fond (Atlas/Didon) pour validation vente P2P. */
+  tokenBalanceAtlas = signal<number>(0);
+  tokenBalanceDidon = signal<number>(0);
+  /** Priorité Crédit : utiliser le Credit Wallet en premier (recommandé), puis Cash Wallet. */
+  priorityCredit = signal<boolean>(true);
   
   currentPrice = computed(() => {
     return this.tokenType() === 'Atlas' ? this.alphaPrice() : this.betaPrice();
@@ -110,7 +192,7 @@ export class PasserOrdrePage implements OnInit {
         return q ? this.from1e8(q.totalFee) : 0;
       }
     }
-    return this.tndAmount() * this.feeRate;
+    return this.tndAmount() * this.p2pFeeRate();
   });
   
   totalCost = computed(() => {
@@ -129,20 +211,66 @@ export class PasserOrdrePage implements OnInit {
     return this.tndAmount() - this.fees();
   });
   
+  /** Cash disponible = solde - réservé par ordres P2P en attente. */
+  availableCash = computed(() => Math.max(0, this.cashBalance() - this.p2pReservedCash()));
+
   cashAfter = computed(() => {
     if (this.orderType() === 'buy') {
       return this.cashBalance() - this.totalCost();
     }
     return this.cashBalance() + this.totalCost();
   });
-  
+
+  /** Tokens disponibles pour le token sélectionné (vente P2P) = solde - réservés. */
+  availableTokensForSell = computed(() => {
+    const fund = this.getSelectedFund();
+    if (!fund?.token) return 0;
+    const bal = this.tokenType() === 'Atlas' ? this.tokenBalanceAtlas() : this.tokenBalanceDidon();
+    const reserved = this.p2pReservedTokens()[fund.token.toLowerCase()] ?? 0;
+    return Math.max(0, bal - reserved);
+  });
+
   canConfirm = computed(() => {
     if (this.amount() <= 0) return false;
     if (this.orderType() === 'buy') {
-      return this.totalCost() <= this.cashBalance();
+      return this.totalCost() <= this.availableCash();
     }
-    return true; 
+    if (this.orderType() === 'sell') {
+      return this.tokenAmount() <= this.availableTokensForSell();
+    }
+    return true;
   });
+
+  /** Répartition achat : montant pris sur Credit Wallet (Priorité Crédit = crédit disponible via getCreditDisplay). */
+  fromCreditWallet = computed(() => {
+    if (this.orderType() !== 'buy' || this.creditDebt() <= 0) return 0;
+    if (this.priorityCredit()) {
+      const creditDisplay = this.creditTracking.getCreditDisplay(
+        this.cashBalance(), this.creditDebt(), this.userAddress()
+      );
+      return Math.min(this.totalCost(), creditDisplay);
+    }
+    const cashDisplay = this.creditTracking.getCashDisplay(
+      this.cashBalance(), this.creditDebt(), this.userAddress()
+    );
+    return Math.max(0, this.totalCost() - Math.min(this.totalCost(), cashDisplay));
+  });
+
+  /** Répartition achat : montant pris sur Cash Wallet. */
+  fromCashWallet = computed(() => {
+    if (this.orderType() !== 'buy') return 0;
+    return Math.max(0, this.totalCost() - this.fromCreditWallet());
+  });
+
+  /** Affichage Credit Wallet (avec Priorité Crédit). */
+  creditDisplay = computed(() =>
+    this.creditTracking.getCreditDisplay(this.cashBalance(), this.creditDebt(), this.userAddress())
+  );
+
+  /** Affichage Cash Wallet (avec Priorité Crédit). */
+  cashDisplay = computed(() =>
+    this.creditTracking.getCashDisplay(this.cashBalance(), this.creditDebt(), this.userAddress())
+  );
 
   confirmSummary = computed<ConfirmOrderSummary | null>(() => {
     if (this.amount() <= 0) return null;
@@ -208,7 +336,19 @@ export class PasserOrdrePage implements OnInit {
             localStorage.setItem('walletAddress', wallet);
             this.api.getPortfolio(wallet as any).subscribe({
               next: (p) => {
-                this.cashBalance.set(p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0);
+                const cash = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
+                const cred = p.creditDebtTnd ? this.from1e8(p.creditDebtTnd) : 0;
+                this.creditTracking.syncWithCreditDebt(wallet, cred);
+                this.cashBalance.set(cash);
+                this.creditDebt.set(cred);
+                this.setTokenBalancesFromPositions(p.positions);
+                this.refreshP2PReservations(wallet);
+              },
+              error: () => {},
+            });
+            this.api.getInvestorProfile(wallet as any).subscribe({
+              next: (prof) => {
+                this.feeLevel.set(Math.min(Math.max(prof.feeLevel ?? 0, 0), 4));
               },
               error: () => {},
             });
@@ -235,6 +375,10 @@ export class PasserOrdrePage implements OnInit {
 
   toggleOrderMode() {
     this.orderMode.set(this.orderMode() === 'piscine' ? 'p2p' : 'piscine');
+  }
+
+  selectValidityPeriod(period: ValidityPeriod): void {
+    this.validityPeriod.set(period);
   }
 
   switchAmountType() {
@@ -272,10 +416,12 @@ export class PasserOrdrePage implements OnInit {
 
       if (this.orderType() === 'buy') {
         const tndIn = this.to1e8(this.amountType() === 'tnd' ? this.amount() : this.amount() * this.currentPrice());
+        const fromCredit = this.priorityCredit() ? this.fromCreditWallet() : 0;
         this.api.buy({ token, user: user as any, tndIn }).subscribe({
           next: (res) => {
             this.submitMessage.set(res.message ?? 'Ordre soumis');
             this.isConfirmOpen.set(false);
+            if (fromCredit > 0) this.creditTracking.addCreditUsed(user, fromCredit);
             // Refresh cash balance immediately and multiple times to ensure update
             this.refreshCashBalance();
             setTimeout(() => {
@@ -344,7 +490,8 @@ export class PasserOrdrePage implements OnInit {
 
     const side = this.orderType(); // buy/sell
     const nonce = String(Date.now()); // ok for MVP
-    const deadline = String(Math.floor(Date.now() / 1000) + 3600); // +1 heure par défaut
+    const periodSec = VALIDITY_SECONDS[this.validityPeriod()];
+    const deadline = String(Math.floor(Date.now() / 1000) + periodSec);
 
     const tokenAmount1e8 =
       side === 'buy'
@@ -377,9 +524,17 @@ export class PasserOrdrePage implements OnInit {
           } else {
             this.submitMessage.set(`Ordre soumis (ID: ${res.orderId}). En attente de matching.`);
           }
+          if (res.poolSpreadWarning) {
+            this.submitMessage.update((m) => (m ? `${m} ${res.poolSpreadWarning}` : res.poolSpreadWarning!));
+          }
           // Rafraîchir le solde après transaction
           if (res.status === 'SETTLED' || res.status === 'MATCHED') {
             this.cashBalance.set(this.cashAfter());
+            if (side === 'buy' && this.priorityCredit()) {
+              const user = this.userAddress();
+              const fromCredit = this.fromCreditWallet();
+              if (fromCredit > 0 && user) this.creditTracking.addCreditUsed(user, fromCredit);
+            }
             setTimeout(() => {
               this.navbarClient?.refreshWalletBalance();
             }, 1000);
@@ -485,6 +640,34 @@ export class PasserOrdrePage implements OnInit {
   /**
    * Refresh cash balance from blockchain after transaction.
    */
+  private setTokenBalancesFromPositions(positions: { token?: string; balanceTokens?: string; lockedTokens1e8?: string }[]) {
+    const pick = (name: string) =>
+      positions.find((p: any) => (p.name ?? '').toLowerCase().includes(name) || (p.symbol ?? '').toLowerCase().includes(name));
+    const atlas = pick('atlas') ?? positions[0];
+    const didon = pick('didon') ?? positions[1];
+    const toNum = (s: string | undefined) => (s ? this.from1e8(s) : 0);
+    const toNumLocked = (s: string | undefined) => (s ? this.from1e8(s) : 0);
+    this.tokenBalanceAtlas.set(atlas ? toNum(atlas.balanceTokens) - toNumLocked(atlas.lockedTokens1e8) : 0);
+    this.tokenBalanceDidon.set(didon ? toNum(didon.balanceTokens) - toNumLocked(didon.lockedTokens1e8) : 0);
+  }
+
+  private refreshP2PReservations(wallet: string) {
+    this.api.getP2PReservations(wallet).subscribe({
+      next: (r) => {
+        this.p2pReservedCash.set(r.reservedCashTnd1e8 ? this.from1e8(r.reservedCashTnd1e8) : 0);
+        const tokens: Record<string, number> = {};
+        for (const [tk, amt] of Object.entries(r.reservedTokens1e8 ?? {})) {
+          tokens[tk.toLowerCase()] = this.from1e8(amt);
+        }
+        this.p2pReservedTokens.set(tokens);
+      },
+      error: () => {
+        this.p2pReservedCash.set(0);
+        this.p2pReservedTokens.set({});
+      },
+    });
+  }
+
   private refreshCashBalance() {
     const user = this.userAddress();
     console.log('[PasserOrdrePage] refreshCashBalance() called for user:', user);
@@ -496,8 +679,12 @@ export class PasserOrdrePage implements OnInit {
     this.api.getPortfolio(user as any).subscribe({
       next: (p) => {
         const newBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
-        console.log('[PasserOrdrePage] Cash balance updated to:', newBalance, 'TND (raw:', p.cashBalanceTnd, ')');
+        const newCredit = p.creditDebtTnd ? this.from1e8(p.creditDebtTnd) : 0;
+        this.creditTracking.syncWithCreditDebt(user, newCredit);
         this.cashBalance.set(newBalance);
+        this.creditDebt.set(newCredit);
+        this.setTokenBalancesFromPositions(p.positions);
+        this.refreshP2PReservations(user);
       },
       error: (err) => {
         console.error('[PasserOrdrePage] Error refreshing cash balance:', err);

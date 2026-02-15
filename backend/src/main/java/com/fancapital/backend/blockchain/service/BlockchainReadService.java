@@ -206,6 +206,7 @@ public class BlockchainReadService {
 
     for (FundDto fund : funds) {
       BigInteger bal = balanceOf(fund.token(), userAddress);
+      BigInteger locked = escrowLockedAmount(fund.token(), userAddress);
       BigInteger prm = getPrm(fund.token(), userAddress);
       BigInteger vni = new BigInteger(getVni(fund.token()).vni());
 
@@ -225,6 +226,7 @@ public class BlockchainReadService {
           fund.pool(),
           fund.oracle(),
           bal.toString(),
+          locked.toString(),
           vni.toString(),
           prm.toString(),
           valueTnd.toString(),
@@ -262,6 +264,7 @@ public class BlockchainReadService {
 
     for (FundDto fund : funds) {
       BigInteger bal = balanceOfAtBlock(fund.token(), userAddress, blockNumber);
+      BigInteger locked = escrowLockedAmountAtBlock(fund.token(), userAddress, blockNumber);
       BigInteger prm = getPrm(fund.token(), userAddress);
       BigInteger vni = new BigInteger(getVni(fund.token()).vni());
 
@@ -281,6 +284,7 @@ public class BlockchainReadService {
           fund.pool(),
           fund.oracle(),
           bal.toString(),
+          locked.toString(),
           vni.toString(),
           prm.toString(),
           valueTnd.toString(),
@@ -567,6 +571,39 @@ public class BlockchainReadService {
     if (out == null || out.isEmpty()) {
       return BigInteger.ZERO;
     }
+    return EvmCallService.uint(out.get(0));
+  }
+
+  /**
+   * Solde disponible pour collateral (balance - escrowLocked).
+   * Utilisé pour valider une demande d'avance sur titres.
+   */
+  public BigInteger getAvailableTokenBalance(String tokenAddress, String userAddress) {
+    BigInteger bal = balanceOf(tokenAddress, userAddress);
+    BigInteger locked = escrowLockedAmount(tokenAddress, userAddress);
+    return bal.subtract(locked).max(BigInteger.ZERO);
+  }
+
+  /** Tokens bloqués pour l'avance sur titres (CPEFToken.escrowLockedAmount). */
+  private BigInteger escrowLockedAmount(String token, String user) {
+    Function f = new Function(
+        "escrowLockedAmount",
+        List.of(new Address(user)),
+        List.of(new TypeReference<Uint256>() {})
+    );
+    List<Type> out = evm.ethCall(token, f);
+    if (out == null || out.isEmpty()) return BigInteger.ZERO;
+    return EvmCallService.uint(out.get(0));
+  }
+
+  private BigInteger escrowLockedAmountAtBlock(String token, String user, BigInteger blockNumber) {
+    Function f = new Function(
+        "escrowLockedAmount",
+        List.of(new Address(user)),
+        List.of(new TypeReference<Uint256>() {})
+    );
+    List<Type> out = evm.ethCallAtBlock(token, f, blockNumber);
+    if (out == null || out.isEmpty()) return BigInteger.ZERO;
     return EvmCallService.uint(out.get(0));
   }
 

@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { NavbarClient } from '../navbar-client/navbar-client';
+import { BackButton } from '../../shared/back-button/back-button';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import type { UserResponse } from '../../../auth/models/auth.models';
@@ -22,7 +23,7 @@ type MemberLevel = 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 
 @Component({
   selector: 'app-profile-page',
-  imports: [CommonModule, FormsModule, RouterModule, NavbarClient, DatePipe],
+  imports: [CommonModule, FormsModule, RouterModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './profile-page.html',
   styleUrl: './profile-page.css',
 })
@@ -44,29 +45,54 @@ export class ProfilePage implements OnInit {
   historyLoading = signal<boolean>(false);
   historyError = signal<string>('');
   
-  // Progress Tracker
-  currentVolume = signal<number>(45000); // TND
-  nextLevelVolume = computed(() => {
-    const level = this.memberLevel();
-    if (level === 'Silver') return 50000; // Gold
-    if (level === 'Gold') return 100000; // Platinum
-    if (level === 'Platinum') return 200000; // Diamond
-    return 0; // Already at max level
+  // Progress Tracker - Volume = somme des achats uniquement (dépôts exclus)
+  currentVolume = computed(() => {
+    return this.allTransactions()
+      .filter(t => t.type === 'achat')
+      .reduce((sum, t) => sum + t.amount, 0);
   });
-  
+
+  /** Tier dérivé du volume d'achats cumulés (seuils: 7k→Gold, 20k→Platinum, 70k→Diamond). */
+  volumeBasedMemberLevel = computed((): MemberLevel => {
+    const v = this.currentVolume();
+    if (v >= 70000) return 'Diamond';
+    if (v >= 20000) return 'Platinum';
+    if (v >= 7000) return 'Gold';
+    return 'Silver';
+  });
+
+  /** Niveau affiché = max(backend, volume) plafonné par le score SCI. Le badge doit refléter le tier autorisé par le score. */
+  displayedMemberLevel = computed(() => {
+    const backend = this.memberLevel();
+    const volumeBased = this.volumeBasedMemberLevel();
+    const maxFromVolume = this.higherLevel(backend, volumeBased);
+    const score = this.investor()?.score;
+    if (score == null || score < 0) return maxFromVolume;
+    const maxFromScore = this.scoreToMemberLevel(score);
+    return this.lowerLevel(maxFromVolume, maxFromScore);
+  });
+
+  nextLevelVolume = computed(() => {
+    const level = this.displayedMemberLevel();
+    if (level === 'Silver') return 7000; // Gold
+    if (level === 'Gold') return 20000; // Platinum
+    if (level === 'Platinum') return 70000; // Diamond
+    return 0;
+  });
+
   progressPercentage = computed(() => {
     if (this.nextLevelVolume() === 0) return 100;
     return Math.min((this.currentVolume() / this.nextLevelVolume()) * 100, 100);
   });
-  
+
   nextLevel = computed(() => {
-    const level = this.memberLevel();
+    const level = this.displayedMemberLevel();
     if (level === 'Silver') return 'Gold';
     if (level === 'Gold') return 'Platinum';
     if (level === 'Platinum') return 'Diamond';
     return null;
   });
-  
+
   remainingVolume = computed(() => {
     if (this.nextLevelVolume() === 0) return 0;
     return Math.max(this.nextLevelVolume() - this.currentVolume(), 0);
@@ -118,8 +144,10 @@ export class ProfilePage implements OnInit {
   cashBalanceTnd = signal<number>(0);
   premiumActivationLoading = signal<boolean>(false);
   premiumActivationError = signal<string>('');
-  /** Montant minimum Cash Wallet pour activer Premium (TND). 1 TND min = versement symbolique. */
-  private readonly PREMIUM_MIN_TND = 1;
+  /** Durée choisie: trimestriel, semestriel, annuel */
+  subscriptionDuration = signal<'trimestriel' | 'semestriel' | 'annuel'>('annuel');
+  /** Tarifs selon tier (TND), -1 = non dispo */
+  premiumPrices = signal<{ trimestriel: number; semestriel: number; annuel: number } | null>(null);
 
   constructor(private authApi: AuthApiService, private blockchainApi: BlockchainApiService) {}
 
@@ -146,6 +174,7 @@ export class ProfilePage implements OnInit {
         if (w && w.startsWith('0x') && w.length === 42) {
           this.loadHistory(w);
           this.loadCashBalance(w);
+          this.loadPremiumPrices();
           this.blockchainApi.getInvestorProfile(w).subscribe({
             next: (p) => {
               this.investor.set(p);
@@ -173,7 +202,9 @@ export class ProfilePage implements OnInit {
     this.historyError.set('');
     this.blockchainApi.getTxHistory(userWallet, 200).subscribe({
       next: (res: TxHistoryResponse) => {
-        const items = (res.items ?? []).map((x, idx) => this.mapTx(x.kind, x.fundSymbol, x.amountTnd1e8, x.timestampSec, idx));
+        const items = (res.items ?? []).map((x, idx) =>
+          this.mapTx(x.kind, x.fundSymbol, x.amountTnd1e8, x.timestampSec, idx)
+        );
         this.allTransactions.set(items);
         this.historyLoading.set(false);
       },
@@ -231,15 +262,35 @@ export class ProfilePage implements OnInit {
   }
 
   private feeLevelToMemberLevel(feeLevel: number): MemberLevel {
-    // InvestorRegistry: 0=BRONZE, 1=SILVER, 2=GOLD, 3=DIAMOND, 4=PLATINUM
-    if (feeLevel === 3) return 'Diamond';
-    if (feeLevel === 4) return 'Platinum';
+    // InvestorRegistry / SCI v4.5 : 0=BRONZE, 1=SILVER, 2=GOLD, 3=PLATINUM, 4=DIAMOND
+    if (feeLevel === 4) return 'Diamond';
+    if (feeLevel === 3) return 'Platinum';
     if (feeLevel === 2) return 'Gold';
+    if (feeLevel === 1) return 'Silver';
+    return 'Silver'; // Bronze → Silver pour l'affichage membre
+  }
+
+  private higherLevel(a: MemberLevel, b: MemberLevel): MemberLevel {
+    const order: Record<MemberLevel, number> = { Silver: 1, Gold: 2, Platinum: 3, Diamond: 4 };
+    return order[a] >= order[b] ? a : b;
+  }
+
+  private lowerLevel(a: MemberLevel, b: MemberLevel): MemberLevel {
+    const order: Record<MemberLevel, number> = { Silver: 1, Gold: 2, Platinum: 3, Diamond: 4 };
+    return order[a] <= order[b] ? a : b;
+  }
+
+  /** SCI v4.5 : BRONZE 0-15, SILVER 16-35, GOLD 36-55, PLATINUM 56-84, DIAMOND 85+ */
+  private scoreToMemberLevel(score: number): MemberLevel {
+    if (score >= 85) return 'Diamond';
+    if (score >= 56) return 'Platinum';
+    if (score >= 36) return 'Gold';
+    if (score >= 16) return 'Silver';
     return 'Silver';
   }
 
   getMemberLevelColor(): string {
-    const level = this.memberLevel();
+    const level = this.displayedMemberLevel();
     if (level === 'Silver') return '#c0c0c0';
     if (level === 'Gold') return '#ffd700';
     if (level === 'Platinum') return '#e5e4e2';
@@ -314,8 +365,39 @@ export class ProfilePage implements OnInit {
     });
   }
 
+  private loadPremiumPrices(): void {
+    this.authApi.getPremiumPrices().subscribe({
+      next: (p) => this.premiumPrices.set(p),
+      error: () => this.premiumPrices.set(null),
+    });
+  }
+
+  /** Montant TND de l'abonnement sélectionné (-1 si non dispo). */
+  selectedSubscriptionAmount(): number {
+    const prices = this.premiumPrices();
+    if (!prices) return -1;
+    const d = this.subscriptionDuration();
+    return prices[d] ?? -1;
+  }
+
   canActivatePremium(): boolean {
-    return this.cashBalanceTnd() >= this.PREMIUM_MIN_TND && !!this.wallet();
+    const amount = this.selectedSubscriptionAmount();
+    return amount > 0 && this.cashBalanceTnd() >= amount && !!this.wallet();
+  }
+
+  /** Rafraîchit le profil et l'historique (score/tier mis à jour après achat/vente). */
+  refreshProfile(): void {
+    const w = this.wallet();
+    if (!w || !w.startsWith('0x')) return;
+    this.loadHistory(w);
+    this.loadCashBalance(w);
+    this.blockchainApi.getInvestorProfile(w).subscribe({
+      next: (p) => {
+        this.investor.set(p);
+        this.memberLevel.set(this.feeLevelToMemberLevel(p.feeLevel));
+      },
+      error: () => {},
+    });
   }
 
   onActivatePremium(): void {
@@ -323,11 +405,12 @@ export class ProfilePage implements OnInit {
     if (!w || !w.startsWith('0x')) return;
     this.premiumActivationLoading.set(true);
     this.premiumActivationError.set('');
-    this.authApi.activatePremium().subscribe({
+    this.authApi.activatePremium(this.subscriptionDuration()).subscribe({
       next: () => {
         this.premiumActivationLoading.set(false);
         this.premiumActivationError.set('');
         this.loadCashBalance(w);
+        this.loadHistory(w); // Rafraîchir l'historique (le retrait apparaît)
         this.blockchainApi.getInvestorProfile(w).subscribe({
           next: (p) => this.investor.set(p),
         });

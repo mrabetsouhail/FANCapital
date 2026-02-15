@@ -93,6 +93,13 @@ async function main() {
   await (await creditA.setInvestorRegistry(await investors.getAddress())).wait();
   await (await escrow.setAuthorizedCaller(await creditA.getAddress(), true)).wait();
 
+  const CreditModelBPGP = await ethers.getContractFactory("CreditModelBPGP");
+  const creditB = await CreditModelBPGP.deploy(deployer.address, await astOracle.getAddress(), await escrow.getAddress());
+  await creditB.waitForDeployment();
+  await (await creditB.setKYCRegistry(await kyc.getAddress())).wait();
+  await (await creditB.setInvestorRegistry(await investors.getAddress())).wait();
+  await (await escrow.setAuthorizedCaller(await creditB.getAddress(), true)).wait();
+
   const CPEFToken = await ethers.getContractFactory("CPEFToken");
   const atlasToken = CPEFToken.attach(fund0.token) as { setEscrowManager: (a: string) => Promise<unknown> };
   const didonToken = CPEFToken.attach(fund1.token) as { setEscrowManager: (a: string) => Promise<unknown> };
@@ -105,6 +112,7 @@ async function main() {
   console.log("CPEF Atlas:", fund0);
   console.log("CPEF Didon:", fund1);
   console.log("CreditModelA:", await creditA.getAddress());
+  console.log("CreditModelBPGP:", await creditB.getAddress());
   console.log("EscrowRegistry:", await escrow.getAddress());
 
   const deployment = {
@@ -117,6 +125,7 @@ async function main() {
       TaxVault: await taxVault.getAddress(),
       CircuitBreaker: await cb.getAddress(),
       CreditModelA: await creditA.getAddress(),
+      CreditModelBPGP: await creditB.getAddress(),
       EscrowRegistry: await escrow.getAddress(),
     },
     deployers: {

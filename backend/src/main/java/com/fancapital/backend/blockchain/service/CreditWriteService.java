@@ -16,7 +16,7 @@ import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 
 /**
- * Write service for CreditModelA. Calls activateAdvance, recordRepayment.
+ * Write service for CreditModelA and CreditModelBPGP. Calls activateAdvance, recordRepayment (A only).
  */
 @Service
 public class CreditWriteService {
@@ -32,15 +32,24 @@ public class CreditWriteService {
   }
 
   /**
-   * Activate an advance: lock collateral on-chain. Call AFTER crediting user's wallet.
-   *
-   * @param loanId Loan ID (status must be Requested)
-   * @return transaction hash
+   * Activate an advance on CreditModelA: lock collateral on-chain. Call AFTER crediting user's wallet.
    */
   public String activateAdvance(BigInteger loanId) throws IOException {
     String addr = registry.getCreditModelAAddress();
     if (addr == null || addr.isBlank()) {
       throw new IllegalStateException("CreditModelA address not configured.");
+    }
+    Function fn = new Function("activateAdvance", List.of(new Uint256(loanId)), List.of());
+    return send(addr, fn, BigInteger.valueOf(400_000));
+  }
+
+  /**
+   * Activate an advance on CreditModelBPGP (PGP): lock collateral on-chain. Call AFTER crediting user's wallet.
+   */
+  public String activateAdvanceB(BigInteger loanId) throws IOException {
+    String addr = registry.getCreditModelBAddress();
+    if (addr == null || addr.isBlank()) {
+      throw new IllegalStateException("CreditModelBPGP address not configured.");
     }
     Function fn = new Function("activateAdvance", List.of(new Uint256(loanId)), List.of());
     return send(addr, fn, BigInteger.valueOf(400_000));

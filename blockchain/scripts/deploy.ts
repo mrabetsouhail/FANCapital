@@ -68,6 +68,12 @@ async function main() {
   await (await eqHigh.setEscrowManager(await escrow.getAddress())).wait();
   await (await eqMed.setEscrowManager(await escrow.getAddress())).wait();
 
+  const OrderFallbackExecutor = await ethers.getContractFactory("OrderFallbackExecutor");
+  const orderFallback = await OrderFallbackExecutor.deploy(deployer.address, await pool.getAddress());
+  await orderFallback.waitForDeployment();
+  const OPERATOR_ROLE = await pool.OPERATOR_ROLE();
+  await (await pool.grantRole(OPERATOR_ROLE, await orderFallback.getAddress())).wait();
+
   const ReservationOption = await ethers.getContractFactory("ReservationOption");
   const opt = await ReservationOption.deploy(deployer.address, await oracle.getAddress(), await pool.getAddress());
   await opt.waitForDeployment();
@@ -107,6 +113,7 @@ async function main() {
   console.log("ReservationOption:", await opt.getAddress());
   console.log("CreditModelA:", await creditA.getAddress());
   console.log("CreditModelBPGP:", await creditB.getAddress());
+  console.log("OrderFallbackExecutor:", await orderFallback.getAddress());
 
   const deployment = {
     network: network.name,
@@ -126,6 +133,7 @@ async function main() {
       ReservationOption: await opt.getAddress(),
       CreditModelA: await creditA.getAddress(),
       CreditModelBPGP: await creditB.getAddress(),
+      OrderFallbackExecutor: await orderFallback.getAddress(),
     },
     generatedAt: new Date().toISOString(),
   };

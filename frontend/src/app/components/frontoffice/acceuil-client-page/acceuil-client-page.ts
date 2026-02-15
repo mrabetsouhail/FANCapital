@@ -6,11 +6,12 @@ import { NavbarClient } from '../navbar-client/navbar-client';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
 import type { Fund } from '../../../blockchain/models/fund.models';
+import type { TxRow, TxKind } from '../../../blockchain/models/tx-history.models';
 
 interface Transaction {
   id: number;
   type: 'achat' | 'vente' | 'depot' | 'retrait';
-  token?: 'Alpha' | 'Beta';
+  token?: 'Atlas' | 'Didon';
   amount: number;
   price?: number;
   date: Date;
@@ -23,38 +24,34 @@ interface Transaction {
   styleUrl: './acceuil-client-page.css',
 })
 export class AcceuilClientPage implements OnInit {
-  // Wallets Data
-  tokensAlpha = signal<number>(150);
-  tokensBeta = signal<number>(75);
-  cashAmount = signal<number>(5000.00);
-  creditAmount = signal<number>(10000.00);
-  
+  // Wallets Data (chargés depuis portfolio on-chain)
+  tokensAlpha = signal<number>(0);
+  tokensBeta = signal<number>(0);
+  cashAmount = signal<number>(0);
+  creditAmount = signal<number>(0);
+
   // Profile Data
   memberLevel = signal<string>('Gold');
+  isBackofficeAdmin = signal<boolean>(false);
 
-  // Token Alpha Data
-  alphaPrice = signal<number>(125.50);
-  alphaChange = signal<number>(3.5);
-  alphaOwned = signal<number>(150);
-  alphaSparkline = signal<number[]>([120, 122, 121, 123, 125, 124, 125.5]);
+  // Token Alpha (Atlas) - prix VNI on-chain, quantités portfolio
+  alphaPrice = signal<number>(0);
+  alphaChange = signal<number>(0);
+  alphaOwned = signal<number>(0);
+  alphaSparkline = signal<number[]>([]);
 
-  // Token Beta Data
-  betaPrice = signal<number>(85.25);
-  betaChange = signal<number>(-1.2);
-  betaOwned = signal<number>(75);
-  betaSparkline = signal<number[]>([86, 85.5, 85, 85.5, 85.2, 85.3, 85.25]);
+  // Token Beta (Didon)
+  betaPrice = signal<number>(0);
+  betaChange = signal<number>(0);
+  betaOwned = signal<number>(0);
+  betaSparkline = signal<number[]>([]);
 
-  // Funds mapping: legacy Alpha/Beta UI -> Atlas/Didon (blockchain)
+  // Funds mapping: Alpha/Beta UI -> Atlas/Didon (blockchain)
   fundAlpha = signal<Fund | null>(null); // Atlas
   fundBeta = signal<Fund | null>(null);  // Didon
 
-  // Recent Transactions
-  recentTransactions = signal<Transaction[]>([
-    { id: 1, type: 'achat', token: 'Alpha', amount: 10, price: 124.50, date: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-    { id: 2, type: 'vente', token: 'Beta', amount: 5, price: 86.00, date: new Date(Date.now() - 5 * 60 * 60 * 1000) },
-    { id: 3, type: 'depot', amount: 2000, date: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    { id: 4, type: 'achat', token: 'Alpha', amount: 15, price: 123.00, date: new Date(Date.now() - 48 * 60 * 60 * 1000) },
-  ]);
+  // Historique réel (API getTxHistory)
+  recentTransactions = signal<Transaction[]>([]);
 
   @ViewChild(NavbarClient) navbarClient?: NavbarClient;
 
@@ -65,13 +62,35 @@ export class AcceuilClientPage implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.authApi.me().subscribe({
+      next: (u) => {
+        const role = String((u as any)?.backofficeRole ?? 'NONE').toUpperCase();
+        this.isBackofficeAdmin.set(
+          !!(u as any)?.isBackofficeAdmin ||
+          role === 'ADMIN' ||
+          role === 'COMPLIANCE' ||
+          role === 'REGULATOR',
+        );
+        const wallet = (u as any)?.walletAddress ?? localStorage.getItem('walletAddress') ?? '';
+        if (wallet && String(wallet).startsWith('0x') && String(wallet).length === 42) {
+          this.loadPortfolio(wallet as string);
+          this.loadTxHistory(wallet as string);
+        }
+      },
+      error: () => {},
+    });
+
     // Refresh wallet balance when navigating to this page (e.g., after transaction)
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(() => {
-        // Small delay to ensure navbar is rendered
         setTimeout(() => {
           this.navbarClient?.refreshWalletBalance();
+          const wallet = localStorage.getItem('walletAddress');
+          if (wallet && wallet.startsWith('0x')) {
+            this.loadPortfolio(wallet);
+            this.loadTxHistory(wallet);
+          }
         }, 300);
       });
 
@@ -83,16 +102,84 @@ export class AcceuilClientPage implements OnInit {
         this.fundAlpha.set(atlas ?? null);
         this.fundBeta.set(didon ?? null);
         this.refreshVni();
-        
-        // Also refresh wallet balance on initial load
-        setTimeout(() => {
-          this.navbarClient?.refreshWalletBalance();
-        }, 500);
+
+        const wallet = localStorage.getItem('walletAddress');
+        if (wallet && wallet.startsWith('0x')) {
+          this.loadPortfolio(wallet);
+          this.loadTxHistory(wallet);
+        }
+
+        setTimeout(() => this.navbarClient?.refreshWalletBalance(), 500);
       },
-      error: () => {
-        // keep UI usable even if API not available
-      },
+      error: () => {},
     });
+  }
+
+  private loadPortfolio(wallet: string): void {
+    this.api.getPortfolio(wallet).subscribe({
+      next: (p) => {
+        this.cashAmount.set(Number(p.cashBalanceTnd) / 1e8);
+        this.creditAmount.set(Number(p.creditLineTnd) / 1e8);
+
+        for (const pos of p.positions) {
+          const tokens = Number(pos.balanceTokens) / 1e8;
+          const name = (pos.name ?? '').toLowerCase();
+          const isAtlas = name.includes('atlas');
+          const isDidon = name.includes('didon');
+          if (isAtlas) {
+            this.alphaOwned.set(tokens);
+            this.tokensAlpha.set(tokens);
+            const vni = Number(pos.vni) / 1e8;
+            if (vni > 0) this.alphaPrice.set(vni);
+          } else if (isDidon) {
+            this.betaOwned.set(tokens);
+            this.tokensBeta.set(tokens);
+            const vni = Number(pos.vni) / 1e8;
+            if (vni > 0) this.betaPrice.set(vni);
+          }
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  private loadTxHistory(wallet: string): void {
+    this.api.getTxHistory(wallet, 50).subscribe({
+      next: (r) => {
+        const tx: Transaction[] = r.items.map((row, i) => {
+          const type = this.mapTxKind(row.kind);
+          const token = this.getTokenLabel(row);
+          const date = new Date(row.timestampSec * 1000);
+          let amount = 0;
+          let price: number | undefined;
+          if (row.kind === 'BUY' || row.kind === 'SELL') {
+            amount = Number(row.amountToken1e8) / 1e8;
+            const p = Number(row.priceClient1e8) / 1e8;
+            price = p > 0 ? p : undefined;
+          } else {
+            amount = Number(row.amountTnd1e8) / 1e8;
+          }
+          return { id: i + 1, type, token, amount, price, date };
+        });
+        this.recentTransactions.set(tx);
+      },
+      error: () => {},
+    });
+  }
+
+  private mapTxKind(kind: TxKind): 'achat' | 'vente' | 'depot' | 'retrait' {
+    const map: Record<TxKind, 'achat' | 'vente' | 'depot' | 'retrait'> = {
+      BUY: 'achat', SELL: 'vente', DEPOSIT: 'depot', WITHDRAW: 'retrait',
+    };
+    return map[kind] ?? 'depot';
+  }
+
+  private getTokenLabel(row: TxRow): 'Atlas' | 'Didon' | undefined {
+    if (row.kind !== 'BUY' && row.kind !== 'SELL') return undefined;
+    const name = (row.fundName ?? row.fundSymbol ?? '').toLowerCase();
+    if (name.includes('atlas')) return 'Atlas';
+    if (name.includes('didon')) return 'Didon';
+    return undefined;
   }
 
   onDeposit() {
@@ -121,6 +208,15 @@ export class AcceuilClientPage implements OnInit {
 
   onSellBeta() {
     this.router.navigate(['/passer-ordre'], { queryParams: { token: 'Beta', action: 'sell' } });
+  }
+
+  /** Calcule la hauteur en % pour un point du sparkline (min=0%, max=100%). */
+  getSparklineHeight(points: number[], point: number): number {
+    if (!points.length) return 0;
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    if (min === max) return 100;
+    return ((point - min) / (max - min)) * 100;
   }
 
   getTransactionTypeLabel(type: string): string {

@@ -1,0 +1,96 @@
+<div class="min-h-screen fc-premium-bg">
+  <app-navbar-client></app-navbar-client>
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-4">
+      <app-back-button fallbackRoute="/acceuil-client"></app-back-button>
+    </div>
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
+      <h1 class="text-2xl font-bold text-primary mb-2">Notifications</h1>
+      <p class="text-sm text-gray-600 mb-6">
+        {{ unreadCount() }} non lue(s)
+      </p>
+
+      <!-- Filtres -->
+      <div class="flex gap-2 mb-6">
+        <button
+          (click)="filterType.set('all')"
+          [class]="filterType() === 'all' ? 'bg-[#00204A] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          Toutes
+        </button>
+        <button
+          (click)="filterType.set('price')"
+          [class]="filterType() === 'price' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          Prix
+        </button>
+        <button
+          (click)="filterType.set('security')"
+          [class]="filterType() === 'security' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          Sécurité
+        </button>
+        <button
+          (click)="filterType.set('margin')"
+          [class]="filterType() === 'margin' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          Marge
+        </button>
+      </div>
+
+      @if (loading()) {
+        <div class="py-12 text-center text-gray-500">Chargement…</div>
+      } @else if (error()) {
+        <div class="py-12 text-center text-red-600">{{ error() }}</div>
+      } @else if (filteredNotifications().length === 0) {
+        <div class="py-12 text-center">
+          <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <p class="text-gray-500">Aucune notification</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (notification of filteredNotifications(); track notification.id) {
+            <div
+              (click)="markAsRead(notification)"
+              class="p-4 rounded-xl border cursor-pointer transition"
+              [class.bg-blue-50]="!notification.read"
+              [class.border-blue-200]="!notification.read"
+              [class.bg-white]="notification.read"
+              [class.border-gray-200]="notification.read"
+            >
+              <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center" [class]="getNotificationColor(notification.type)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getNotificationIcon(notification.type)" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="font-semibold text-primary">{{ notification.title }}</p>
+                    <div class="flex items-center gap-2">
+                      @if (!notification.read) {
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                      }
+                      <span class="w-2 h-2 rounded-full" [class]="getPriorityColor(notification.priority)"></span>
+                    </div>
+                  </div>
+                  <p class="text-sm text-gray-600 mt-1">{{ notification.message }}</p>
+                  <p class="text-xs text-gray-400 mt-2">{{ getTimeAgo(notification.timestamp) }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </main>
+</div>

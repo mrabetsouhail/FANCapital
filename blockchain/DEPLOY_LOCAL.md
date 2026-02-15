@@ -53,7 +53,23 @@ $env:MINT_KEY_ADDRESS="0x..."
 npm run grant-minter
 ```
 
-## 4. (Optionnel) Autres scripts de test
+## 4. Alimenter le wallet en ETH (pour le gas)
+
+Sur Hardhat local, seuls les 20 comptes par défaut ont de l’ETH. Les wallets utilisateurs (WaaS, MetaMask) n’en ont pas — d’où l’erreur :
+
+> `approve failed: Sender doesn't have enough funds to send tx. The max upfront cost is: ... and the sender's balance is: 0.`
+
+Alimentez le wallet avec un peu d’ETH natif :
+
+```powershell
+cd blockchain
+$env:USER_ADDRESS="0x4ebe7059efce49f3dcfe4b48080a90c94c6b30bf"  # adresse du wallet concerné
+npm run fund-eth
+```
+
+Optionnel : `$env:AMOUNT_ETH="0.1"` pour envoyer 0.1 ETH (par défaut 0.05 ETH).
+
+## 5. (Optionnel) Autres scripts de test
 
 Après le déploiement, vous pouvez :
 
@@ -66,7 +82,9 @@ Après le déploiement, vous pouvez :
 |-------------------------------|-----------------------------------------------------------------------|
 | Démarrer le nœud              | `cd blockchain && npm run node`                                       |
 | Déployer contrats             | `cd blockchain && npm run deploy:factory-funds:localhost`              |
-| Accorder MINTER à la Mint Key | `$env:MINT_PRIVATE_KEY="0x..."; npm run grant-minter`                  |
+| Accorder MINTER à la Mint Key | `$env:MINT_PRIVATE_KEY="0x..."; npm run grant-minter`                 |
+| Accorder BURNER à la Burn Key | `$env:BURN_PRIVATE_KEY="0x..."; npm run grant-burner`                 |
+| Alimenter wallet en ETH (gas) | `$env:USER_ADDRESS="0x..."; npm run fund-eth`                         |
 
 **Remarque :** Si vous utilisez une seule clé (MINT = OPERATOR) et que c'est la clé du premier compte Hardhat, vous avez déjà `MINTER_ROLE` et l'étape 3 est inutile.
 
