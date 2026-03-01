@@ -32,7 +32,9 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
     TaxVault public taxVault;
     CircuitBreaker public circuitBreaker;
 
-    address public treasury;
+    address public treasury; // Piscine C (Compte de Revenus)
+    address public guaranteeFund; // Piscine D (Fonds de Garantie), 0 = disabled
+    uint256 public guaranteeFundBps; // % of fees to D (e.g. 100 = 1%)
 
     uint256 public constant RAS_RESIDENT_BPS = 1_000; // 10%
     uint256 public constant RAS_NON_RESIDENT_BPS = 1_500; // 15%
@@ -76,6 +78,7 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
     event InventoryReleased(address indexed token, uint256 amount);
     event ReservationOptionUpdated(address indexed oldOption, address indexed newOption);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event GuaranteeFundUpdated(address indexed oldAddr, address indexed newAddr, uint256 bps);
     event InvestorRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event CashTokenUpdated(address indexed oldToken, address indexed newToken);
     event KYCRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
@@ -154,6 +157,15 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
         emit TreasuryUpdated(old, newTreasury);
     }
 
+    /// @notice Configure le Fonds de Garantie (Piscine D) : % des frais alloué.
+    function setGuaranteeFund(address newAddr, uint256 bps) external onlyRole(GOVERNANCE_ROLE) {
+        require(bps <= BPS, "LP: bad bps");
+        address old = guaranteeFund;
+        guaranteeFund = newAddr;
+        guaranteeFundBps = bps;
+        emit GuaranteeFundUpdated(old, newAddr, bps);
+    }
+
     function setPoolFeeBps(uint8 feeLevel, uint256 feeBps) external onlyRole(GOVERNANCE_ROLE) {
         require(feeLevel <= 4, "LP: bad level");
         require(feeBps <= 500, "LP: fee too high");
@@ -215,9 +227,16 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
         uint256 totalFee = feeBase + vat;
         require(totalFee < tndIn, "LP: fees exceed");
 
-        // Send fees to treasury
+        // Send fees: part to Piscine D (Fonds de Garantie), rest to Piscine C (Revenus)
         if (totalFee > 0) {
-            require(cashToken.transfer(treasury, totalFee), "LP: fee transfer failed");
+            if (guaranteeFund != address(0) && guaranteeFundBps > 0) {
+                uint256 toGuarantee = (totalFee * guaranteeFundBps) / BPS;
+                uint256 toTreasury = totalFee - toGuarantee;
+                if (toGuarantee > 0) require(cashToken.transfer(guaranteeFund, toGuarantee), "LP: guarantee transfer failed");
+                if (toTreasury > 0) require(cashToken.transfer(treasury, toTreasury), "LP: fee transfer failed");
+            } else {
+                require(cashToken.transfer(treasury, totalFee), "LP: fee transfer failed");
+            }
         }
 
         uint256 vni = oracle.getVNI(token);
@@ -298,10 +317,17 @@ contract LiquidityPool is AccessControl, ReentrancyGuard {
         // Burn first (platform-only burn)
         CPEFToken(token).burnFromUser(user, tokenAmount);
 
-        // Pay user and treasury
+        // Pay user; fees: part to Piscine D, rest to Piscine C
         require(cashToken.transfer(user, tndOut), "LP: payout transfer failed");
         if (totalFee > 0) {
-            require(cashToken.transfer(treasury, totalFee), "LP: fee transfer failed");
+            if (guaranteeFund != address(0) && guaranteeFundBps > 0) {
+                uint256 toGuarantee = (totalFee * guaranteeFundBps) / BPS;
+                uint256 toTreasury = totalFee - toGuarantee;
+                if (toGuarantee > 0) require(cashToken.transfer(guaranteeFund, toGuarantee), "LP: guarantee transfer failed");
+                if (toTreasury > 0) require(cashToken.transfer(treasury, toTreasury), "LP: fee transfer failed");
+            } else {
+                require(cashToken.transfer(treasury, totalFee), "LP: fee transfer failed");
+            }
         }
         if (tax > 0) {
             require(address(taxVault) != address(0), "LP: tax vault not set");

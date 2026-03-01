@@ -13,7 +13,7 @@ type TabId = 'pending' | 'matched' | 'fallback';
   selector: 'app-order-book-backoffice-page',
   imports: [CommonModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './order-book-backoffice-page.html',
-  styleUrl: './order-book-backoffice-page.css',
+  styleUrls: ['./order-book-backoffice-page.css', '../backoffice-theme.css'],
 })
 export class OrderBookBackofficePage implements OnInit {
   activeTab = signal<TabId>('pending');

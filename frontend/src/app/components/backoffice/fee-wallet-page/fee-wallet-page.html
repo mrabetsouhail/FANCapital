@@ -1,138 +1,108 @@
-<div class="min-h-screen fc-premium-bg px-4 py-8">
-  <div class="max-w-6xl mx-auto">
-    <div class="mb-4">
+<div class="fc-premium-bg min-h-screen px-4 py-8">
+  <div class="max-w-5xl mx-auto">
+    <div class="mb-8">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
-    </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
-    <div class="flex items-start justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-primary">Wallet Frais Plateforme</h1>
-        <p class="text-sm text-gray-600">Comptabilité transparente des frais collectés par la plateforme</p>
-      </div>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
-        (click)="refresh()"
-        [disabled]="loading()"
-      >
-        Rafraîchir
-      </button>
     </div>
 
     @if (error()) {
-      <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {{ error() }}
-      </div>
+      <div class="bo-error mb-6">{{ error() }}</div>
     }
 
     @if (loading()) {
-      <div class="text-gray-600 text-sm">Chargement…</div>
+      <div class="bo-card flex items-center justify-center py-16">
+        <div class="flex flex-col items-center gap-3">
+          <div class="bo-spinner"></div>
+          <span class="text-sm text-white/70">Chargement…</span>
+        </div>
+      </div>
     }
 
-    @if (data()) {
+    @if (data() && !loading()) {
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Wallet Frais Plateforme</h1>
+          <p class="text-sm text-white/60 mt-1">Comptabilité transparente des frais collectés</p>
+        </div>
+        <button type="button" class="bo-btn" (click)="refresh()" [disabled]="loading()">Rafraîchir</button>
+      </header>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Treasury Address</div>
-          <div class="font-mono text-sm break-all text-primary">{{ data()!.treasuryAddress }}</div>
+        <div class="bo-card">
+          <div class="text-xs text-white/50 mb-1">Treasury Address</div>
+          <div class="font-mono text-sm break-all text-white/90">{{ data()!.treasuryAddress }}</div>
         </div>
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">CashTokenTND</div>
-          <div class="font-mono text-sm break-all text-primary">{{ data()!.cashTokenAddress }}</div>
+        <div class="bo-card">
+          <div class="text-xs text-white/50 mb-1">CashTokenTND</div>
+          <div class="font-mono text-sm break-all text-white/90">{{ data()!.cashTokenAddress }}</div>
         </div>
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Solde Total (TND)</div>
-          <div class="text-2xl font-bold text-primary">{{ from1e8(data()!.balanceTnd) | number:'1.2-2' }} TND</div>
-          <div class="text-xs text-gray-500 mt-1">Raw: {{ data()!.balanceTnd }}</div>
+        <div class="bo-kpi">
+          <div class="text-xs text-white/50 mb-1">Solde Total (TND)</div>
+          <div class="text-2xl font-bold text-white">{{ from1e8(data()!.balanceTnd) | number:'1.2-2' }} TND</div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4 mb-6">
-        <h2 class="text-lg font-semibold text-primary mb-4">Résumé des Frais</h2>
+      <div class="bo-card mb-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Résumé des Frais</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-blue-50 rounded-lg p-4">
-            <div class="text-xs text-gray-600 mb-1">Total Frais Collectés</div>
-            <div class="text-xl font-bold text-blue-700">
-              {{ totalFees() | number:'1.2-2' }} TND
-            </div>
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div class="text-xs text-white/50 mb-1">Total Frais Collectés</div>
+            <div class="text-xl font-bold text-white">{{ totalFees() | number:'1.2-2' }} TND</div>
           </div>
-          <div class="bg-green-50 rounded-lg p-4">
-            <div class="text-xs text-gray-600 mb-1">Frais de Base (HT)</div>
-            <div class="text-xl font-bold text-green-700">
-              {{ totalFeesBase() | number:'1.2-2' }} TND
-            </div>
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div class="text-xs text-white/50 mb-1">Frais de Base (HT)</div>
+            <div class="text-xl font-bold text-[#86efac]">{{ totalFeesBase() | number:'1.2-2' }} TND</div>
           </div>
-          <div class="bg-purple-50 rounded-lg p-4">
-            <div class="text-xs text-gray-600 mb-1">TVA (19%)</div>
-            <div class="text-xl font-bold text-purple-700">
-              {{ totalVat() | number:'1.2-2' }} TND
-            </div>
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div class="text-xs text-white/50 mb-1">TVA (19%)</div>
+            <div class="text-xl font-bold text-[#c4b5fd]">{{ totalVat() | number:'1.2-2' }} TND</div>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-        <h2 class="text-lg font-semibold text-primary mb-3">Frais collectés par fonds</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200">
-                <th class="text-left py-2 pr-3 text-primary">Fonds</th>
-                <th class="text-left py-2 pr-3 text-primary">Pool</th>
-                <th class="text-right py-2 pr-3 text-primary">Frais Base (HT)</th>
-                <th class="text-right py-2 pr-3 text-primary">TVA (19%)</th>
-                <th class="text-right py-2 pr-3 text-primary">Total Frais (TTC)</th>
-                <th class="text-right py-2 text-primary">Nb Transactions</th>
+      <div class="bo-card overflow-x-auto">
+        <h2 class="text-lg font-semibold text-white mb-4">Frais collectés par fonds</h2>
+        <table class="bo-table">
+          <thead>
+            <tr>
+              <th>Fonds</th>
+              <th>Pool</th>
+              <th class="text-right">Frais Base (HT)</th>
+              <th class="text-right">TVA (19%)</th>
+              <th class="text-right">Total (TTC)</th>
+              <th class="text-right">Nb Tx</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of data()!.feesByFund; track f.fundId) {
+              <tr>
+                <td>
+                  <div class="font-medium text-white">{{ f.fundName }}</div>
+                  <div class="text-xs text-white/50">{{ f.fundSymbol }}</div>
+                </td>
+                <td class="font-mono text-xs break-all text-white/70">{{ f.poolAddress }}</td>
+                <td class="text-right font-semibold text-[#86efac]">{{ from1e8(f.feesBaseTnd) | number:'1.2-2' }} TND</td>
+                <td class="text-right font-semibold text-[#c4b5fd]">{{ from1e8(f.vatTnd) | number:'1.2-2' }} TND</td>
+                <td class="text-right font-bold text-white">{{ from1e8(f.totalFeesTnd) | number:'1.2-2' }} TND</td>
+                <td class="text-right text-white/70">{{ f.transactionCount }}</td>
               </tr>
-            </thead>
-            <tbody>
-              @for (f of data()!.feesByFund; track f.fundId) {
-                <tr class="border-b border-gray-100">
-                  <td class="py-2 pr-3">
-                    <div class="font-medium text-primary">{{ f.fundName }}</div>
-                    <div class="text-xs text-gray-500">{{ f.fundSymbol }}</div>
-                  </td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all text-gray-700">{{ f.poolAddress }}</td>
-                  <td class="py-2 pr-3 text-right font-semibold text-green-700">
-                    {{ from1e8(f.feesBaseTnd) | number:'1.2-2' }} TND
-                  </td>
-                  <td class="py-2 pr-3 text-right font-semibold text-purple-700">
-                    {{ from1e8(f.vatTnd) | number:'1.2-2' }} TND
-                  </td>
-                  <td class="py-2 pr-3 text-right font-bold text-primary">
-                    {{ from1e8(f.totalFeesTnd) | number:'1.2-2' }} TND
-                  </td>
-                  <td class="py-2 text-right text-gray-700">{{ f.transactionCount }}</td>
-                </tr>
-              }
-              @if (data()!.feesByFund.length === 0) {
-                <tr>
-                  <td colspan="6" class="py-4 text-center text-gray-500">
-                    Aucune transaction avec frais enregistrée pour le moment.
-                  </td>
-                </tr>
-              }
-            </tbody>
-            <tfoot>
-              <tr class="border-t-2 border-gray-300 font-bold">
-                <td class="py-2 pr-3" colspan="2">TOTAL</td>
-                <td class="py-2 pr-3 text-right text-green-700">
-                  {{ totalFeesBase() | number:'1.2-2' }} TND
-                </td>
-                <td class="py-2 pr-3 text-right text-purple-700">
-                  {{ totalVat() | number:'1.2-2' }} TND
-                </td>
-                <td class="py-2 pr-3 text-right text-primary">
-                  {{ totalFees() | number:'1.2-2' }} TND
-                </td>
-                <td class="py-2 text-right">
-                  {{ totalTransactions() }}
-                </td>
+            }
+            @if (data()!.feesByFund.length === 0) {
+              <tr>
+                <td colspan="6" class="py-8 text-center text-white/50">Aucune transaction avec frais.</td>
               </tr>
-            </tfoot>
-          </table>
-        </div>
+            }
+          </tbody>
+          <tfoot>
+            <tr class="border-t border-white/15">
+              <td class="py-3 font-semibold text-white" colspan="2">TOTAL</td>
+              <td class="text-right font-semibold text-[#86efac]">{{ totalFeesBase() | number:'1.2-2' }} TND</td>
+              <td class="text-right font-semibold text-[#c4b5fd]">{{ totalVat() | number:'1.2-2' }} TND</td>
+              <td class="text-right font-bold text-white">{{ totalFees() | number:'1.2-2' }} TND</td>
+              <td class="text-right font-semibold text-white">{{ totalTransactions() }}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     }
-    </div>
   </div>
 </div>

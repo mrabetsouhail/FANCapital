@@ -119,7 +119,8 @@ export class AcceuilClientPage implements OnInit {
     this.api.getPortfolio(wallet).subscribe({
       next: (p) => {
         this.cashAmount.set(Number(p.cashBalanceTnd) / 1e8);
-        this.creditAmount.set(Number(p.creditLineTnd) / 1e8);
+        // creditAmount = dette AST (avance créditée), pas creditLine (plafond)
+        this.creditAmount.set(Number(p.creditDebtTnd ?? 0) / 1e8);
 
         for (const pos of p.positions) {
           const tokens = Number(pos.balanceTokens) / 1e8;

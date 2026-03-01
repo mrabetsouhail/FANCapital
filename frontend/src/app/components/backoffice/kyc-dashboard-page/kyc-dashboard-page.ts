@@ -11,7 +11,7 @@ import type { KycUserRow, KycLevel } from '../../../backoffice/models/kyc.models
   selector: 'app-kyc-dashboard-page',
   imports: [CommonModule, FormsModule, BackButton, DatePipe],
   templateUrl: './kyc-dashboard-page.html',
-  styleUrl: './kyc-dashboard-page.css',
+  styleUrls: ['./kyc-dashboard-page.css', '../backoffice-theme.css'],
 })
 export class KycDashboardPage implements OnInit {
   rows = signal<KycUserRow[]>([]);
@@ -55,9 +55,9 @@ export class KycDashboardPage implements OnInit {
   }
 
   badge(level: number): { label: string; cls: string } {
-    if (level >= 2) return { label: 'KYC2 (White)', cls: 'bg-green-100 text-green-700 border-green-200' };
-    if (level === 1) return { label: 'KYC1 (Green)', cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
-    return { label: 'KYC0 (None)', cls: 'bg-gray-100 text-gray-700 border-gray-200' };
+    if (level >= 2) return { label: 'KYC2 (White)', cls: 'bg-green-500/20 text-green-300 border border-green-500/40' };
+    if (level === 1) return { label: 'KYC1 (Green)', cls: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' };
+    return { label: 'KYC0 (None)', cls: 'bg-white/10 text-white/70 border border-white/20' };
   }
 
   canSet(row: KycUserRow, target: KycLevel): boolean {

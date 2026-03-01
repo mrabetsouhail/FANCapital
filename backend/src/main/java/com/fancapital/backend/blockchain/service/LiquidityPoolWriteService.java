@@ -265,11 +265,27 @@ public class LiquidityPoolWriteService {
       if (tx.hasError()) {
         throw new IllegalStateException("approve failed: " + tx.getError().getMessage());
       }
+      String txHash = tx.getTransactionHash();
+      if (txHash != null && !txHash.isBlank()) {
+        waitForReceipt(txHash);
+      }
     } catch (IllegalStateException e) {
       throw e;
     } catch (Exception e) {
       throw new IllegalStateException("Could not approve pool for user " + userAddress + ": " + e.getMessage(), e);
     }
+  }
+
+  /** Attend que la tx soit minée avant de poursuivre (évite ERC20InsufficientAllowance si buyFor mined avant approve). */
+  private void waitForReceipt(String txHash) throws InterruptedException, java.io.IOException {
+    for (int i = 0; i < 30; i++) {
+      var receipt = web3j.ethGetTransactionReceipt(txHash).send();
+      if (receipt.getTransactionReceipt().isPresent()) {
+        return;
+      }
+      Thread.sleep(500);
+    }
+    throw new IllegalStateException("Approval tx " + txHash + " not mined within 15s");
   }
 
   /** Alimente le wallet utilisateur en ETH natif si solde insuffisant pour le gas (plateforme paie). */
@@ -286,6 +302,10 @@ public class LiquidityPoolWriteService {
       if (tx.hasError()) {
         System.err.println("Gas topup failed for " + userAddress + ": " + tx.getError().getMessage());
         return;
+      }
+      String txHash = tx.getTransactionHash();
+      if (txHash != null && !txHash.isBlank()) {
+        waitForReceipt(txHash);
       }
     } catch (Exception e) {
       System.err.println("Gas topup error for " + userAddress + ": " + e.getMessage());

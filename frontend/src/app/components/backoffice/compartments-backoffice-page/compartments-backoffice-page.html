@@ -1,0 +1,103 @@
+<div class="matrice-page fc-premium-bg min-h-screen px-4 py-8">
+  <div class="max-w-5xl mx-auto">
+    <div class="mb-8">
+      <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
+    </div>
+
+    @if (error()) {
+      <div class="matrice-error rounded-xl border border-red-200/80 bg-red-500/10 px-5 py-4 text-red-200 text-sm">
+        {{ error() }}
+      </div>
+    }
+
+    @if (loading()) {
+      <div class="matrice-card flex items-center justify-center py-16">
+        <div class="flex flex-col items-center gap-3">
+          <div class="matrice-spinner w-10 h-10 rounded-full border-2 border-white/20 border-t-[#22c55e]"></div>
+          <span class="text-sm text-white/70">Chargement de la Matrice…</span>
+        </div>
+      </div>
+    }
+
+    @if (data() && !loading()) {
+      <!-- Header -->
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">La Matrice</h1>
+          <p class="text-sm text-white/60 mt-1">Architecture des compartiments · Solvabilité & transparence</p>
+        </div>
+        <button
+          type="button"
+          class="matrice-btn-refresh px-5 py-2.5 rounded-xl text-sm font-medium text-white/90 bg-white/10 hover:bg-white/15 border border-white/10 transition-all"
+          (click)="refresh()"
+          [disabled]="loading()"
+        >
+          Rafraîchir
+        </button>
+      </header>
+
+      <!-- Total KPI -->
+      <div class="matrice-total mb-8">
+        <div class="text-xs font-medium text-white/50 uppercase tracking-wider mb-1">Total TND</div>
+        <div class="text-3xl sm:text-4xl font-bold text-white">
+          {{ totalTnd() | number:'1.2-2' }} <span class="text-lg font-normal text-white/60">TND</span>
+        </div>
+        <div class="text-xs text-white/40 mt-2">Somme des 4 piscines A + B + C + D</div>
+      </div>
+
+      <!-- Piscines Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        @for (c of compartments(); track c.key) {
+          <div class="matrice-piscine" [attr.data-piscine]="c.key">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <span class="matrice-piscine-badge">{{ c.key }}</span>
+                <div>
+                  <h3 class="font-semibold text-white">{{ c.info?.name ?? '—' }}</h3>
+                  <p class="text-xs text-white/50 mt-0.5 line-clamp-2">{{ c.info?.description ?? '' }}</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-xl font-bold text-white">{{ from1e8(c.balance) | number:'1.2-2' }}</div>
+                <div class="text-xs text-white/40">TND</div>
+              </div>
+            </div>
+            <div class="matrice-piscine-addr mt-3 font-mono text-[10px] text-white/35 truncate" [title]="c.addr ?? ''">
+              {{ c.addr ?? '—' }}
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Flux & Détails -->
+      <details class="matrice-details group">
+        <summary class="cursor-pointer list-none flex items-center gap-2 py-3 text-sm text-white/60 hover:text-white/80 transition-colors">
+          <span class="group-open:rotate-90 transition-transform">›</span>
+          Flux & paramètres techniques
+        </summary>
+        <div class="pt-4 space-y-4 border-t border-white/10">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+              <div class="text-xs text-white/50 mb-1">Prélèvement Fonds de Garantie</div>
+              <div class="text-lg font-semibold text-white">{{ data()!.guaranteeFundBps / 100 }} %</div>
+              <div class="text-xs text-white/40 mt-1">Part du spread → Piscine D</div>
+            </div>
+            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+              <div class="text-xs text-white/50 mb-1">CompartmentsRegistry</div>
+              <div class="font-mono text-xs text-white/60 break-all">{{ data()!.compartmentsRegistry ?? '—' }}</div>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div class="text-xs font-medium text-white/50 uppercase tracking-wider mb-2">Flux par compartiment</div>
+            <ul class="text-xs text-white/60 space-y-1.5">
+              <li><strong class="text-white/80">A</strong> · Dépôts validés, remboursements AST → Retraits, décaissements AST</li>
+              <li><strong class="text-white/80">B</strong> · D17, Flouci, virements bancaires → Transferts vers A</li>
+              <li><strong class="text-white/80">C</strong> · Intérêts AST, frais, spread → Dividendes, frais opérationnels</li>
+              <li><strong class="text-white/80">D</strong> · Prélèvement spread, fonds propres → Couverture pertes AST</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    }
+  </div>
+</div>

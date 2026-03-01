@@ -13,7 +13,7 @@ type TabId = 'monitor' | 'expiring';
   selector: 'app-subscriptions-backoffice-page',
   imports: [CommonModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './subscriptions-backoffice-page.html',
-  styleUrl: './subscriptions-backoffice-page.css',
+  styleUrls: ['./subscriptions-backoffice-page.css', '../backoffice-theme.css'],
 })
 export class SubscriptionsBackofficePage implements OnInit {
   activeTab = signal<TabId>('monitor');

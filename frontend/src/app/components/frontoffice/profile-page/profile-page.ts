@@ -25,7 +25,7 @@ type MemberLevel = 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
   selector: 'app-profile-page',
   imports: [CommonModule, FormsModule, RouterModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './profile-page.html',
-  styleUrl: './profile-page.css',
+  styleUrls: ['./profile-page.css', '../../../../styles/theme.css'],
 })
 export class ProfilePage implements OnInit {
   // User Profile (server-truth)
@@ -247,9 +247,9 @@ export class ProfilePage implements OnInit {
 
   kycBadgeClass(): string {
     const p = this.investor();
-    if (!p || !p.whitelisted || p.kycLevel === 0) return 'bg-gray-100 text-gray-700 border-gray-200';
-    if (p.kycLevel === 1) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-green-100 text-green-700 border-green-200';
+    if (!p || !p.whitelisted || p.kycLevel === 0) return 'bg-white/10 text-white/80 border-white/10';
+    if (p.kycLevel === 1) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    return 'bg-green-500/20 text-green-300 border-green-500/30';
   }
 
   investorTierLabel(): string {
@@ -317,9 +317,9 @@ export class ProfilePage implements OnInit {
   }
 
   getStatusColor(status: string): string {
-    if (status === 'completed') return 'text-green-600 bg-green-50';
-    if (status === 'pending') return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
+    if (status === 'completed') return 'text-green-400 bg-green-500/20';
+    if (status === 'pending') return 'text-amber-400 bg-amber-500/20';
+    return 'text-red-400 bg-red-500/20';
   }
 
   toggle2FA() {

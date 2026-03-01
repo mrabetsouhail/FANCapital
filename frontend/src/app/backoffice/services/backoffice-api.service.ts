@@ -9,6 +9,7 @@ import type { MultiSigInfo, MultiSigTransactionsList, SubmitTransactionRequest }
 import type { PendingOrdersResponse, MatchedOrdersResponse, FallbackAuditResponse } from '../models/orderbook.models';
 import type { SubscriptionsMonitorResponse, ExpiringSubscriptionsResponse } from '../models/subscription.models';
 import type { LockedAssetsResponse, RepaymentTrackingResponse } from '../models/escrow.models';
+import type { MatriceInfo } from '../models/compartments.models';
 
 @Injectable({ providedIn: 'root' })
 export class BackofficeApiService {
@@ -115,6 +116,11 @@ export class BackofficeApiService {
 
   getRepaymentTracking() {
     return this.http.get<RepaymentTrackingResponse>('/api/backoffice/escrow/repayment-tracking');
+  }
+
+  /** Architecture des Compartiments (La Matrice) */
+  getCompartments() {
+    return this.http.get<MatriceInfo>('/api/backoffice/compartments');
   }
 }
 

@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, effect } from '@angular/core';
+import { Component, signal, computed, OnInit, effect, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavbarClient } from '../navbar-client/navbar-client';
@@ -47,7 +47,7 @@ const FEE_TO_TIER: Tier[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
   selector: 'app-avance-sur-titre-page',
   imports: [CommonModule, FormsModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './avance-sur-titre-page.html',
-  styleUrl: './avance-sur-titre-page.css',
+  styleUrls: ['./avance-sur-titre-page.css', '../../../../styles/theme.css'],
 })
 export class AvanceSurTitrePage implements OnInit {
   // Modèle d'avance: A (Taux fixe) ou B (PGP)
@@ -201,6 +201,9 @@ export class AvanceSurTitrePage implements OnInit {
   LIQUIDATION_BPS = LIQUIDATION_BPS;
   LTV_MAX_BPS = LTV_MAX_BPS;
 
+  /** PGP (Modèle B) : mettre à true quand l'implémentation backend est prête. */
+  pgpFullyImplemented = signal<boolean>(false);
+
   tierLoading = signal<boolean>(true);
   tokensLoading = signal<boolean>(true);
   requestInProgress = signal<boolean>(false);
@@ -208,6 +211,44 @@ export class AvanceSurTitrePage implements OnInit {
   requestSuccess = signal<{ txHash: string } | null>(null);
   userWallet = signal<string>('');
   activeLoan = signal<{ principalTnd: number; startAt: number; durationDays: number; model?: 'A' | 'B' } | null>(null);
+
+  /** Déclenche une animation discrète sur le Prix de liquidation quand le montant change. */
+  liquidationPriceJustUpdated = signal<boolean>(false);
+  private liquidationPulseTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  /** Points d'arrêt visuels pour le slider (montants ronds). */
+  sliderStep = computed(() => {
+    const max = this.maxCreditAmount();
+    if (max <= 0) return 10;
+    if (max <= 500) return 50;
+    if (max <= 2000) return 100;
+    if (max <= 10000) return 500;
+    return 1000;
+  });
+
+  sliderTicks = computed(() => {
+    const max = this.maxCreditAmount();
+    if (max <= 0) return [];
+    const ticks: { value: number; percent: number; label: string }[] = [{ value: 0, percent: 0, label: '0' }];
+    for (const p of [0.25, 0.5, 0.75]) {
+      const v = max * p;
+      const label = v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v).toString();
+      ticks.push({ value: v, percent: p * 100, label });
+    }
+    ticks.push({ value: max, percent: 100, label: max >= 1000 ? (max / 1000).toFixed(1) + 'k' : Math.round(max).toString() });
+    return ticks;
+  });
+
+  /** Classe CSS pour l'affichage du tier (gradient privilège pour Platinum/Diamond). */
+  tierDisplayClass = computed(() => {
+    const t = this.userTier();
+    if (t === 'PLATINUM' || t === 'DIAMOND') {
+      return 'tier-premium border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-blue-500/10';
+    }
+    return 'border border-white/10 bg-white/5';
+  });
+
+  @ViewChild(NavbarClient) navbarClient?: NavbarClient;
 
   private marginAlertSent = false;
 
@@ -248,6 +289,8 @@ export class AvanceSurTitrePage implements OnInit {
             durationDays: loan.durationDays,
             model: loan.model,
           });
+          // Rafraîchir la navbar pour afficher le montant dans Credit Wallet (pas Cash)
+          this.navbarClient?.refreshWalletBalance();
         } else {
           this.activeLoan.set(null);
         }
@@ -256,10 +299,13 @@ export class AvanceSurTitrePage implements OnInit {
     });
   }
 
-  /** Rafraîchir l'avance active (après activation). */
+  /** Rafraîchir l'avance active (après activation). Met à jour la navbar Credit/Cash. */
   refreshActiveLoan(): void {
     const w = this.userWallet();
-    if (w && w.startsWith('0x')) this.loadActiveLoan(w);
+    if (w && w.startsWith('0x')) {
+      this.loadActiveLoan(w);
+      this.navbarClient?.refreshWalletBalance();
+    }
   }
 
   private loadTokensData(): void {
@@ -342,12 +388,23 @@ export class AvanceSurTitrePage implements OnInit {
     const n = Math.max(0, Math.floor(Number(this.selectedTokenAmount())));
     this.selectedTokenAmount.set(n);
     this.updateLoanAmount();
+    this.triggerLiquidationPricePulse();
   }
 
   onLoanAmountChange() {
     if (this.loanAmount() > this.maxCreditAmount()) {
       this.loanAmount.set(this.maxCreditAmount());
     }
+    this.triggerLiquidationPricePulse();
+  }
+
+  private triggerLiquidationPricePulse(): void {
+    if (this.liquidationPulseTimeout) clearTimeout(this.liquidationPulseTimeout);
+    this.liquidationPriceJustUpdated.set(true);
+    this.liquidationPulseTimeout = setTimeout(() => {
+      this.liquidationPriceJustUpdated.set(false);
+      this.liquidationPulseTimeout = null;
+    }, 600);
   }
 
   updateLoanAmount() {
@@ -464,9 +521,15 @@ export class AvanceSurTitrePage implements OnInit {
       this.requestError.set('Le modèle A nécessite un tier Silver ou supérieur.');
       return;
     }
-    if (this.creditModel() === 'B' && (this.userTier() === 'BRONZE' || this.userTier() === 'SILVER' || this.userTier() === 'GOLD')) {
-      this.requestError.set('Le modèle PGP (B) nécessite un tier Platinum ou Diamond.');
-      return;
+            if (this.creditModel() === 'B') {
+      if (!this.pgpFullyImplemented()) {
+        this.requestError.set('Le modèle PGP (B) sera bientôt disponible.');
+        return;
+      }
+      if (this.userTier() === 'BRONZE' || this.userTier() === 'SILVER' || this.userTier() === 'GOLD') {
+        this.requestError.set('Le modèle PGP (B) nécessite un tier Platinum ou Diamond.');
+        return;
+      }
     }
     this.requestError.set(null);
     this.requestSuccess.set(null);

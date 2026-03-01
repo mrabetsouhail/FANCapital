@@ -1,14 +1,22 @@
-import { Component, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, signal, computed, OnInit, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, catchError, of } from 'rxjs';
 import { NavbarClient } from '../navbar-client/navbar-client';
 import { BackButton } from '../../shared/back-button/back-button';
 import { BlockchainApiService } from '../../../blockchain/services/blockchain-api.service';
 import { AuthApiService } from '../../../auth/services/auth-api.service';
+import { CreditWalletTrackingService } from '../../../auth/services/credit-wallet-tracking.service';
 import type { PortfolioResponse, PortfolioPosition } from '../../../blockchain/models/portfolio.models';
+import type { ActiveLoanInfo } from '../../../blockchain/models/pricing.models';
 
 const PRICE_SCALE = 1e8;
+
+/** Spec v4.7: taux annuel par tier (0=BRONZE, 1=SILVER 5%, 2=GOLD 4.5%, 3=PLATINUM 3.5%, 4=DIAMOND 3%) */
+const TIER_RATES: Record<number, number> = { 0: 0, 1: 5.0, 2: 4.5, 3: 3.5, 4: 3.0 };
+/** Spec v4.7: durée max par tier (jours) - fallback si avance non chargée */
+const TIER_DURATION_DAYS: Record<number, number> = { 0: 0, 1: 90, 2: 120, 3: 150, 4: 365 };
 const LIQUIDATION_BPS = 85; // 85% liquidation (spec)
 const LIQUIDATION_THRESHOLD = LIQUIDATION_BPS / 100;
 
@@ -25,11 +33,14 @@ export interface CollateralToken {
   selector: 'app-credit-page',
   imports: [CommonModule, FormsModule, RouterModule, NavbarClient, BackButton],
   templateUrl: './credit-page.html',
-  styleUrl: './credit-page.css',
+  styleUrls: ['./credit-page.css', '../../../../styles/theme.css'],
 })
 export class CreditPage implements OnInit {
   private readonly api = inject(BlockchainApiService);
   private readonly authApi = inject(AuthApiService);
+  private readonly creditTracking = inject(CreditWalletTrackingService);
+
+  @ViewChild(NavbarClient) navbarClient?: NavbarClient;
 
   userAddress = signal<string>('');
   loading = signal<boolean>(true);
@@ -38,6 +49,8 @@ export class CreditPage implements OnInit {
   portfolio = signal<PortfolioResponse | null>(null);
   collateralTokens = signal<CollateralToken[]>([]);
   totalCreditUsed = signal<number>(0);
+  activeAdvance = signal<ActiveLoanInfo | null>(null);
+  feeLevel = signal<number>(1); // 0=BRONZE, 1=SILVER, ...
   repaymentAmount = signal<number>(0);
   repaySubmitting = signal<boolean>(false);
   repayMessage = signal<string>('');
@@ -72,6 +85,59 @@ export class CreditPage implements OnInit {
   });
 
   hasActiveAdvance = computed(() => this.totalCreditUsed() > 0);
+
+  /** Principal restant (TND). */
+  principalTnd = computed(() => this.totalCreditUsed());
+
+  /** Taux annuel selon tier (Spec v4.7). */
+  interestRatePercent = computed(() => TIER_RATES[this.feeLevel()] ?? 0);
+
+  /** Intérêts restants à rembourser (fixes dès le début, prélevés en priorité). */
+  interestAmountTnd = computed(() => {
+    const adv = this.activeAdvance();
+    if (adv?.totalInterestTnd != null && adv?.interestPaidTnd != null) {
+      const total = Number(adv.totalInterestTnd) / PRICE_SCALE;
+      const paid = Number(adv.interestPaidTnd) / PRICE_SCALE;
+      return Math.round(Math.max(0, total - paid) * 100) / 100;
+    }
+    const principal = this.principalTnd();
+    const rate = this.interestRatePercent() / 100;
+    if (principal <= 0 || rate <= 0) return 0;
+    const durationDays = adv?.durationDays ?? TIER_DURATION_DAYS[this.feeLevel()] ?? 90;
+    if (durationDays <= 0) return 0;
+    return Math.round(principal * rate * (durationDays / 365) * 100) / 100;
+  });
+
+  /** Intérêts totaux à l'échéance (informatif). */
+  interestAtMaturityTnd = computed(() => {
+    const adv = this.activeAdvance();
+    if (adv?.totalInterestTnd != null) {
+      return Number(adv.totalInterestTnd) / PRICE_SCALE;
+    }
+    const principal = this.principalTnd();
+    const rate = this.interestRatePercent() / 100;
+    if (principal <= 0 || rate <= 0) return 0;
+    const durationDays = adv?.durationDays ?? TIER_DURATION_DAYS[this.feeLevel()] ?? 90;
+    if (durationDays <= 0) return 0;
+    return Math.round(principal * rate * (durationDays / 365) * 100) / 100;
+  });
+
+  /** Total à rembourser (principal + intérêts). */
+  totalToRepayTnd = computed(() => {
+    const p = this.principalTnd();
+    const i = this.interestAmountTnd();
+    return Math.round((p + i) * 100) / 100;
+  });
+
+  /** Principal restant après un remboursement (part capital ≈ montant × principal/total). */
+  principalAfterRepayment = computed(() => {
+    const amt = this.repaymentAmount();
+    const total = this.totalToRepayTnd();
+    const principal = this.principalTnd();
+    if (amt <= 0 || total <= 0) return principal;
+    const principalPart = Math.min(amt * (principal / total), principal);
+    return Math.round(Math.max(0, principal - principalPart) * 100) / 100;
+  });
 
   cashBalanceTnd = computed(() => {
     const p = this.portfolio();
@@ -114,11 +180,23 @@ export class CreditPage implements OnInit {
     }
     this.loading.set(true);
     this.error.set('');
-    this.api.getPortfolio(user).subscribe({
-      next: (p) => {
+    forkJoin({
+      portfolio: this.api.getPortfolio(user),
+      advance: this.api.getActiveAdvance(user),
+      profile: this.api.getInvestorProfile(user).pipe(catchError(() => of(null))),
+      sci: this.api.getSciScore(user).pipe(catchError(() => of(null))),
+    }).subscribe({
+      next: ({ portfolio: p, advance, profile, sci }) => {
         this.portfolio.set(p);
         this.totalCreditUsed.set(Number(p.creditDebtTnd ?? 0) / PRICE_SCALE);
         this.buildCollateralTokens(p.positions ?? []);
+        this.activeAdvance.set(advance ?? null);
+        const creditUsed = Number(p.creditDebtTnd ?? 0) / PRICE_SCALE;
+        const flProfile = (profile as any)?.feeLevel;
+        const flSci = (sci as any)?.effectiveTier;
+        let fl = typeof flProfile === 'number' ? flProfile : typeof flSci === 'number' ? flSci : 1;
+        if (creditUsed > 0 && fl < 1) fl = 1;
+        this.feeLevel.set(Math.min(4, Math.max(0, fl)));
         this.loading.set(false);
       },
       error: (err) => {
@@ -166,7 +244,7 @@ export class CreditPage implements OnInit {
 
   onRepay() {
     const amount = this.repaymentAmount();
-    if (amount <= 0 || amount > this.totalCreditUsed()) return;
+    if (amount <= 0 || amount > this.totalToRepayTnd()) return;
 
     this.repaySubmitting.set(true);
     this.repayMessage.set('');
@@ -176,7 +254,10 @@ export class CreditPage implements OnInit {
         this.repayError.set(false);
         this.repayMessage.set(res.message ?? res.txHash ?? 'Remboursement enregistré.');
         this.repaymentAmount.set(0);
+        // Imputer le remboursement au Cash Wallet (pas au Credit)
+        this.creditTracking.addRepaymentFromCash(this.userAddress(), amount);
         this.refresh();
+        this.navbarClient?.refreshWalletBalance();
         this.repaySubmitting.set(false);
       },
       error: (err) => {

@@ -18,6 +18,7 @@ import { MultiSigPage } from './components/backoffice/multisig-page/multisig-pag
 import { OrderBookBackofficePage } from './components/backoffice/order-book-backoffice-page/order-book-backoffice-page';
 import { SubscriptionsBackofficePage } from './components/backoffice/subscriptions-backoffice-page/subscriptions-backoffice-page';
 import { EscrowBackofficePage } from './components/backoffice/escrow-backoffice-page/escrow-backoffice-page';
+import { CompartmentsBackofficePage } from './components/backoffice/compartments-backoffice-page/compartments-backoffice-page';
 import { authGuard } from './auth/auth.guard';
 import { clientOnlyGuard } from './auth/client-only.guard';
 import { backofficeGuard } from './backoffice/backoffice.guard';
@@ -113,6 +114,11 @@ export const routes: Routes = [
   {
     path: 'backoffice/escrow',
     component: EscrowBackofficePage,
+    canActivate: [backofficeGuard],
+  },
+  {
+    path: 'backoffice/compartments',
+    component: CompartmentsBackofficePage,
     canActivate: [backofficeGuard],
   },
 ];

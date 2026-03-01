@@ -106,6 +106,13 @@ public class OnchainBootstrapService {
     // Approve pools pour que l'utilisateur puisse acheter immédiatement (évite ERC20InsufficientAllowance)
     userRepo.findByWalletAddressIgnoreCase(walletAddress).ifPresent(u -> {
       try {
+        // Alimenter en ETH (virtuel) si solde insuffisant pour le gas (approve)
+        Credentials operator = operatorCredentials();
+        TransactionManager opTm = new RawTransactionManager(web3j, operator, chainId().longValue());
+        BigInteger ethBal = ethBalanceOf(walletAddress);
+        if (ethBal.compareTo(MIN_GAS_ETH) < 0) {
+          sendValue(opTm, walletAddress, TOPUP_GAS_ETH, BigInteger.valueOf(21_000));
+        }
         Credentials userCreds = waasWallets.credentialsForUser(u.getId());
         TransactionManager userTm = new RawTransactionManager(web3j, userCreds, chainId().longValue());
         for (var fund : registry.listFunds()) {

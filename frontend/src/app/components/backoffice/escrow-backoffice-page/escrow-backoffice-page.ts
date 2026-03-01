@@ -13,7 +13,7 @@ type TabId = 'locked' | 'repayments';
   selector: 'app-escrow-backoffice-page',
   imports: [CommonModule, NavbarClient, BackButton],
   templateUrl: './escrow-backoffice-page.html',
-  styleUrl: './escrow-backoffice-page.css',
+  styleUrls: ['./escrow-backoffice-page.css', '../backoffice-theme.css'],
 })
 export class EscrowBackofficePage implements OnInit {
   activeTab = signal<TabId>('locked');

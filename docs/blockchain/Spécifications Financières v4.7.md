@@ -86,3 +86,27 @@ Le contrat EscrowRegistry gère le séquestre des jetons :
 | Risk LTV AST | SciScoreService.computeRiskPoints |
 | Paramètres AST (LTV 70%, durées par tier) | SpecFinancieresV47 |
 | Grille tarifaire abonnements (Table 1) | SpecFinancieresV47.TIER_SUBSCRIPTION_TND |
+
+---
+
+# Architecture des Compartiments (La Matrice)
+
+Le système repose sur une séparation stricte des fonds en quatre compartiments distincts pour garantir la solvabilité et la transparence.
+
+| Compartiment | Nom | Fonction | Flux Entrants | Flux Sortants |
+|--------------|-----|----------|---------------|---------------|
+| **Piscine A** | Réserve de Liquidité | Contient le capital des investisseurs | Dépôts validés, remboursements capital AST | Retraits investisseurs, décaissements AST |
+| **Piscine B** | Sas Partenaires | Zone de transit pour la réconciliation | D17, Flouci, Virements Bancaires | Transferts vers Piscine A (après validation) |
+| **Piscine C** | Compte de Revenus | Isole la rentabilité de la plateforme | Intérêts AST, frais de gestion, spread | Dividendes, frais opérationnels |
+| **Piscine D** | Fonds de Garantie | Sécurité contre les défauts (Bad Debt) | Prélèvement sur spread, fonds propres | Couverture des pertes AST |
+
+**Implémentation (blockchain)** :
+- `CompartmentWallet.sol` : contrats B, C, D (reçoivent TND, `transferTo` réservé gouvernance)
+- `CompartmentsRegistry.sol` : registre des 4 adresses
+- `LiquidityPool.sol` : frais → C (treasury), partie du spread → D (`guaranteeFundBps`, ex. 5 %)
+- `deploy-factory-funds.ts` : déploiement des compartiments, Piscine C = treasury des pools
+- API `GET /api/blockchain/compartments` : adresses des 4 compartiments
+
+**Flux AST (remboursements)** :
+- `AdvanceRepaymentService` : capital → mint vers pool (Piscine A), intérêts → mint vers Piscine C (Compte de Revenus)
+- Taux par tier : SpecFinancieresV47.TIER_INTEREST_RATES (SILVER 5 %, GOLD 4,5 %, etc.)

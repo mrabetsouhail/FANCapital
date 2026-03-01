@@ -11,13 +11,14 @@ import type { PortfolioResponse, PortfolioPosition } from '../../../blockchain/m
   selector: 'app-portfolio-page',
   imports: [CommonModule, RouterModule, NavbarClient, BackButton],
   templateUrl: './portfolio-page.html',
-  styleUrl: './portfolio-page.css',
+  styleUrls: ['./portfolio-page.css', '../../../../styles/theme.css'],
 })
 export class PortfolioPage implements OnInit {
   private readonly api = inject(BlockchainApiService);
   private readonly authApi = inject(AuthApiService);
 
   userAddress = signal<string>('0x0000000000000000000000000000000000000000');
+  showAddressInput = signal<boolean>(false);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -49,6 +50,7 @@ export class PortfolioPage implements OnInit {
   saveAddress() {
     const user = (this.userAddress() ?? '').trim();
     localStorage.setItem('walletAddress', user);
+    this.showAddressInput.set(false);
     this.refresh();
   }
 
@@ -104,6 +106,18 @@ export class PortfolioPage implements OnInit {
 
   cleanSymbol(symbol: string | null | undefined): string {
     return (symbol ?? '').replaceAll('$', '');
+  }
+
+  /** Tronque une adresse 0x pour affichage compact (ex: 0x467...5f04). */
+  truncateAddress(addr: string | undefined): string {
+    const a = (addr ?? '').trim();
+    if (!a.startsWith('0x') || a.length < 12) return a || '0x...';
+    return a.slice(0, 6) + '...' + a.slice(-4);
+  }
+
+  /** True si l'utilisateur n'a pas de position Didon (opportunité d'achat). */
+  hasDidonPosition(): boolean {
+    return this.positions().some(p => /didon/i.test(p.symbol ?? '') || /didon/i.test(p.name ?? ''));
   }
 }
 

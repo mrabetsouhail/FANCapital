@@ -10,7 +10,7 @@ import type { FeeWalletDashboard } from '../../../backoffice/models/fee-wallet.m
   selector: 'app-fee-wallet-page',
   imports: [CommonModule, BackButton],
   templateUrl: './fee-wallet-page.html',
-  styleUrl: './fee-wallet-page.css',
+  styleUrls: ['./fee-wallet-page.css', '../backoffice-theme.css'],
 })
 export class FeeWalletPage implements OnInit {
   data = signal<FeeWalletDashboard | null>(null);

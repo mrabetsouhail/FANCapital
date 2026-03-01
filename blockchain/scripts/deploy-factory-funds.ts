@@ -26,6 +26,19 @@ async function main() {
   const cb = await CircuitBreaker.deploy(deployer.address);
   await cb.waitForDeployment();
 
+  // Matrice: 4 compartiments (Piscine A=Réserve, B=Sas, C=Revenus, D=Garantie)
+  const CompartmentWallet = await ethers.getContractFactory("CompartmentWallet");
+  const piscineB = await CompartmentWallet.deploy(deployer.address, await tnd.getAddress());
+  await piscineB.waitForDeployment();
+  const piscineC = await CompartmentWallet.deploy(deployer.address, await tnd.getAddress());
+  await piscineC.waitForDeployment();
+  const piscineD = await CompartmentWallet.deploy(deployer.address, await tnd.getAddress());
+  await piscineD.waitForDeployment();
+
+  const CompartmentsRegistry = await ethers.getContractFactory("CompartmentsRegistry");
+  const compartments = await CompartmentsRegistry.deploy(deployer.address);
+  await compartments.waitForDeployment();
+
   // Deployer helpers (keep Factory bytecode small)
   const OracleDeployer = await ethers.getContractFactory("OracleDeployer");
   const oracleDeployer = await OracleDeployer.deploy();
@@ -39,8 +52,8 @@ async function main() {
   const tokenDeployer = await TokenDeployer.deploy();
   await tokenDeployer.waitForDeployment();
 
-  // Factory
-  const treasury = deployer.address;
+  // Factory: Piscine C = Compte de Revenus (frais, spread, intérêts)
+  const treasury = await piscineC.getAddress();
   const oracleUpdater = deployer.address;
   const poolOperator = deployer.address;
 
@@ -73,6 +86,30 @@ async function main() {
 
   const fund0 = await factory.getFund(0);
   const fund1 = await factory.getFund(1);
+
+  // Fonds de Garantie (Piscine D): 5% des frais → D
+  const GUARANTEE_BPS = 500; // 5%
+  const LiquidityPool = await ethers.getContractFactory("LiquidityPool");
+  const pool0 = LiquidityPool.attach(fund0.pool);
+  const pool1 = LiquidityPool.attach(fund1.pool);
+  await (await pool0.setGuaranteeFund(await piscineD.getAddress(), GUARANTEE_BPS)).wait();
+  await (await pool1.setGuaranteeFund(await piscineD.getAddress(), GUARANTEE_BPS)).wait();
+
+  // Enregistrer les 4 compartiments (A = première pool = Réserve Liquidité)
+  await (await compartments.setPiscineA(fund0.pool)).wait();
+  await (await compartments.setPiscineB(await piscineB.getAddress())).wait();
+  await (await compartments.setPiscineC(await piscineC.getAddress())).wait();
+  await (await compartments.setPiscineD(await piscineD.getAddress())).wait();
+
+  // Premier financement : injection initiale TND dans les pools (liquidité pour achats/ventes dès le début)
+  const INITIAL_LIQUIDITY_TND = process.env.INITIAL_LIQUIDITY_TND ? parseFloat(process.env.INITIAL_LIQUIDITY_TND) : 50_000;
+  const amountWei = ethers.parseUnits(INITIAL_LIQUIDITY_TND.toString(), 8);
+  console.log(`Injecting ${INITIAL_LIQUIDITY_TND} TND per pool (first funding)...`);
+  await (await tnd.mint(fund0.pool, amountWei)).wait();
+  await (await tnd.mint(fund1.pool, amountWei)).wait();
+  console.log(`  Atlas: ${ethers.formatUnits(await tnd.balanceOf(fund0.pool), 8)} TND`);
+  console.log(`  Didon: ${ethers.formatUnits(await tnd.balanceOf(fund1.pool), 8)} TND`);
+  console.log("  ✓ Initial liquidity injected");
 
   // AST (Avance sur Titres): shared PriceOracle + EscrowRegistry + CreditModelA
   const PriceOracle = await ethers.getContractFactory("PriceOracle");
@@ -139,12 +176,68 @@ async function main() {
       oracleUpdater,
       poolOperator,
     },
+    matrice: {
+      CompartmentsRegistry: await compartments.getAddress(),
+      piscineA: fund0.pool,
+      piscineB: await piscineB.getAddress(),
+      piscineC: await piscineC.getAddress(),
+      piscineD: await piscineD.getAddress(),
+      guaranteeFundBps: GUARANTEE_BPS,
+    },
+    initialLiquidityTndPerPool: INITIAL_LIQUIDITY_TND,
     funds: [
       { id: 0, name: "CPEF Atlas", symbol: "$ATLAS$", token: fund0.token, pool: fund0.pool, oracle: fund0.oracle },
       { id: 1, name: "CPEF Didon", symbol: "$DIDON$", token: fund1.token, pool: fund1.pool, oracle: fund1.oracle },
     ],
     generatedAt: new Date().toISOString(),
   };
+
+  // Attribution automatique des rôles MINTER et BURNER (évite npm run grant-minter / grant-burner)
+  const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+  const BURNER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("BURNER_ROLE"));
+
+  const getMintKeyAddress = (): string | null => {
+    const addr = process.env.MINT_KEY_ADDRESS;
+    if (addr && ethers.isAddress(addr)) return addr;
+    const pk = process.env.MINT_PRIVATE_KEY;
+    if (pk?.startsWith("0x") && pk.length === 66) return new ethers.Wallet(pk.trim()).address;
+    const opPk = process.env.OPERATOR_PRIVATE_KEY;
+    if (opPk?.startsWith("0x") && opPk.length === 66) return new ethers.Wallet(opPk.trim()).address;
+    return null;
+  };
+  const getBurnKeyAddress = (): string | null => {
+    const addr = process.env.BURN_KEY_ADDRESS;
+    if (addr && ethers.isAddress(addr)) return addr;
+    const pk = process.env.BURN_PRIVATE_KEY;
+    if (pk?.startsWith("0x") && pk.length === 66) return new ethers.Wallet(pk.trim()).address;
+    const opPk = process.env.OPERATOR_PRIVATE_KEY;
+    if (opPk?.startsWith("0x") && opPk.length === 66) return new ethers.Wallet(opPk.trim()).address;
+    return null;
+  };
+
+  const mintAddr = getMintKeyAddress();
+  if (mintAddr) {
+    if (!(await tnd.hasRole(MINTER_ROLE, mintAddr))) {
+      await (await tnd.grantRole(MINTER_ROLE, mintAddr)).wait();
+      console.log("✓ MINTER_ROLE granted to", mintAddr);
+    } else {
+      console.log("MINTER_ROLE already granted to", mintAddr);
+    }
+  } else {
+    console.log("(MINT_PRIVATE_KEY / MINT_KEY_ADDRESS non défini — exécutez npm run grant-minter si besoin)");
+  }
+
+  const burnAddr = getBurnKeyAddress();
+  if (burnAddr) {
+    if (!(await tnd.hasRole(BURNER_ROLE, burnAddr))) {
+      await (await tnd.grantRole(BURNER_ROLE, burnAddr)).wait();
+      console.log("✓ BURNER_ROLE granted to", burnAddr);
+    } else {
+      console.log("BURNER_ROLE already granted to", burnAddr);
+    }
+  } else {
+    console.log("(BURN_PRIVATE_KEY / BURN_KEY_ADDRESS non défini — exécutez npm run grant-burner si besoin)");
+  }
 
   const outDir = path.join(__dirname, "..", "deployments");
   fs.mkdirSync(outDir, { recursive: true });

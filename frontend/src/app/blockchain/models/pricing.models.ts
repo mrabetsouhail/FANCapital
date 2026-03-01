@@ -61,6 +61,10 @@ export interface ActiveLoanInfo {
   durationDays: number;
   status: number;
   model?: 'A' | 'B';    // A = taux fixe, B = PGP
+  /** Intérêts totaux fixes (1e8) — présent si suivi activé */
+  totalInterestTnd?: string;
+  /** Intérêts déjà payés (1e8) */
+  interestPaidTnd?: string;
 }
 
 export interface TxResponse {

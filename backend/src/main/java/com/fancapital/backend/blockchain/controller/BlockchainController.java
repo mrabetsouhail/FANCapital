@@ -17,6 +17,7 @@ import com.fancapital.backend.blockchain.model.TxDtos.SellRequest;
 import com.fancapital.backend.blockchain.model.TxDtos.TxResponse;
 import com.fancapital.backend.blockchain.service.BlockchainReadService;
 import com.fancapital.backend.auth.repo.AppUserRepository;
+import com.fancapital.backend.blockchain.service.AdvanceInterestService;
 import com.fancapital.backend.blockchain.service.AdvanceRepaymentService;
 import com.fancapital.backend.blockchain.service.CreditAdvanceActivationService;
 import com.fancapital.backend.blockchain.service.CreditAdvanceRequestService;
@@ -31,6 +32,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.fancapital.backend.blockchain.service.P2PExchangeWriteService;
 import com.fancapital.backend.blockchain.service.OnchainBootstrapService;
+import com.fancapital.backend.blockchain.service.CompartmentsService;
 import com.fancapital.backend.blockchain.service.OperatorDiagnosticsService;
 import com.fancapital.backend.blockchain.service.SciScorePushService;
 import com.fancapital.backend.blockchain.service.SciScoreService;
@@ -65,6 +67,8 @@ public class BlockchainController {
   private final SciScoreService sciScore;
   private final SciScorePushService sciPush;
   private final OnchainBootstrapService onchainBootstrap;
+  private final CompartmentsService compartmentsService;
+  private final AdvanceInterestService advanceInterestService;
 
   public BlockchainController(
       DeploymentRegistry registry,
@@ -79,7 +83,9 @@ public class BlockchainController {
       OperatorDiagnosticsService operatorDiagnostics,
       SciScoreService sciScore,
       SciScorePushService sciPush,
-      OnchainBootstrapService onchainBootstrap
+      OnchainBootstrapService onchainBootstrap,
+      CompartmentsService compartmentsService,
+      AdvanceInterestService advanceInterestService
   ) {
     this.registry = registry;
     this.readService = readService;
@@ -94,6 +100,8 @@ public class BlockchainController {
     this.sciScore = sciScore;
     this.sciPush = sciPush;
     this.onchainBootstrap = onchainBootstrap;
+    this.compartmentsService = compartmentsService;
+    this.advanceInterestService = advanceInterestService;
   }
 
   @GetMapping("/funds")
@@ -104,6 +112,14 @@ public class BlockchainController {
   @GetMapping("/funds/{id}")
   public ResponseEntity<FundDto> getFund(@PathVariable int id) {
     return registry.getFund(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  /** Architecture des Compartiments (Matrice) : A=Réserve, B=Sas, C=Revenus, D=Garantie. */
+  @GetMapping("/compartments")
+  public ResponseEntity<CompartmentsService.MatriceInfo> getCompartments() {
+    return compartmentsService.getMatrice()
+        .map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   // Simple debug endpoint
@@ -222,6 +238,7 @@ public class BlockchainController {
         "durationDays", loan.durationDays(),
         "status", loan.status()
     ));
+    advanceInterestService.addInterestInfo(loan.loanId().toString(), body);
     return ResponseEntity.ok(body);
   }
 

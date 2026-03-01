@@ -5,15 +5,15 @@
     <div class="mb-4">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
+    <div class="bo-card">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-primary">Gestion des Abonnements Premium</h1>
-          <p class="text-sm text-gray-600">Moniteur de validité (Trimestriel, Semestriel, Annuel) et relances pour éviter la suspension du service AST</p>
+          <h1 class="text-2xl font-bold text-white">Gestion des Abonnements Premium</h1>
+          <p class="text-sm text-white/60">Moniteur de validité (Trimestriel, Semestriel, Annuel) et relances pour éviter la suspension du service AST</p>
         </div>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-primary shadow-sm hover:shadow transition"
+          class="bo-btn"
           (click)="refresh()"
           [disabled]="loading()">
           Actualiser
@@ -21,147 +21,141 @@
       </div>
 
       @if (error()) {
-        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {{ error() }}
-        </div>
+        <div class="mt-4 bo-error">{{ error() }}</div>
       }
 
       @if (loading()) {
-        <div class="mt-4 text-sm text-gray-600">Chargement…</div>
+        <div class="mt-4 bo-card flex items-center justify-center py-12">
+          <div class="flex flex-col items-center gap-3">
+            <div class="bo-spinner"></div>
+            <span class="text-sm text-white/60">Chargement…</span>
+          </div>
+        </div>
       }
 
-      <!-- Tabs -->
-      <div class="mt-6 border-b border-gray-200">
-        <nav class="flex gap-4">
+      @if (!loading()) {
+        <div class="mt-6 bo-tabs">
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'monitor'"
-            [class.text-primary]="activeTab() === 'monitor'"
-            [class.border-transparent]="activeTab() !== 'monitor'"
-            [class.text-gray-500]="activeTab() !== 'monitor'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'monitor'"
             (click)="setTab('monitor')">
             Moniteur de validité ({{ monitorData()?.totalCount ?? 0 }})
           </button>
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'expiring'"
-            [class.text-primary]="activeTab() === 'expiring'"
-            [class.border-transparent]="activeTab() !== 'expiring'"
-            [class.text-gray-500]="activeTab() !== 'expiring'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'expiring'"
             (click)="setTab('expiring')">
             Relances — Expiration proche ({{ expiringSubscriptions().totalCount }})
           </button>
-        </nav>
-      </div>
+        </div>
 
-      <!-- Tab: Moniteur -->
-      @if (activeTab() === 'monitor' && monitorData(); as data) {
-        <div class="mt-6">
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-              <div class="text-xs text-gray-500 mb-1">Total actifs</div>
-              <div class="text-2xl font-bold text-primary">{{ data.totalCount }}</div>
+        @if (activeTab() === 'monitor' && monitorData(); as data) {
+          <div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div class="bo-kpi">
+                <div class="text-xs text-white/50 mb-1">Total actifs</div>
+                <div class="text-2xl font-bold text-white">{{ data.totalCount }}</div>
+              </div>
+              <div class="bo-kpi">
+                <div class="text-xs text-white/50 mb-1">Trimestriel</div>
+                <div class="text-2xl font-bold text-white">{{ data.trimestrielCount }}</div>
+              </div>
+              <div class="bo-kpi">
+                <div class="text-xs text-white/50 mb-1">Semestriel</div>
+                <div class="text-2xl font-bold text-white">{{ data.semestrielCount }}</div>
+              </div>
+              <div class="bo-kpi">
+                <div class="text-xs text-white/50 mb-1">Annuel</div>
+                <div class="text-2xl font-bold text-white">{{ data.annuelCount }}</div>
+              </div>
+              <div class="bo-kpi border-amber-500/30 bg-amber-500/10">
+                <div class="text-xs text-amber-300/90 mb-1">Expirent sous 14j</div>
+                <div class="text-2xl font-bold text-amber-300">{{ data.expiringSoonCount }}</div>
+              </div>
             </div>
-            <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-              <div class="text-xs text-gray-500 mb-1">Trimestriel</div>
-              <div class="text-2xl font-bold text-primary">{{ data.trimestrielCount }}</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-              <div class="text-xs text-gray-500 mb-1">Semestriel</div>
-              <div class="text-2xl font-bold text-primary">{{ data.semestrielCount }}</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-              <div class="text-xs text-gray-500 mb-1">Annuel</div>
-              <div class="text-2xl font-bold text-primary">{{ data.annuelCount }}</div>
-            </div>
-            <div class="bg-amber-50 rounded-xl shadow-md border border-amber-200 p-4">
-              <div class="text-xs text-amber-700 mb-1">Expirent sous 14j</div>
-              <div class="text-2xl font-bold text-amber-700">{{ data.expiringSoonCount }}</div>
+
+            <h2 class="text-lg font-semibold text-white mb-3">Abonnements actifs</h2>
+            <div class="overflow-x-auto">
+              <table class="bo-table">
+                <thead>
+                  <tr>
+                    <th>Utilisateur</th>
+                    <th>Email</th>
+                    <th>Wallet</th>
+                    <th>Durée</th>
+                    <th>Début</th>
+                    <th>Expiration</th>
+                    <th class="text-right">Jours restants</th>
+                    <th>Alerte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (s of data.subscriptions; track s.userId) {
+                    <tr [class.bg-amber-500/5]="s.expiringSoon">
+                      <td class="font-medium">{{ s.fullName || s.email }}</td>
+                      <td class="text-white/60">{{ s.email }}</td>
+                      <td class="font-mono text-xs">{{ formatAddress(s.walletAddress) }}</td>
+                      <td class="capitalize">{{ s.duration }}</td>
+                      <td class="text-white/60">{{ s.startAt ? (s.startAt | date:'short') : '—' }}</td>
+                      <td class="text-white/60">{{ s.expiresAt ? (s.expiresAt | date:'short') : '—' }}</td>
+                      <td class="text-right" [class.font-semibold]="s.expiringSoon" [class.text-amber-400]="s.expiringSoon">
+                        {{ formatDays(s.daysRemaining) }}
+                      </td>
+                      <td>
+                        @if (s.expiringSoon) {
+                          <span class="text-amber-400 font-medium">Relance</span>
+                        } @else {
+                          <span class="text-white/40">—</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                  @empty {
+                    <tr>
+                      <td colspan="8" class="py-8 text-center text-white/50">Aucun abonnement actif.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
           </div>
+        }
 
-          <h2 class="text-lg font-semibold text-primary mb-3">Abonnements actifs</h2>
+        @if (activeTab() === 'expiring') {
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <h2 class="text-lg font-semibold text-white mb-3">Abonnements expirant sous 14 jours</h2>
+            <p class="text-xs text-white/50 mb-3">Des notifications sont envoyées automatiquement chaque jour à 9h pour rappeler le renouvellement et éviter la suspension de l'AST.</p>
+            <table class="bo-table">
               <thead>
-                <tr class="border-b border-gray-200 text-primary">
-                  <th class="text-left py-2 pr-3">Utilisateur</th>
-                  <th class="text-left py-2 pr-3">Email</th>
-                  <th class="text-left py-2 pr-3">Wallet</th>
-                  <th class="text-left py-2 pr-3">Durée</th>
-                  <th class="text-left py-2 pr-3">Début</th>
-                  <th class="text-left py-2 pr-3">Expiration</th>
-                  <th class="text-right py-2 pr-3">Jours restants</th>
-                  <th class="text-left py-2 pr-3">Alerte</th>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Durée</th>
+                  <th>Expiration</th>
+                  <th class="text-right">Jours restants</th>
                 </tr>
               </thead>
               <tbody>
-                @for (s of data.subscriptions; track s.userId) {
-                  <tr class="border-b border-gray-100 hover:bg-gray-50" [class.bg-amber-50]="s.expiringSoon">
-                    <td class="py-2 pr-3 font-medium">{{ s.fullName || s.email }}</td>
-                    <td class="py-2 pr-3 text-gray-600">{{ s.email }}</td>
-                    <td class="py-2 pr-3 font-mono text-xs">{{ formatAddress(s.walletAddress) }}</td>
-                    <td class="py-2 pr-3 capitalize">{{ s.duration }}</td>
-                    <td class="py-2 pr-3 text-gray-600">{{ s.startAt ? (s.startAt | date:'short') : '—' }}</td>
-                    <td class="py-2 pr-3 text-gray-600">{{ s.expiresAt ? (s.expiresAt | date:'short') : '—' }}</td>
-                    <td class="py-2 pr-3 text-right" [class.font-semibold]="s.expiringSoon" [class.text-amber-600]="s.expiringSoon">
-                      {{ formatDays(s.daysRemaining) }}
-                    </td>
-                    <td class="py-2 pr-3">
-                      @if (s.expiringSoon) {
-                        <span class="text-amber-600 font-medium">Relance</span>
-                      } @else {
-                        <span class="text-gray-400">—</span>
-                      }
-                    </td>
+                @for (s of expiringSubscriptions().subscriptions; track s.userId) {
+                  <tr class="bg-amber-500/5">
+                    <td class="font-medium">{{ s.fullName || s.email }}</td>
+                    <td class="text-white/60">{{ s.email }}</td>
+                    <td class="capitalize">{{ s.duration }}</td>
+                    <td class="text-white/60">{{ s.expiresAt | date:'short' }}</td>
+                    <td class="text-right font-semibold text-amber-400">{{ s.daysRemaining }} jours</td>
                   </tr>
                 }
                 @empty {
                   <tr>
-                    <td colspan="8" class="py-8 text-center text-gray-500">Aucun abonnement actif.</td>
+                    <td colspan="5" class="py-8 text-center text-white/50">Aucun abonnement n'expire dans les 14 prochains jours.</td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
-        </div>
-      }
-
-      <!-- Tab: Relances -->
-      @if (activeTab() === 'expiring') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Abonnements expirant sous 14 jours</h2>
-          <p class="text-xs text-gray-600 mb-3">Des notifications sont envoyées automatiquement chaque jour à 9h pour rappeler le renouvellement et éviter la suspension de l'AST.</p>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Utilisateur</th>
-                <th class="text-left py-2 pr-3">Email</th>
-                <th class="text-left py-2 pr-3">Durée</th>
-                <th class="text-left py-2 pr-3">Expiration</th>
-                <th class="text-right py-2 pr-3">Jours restants</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of expiringSubscriptions().subscriptions; track s.userId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50 bg-amber-50/50">
-                  <td class="py-2 pr-3 font-medium">{{ s.fullName || s.email }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ s.email }}</td>
-                  <td class="py-2 pr-3 capitalize">{{ s.duration }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ s.expiresAt | date:'short' }}</td>
-                  <td class="py-2 pr-3 text-right font-semibold text-amber-600">{{ s.daysRemaining }} jours</td>
-                </tr>
-              }
-              @empty {
-                <tr>
-                  <td colspan="5" class="py-8 text-center text-gray-500">Aucun abonnement n'expire dans les 14 prochains jours.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+        }
       }
     </div>
   </main>

@@ -1,163 +1,109 @@
-<div class="min-h-screen fc-premium-bg px-4 py-8">
+<div class="fc-premium-bg min-h-screen px-4 py-8">
   <div class="max-w-6xl mx-auto">
-    <div class="mb-4">
+    <div class="mb-8">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
-    <div class="flex items-start justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-primary">Backoffice KYC</h1>
-        <p class="text-sm text-gray-600">Validation manuelle des niveaux KYC (0/1/2) + provisioning wallet (à partir de KYC1)</p>
-      </div>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
-        (click)="refresh()"
-        [disabled]="loading()"
-      >
-        Rafraîchir
-      </button>
-    </div>
 
-    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4 mb-5">
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Backoffice KYC</h1>
+        <p class="text-sm text-white/60 mt-1">Validation des niveaux KYC (0/1/2) · Provisioning wallet</p>
+      </div>
+      <button type="button" class="bo-btn" (click)="refresh()" [disabled]="loading()">Rafraîchir</button>
+    </header>
+
+    <div class="bo-card mb-6">
       <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
         <div class="w-full sm:w-96">
-          <label class="block text-sm font-medium text-primary mb-2">Recherche (email / nom / entreprise / id)</label>
-          <input
-            class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary"
-            [ngModel]="q()"
-            (ngModelChange)="q.set($event)"
-            placeholder="souhail, esprit, ..."
-          />
+          <label class="block text-sm font-medium text-white/70 mb-2">Recherche (email, nom, entreprise, id)</label>
+          <input class="bo-input" [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="souhail, esprit, ..." />
         </div>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg bg-[#00204A] text-white hover:bg-blue-900 transition"
-          (click)="refresh()"
-          [disabled]="loading()"
-        >
-          Chercher
-        </button>
+        <button type="button" class="bo-btn bo-btn-primary" (click)="refresh()" [disabled]="loading()">Chercher</button>
       </div>
     </div>
 
     @if (error()) {
-      <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {{ error() }}
-      </div>
+      <div class="bo-error mb-6">{{ error() }}</div>
     }
 
     @if (actionMsg()) {
-      <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-        {{ actionMsg() }}
-      </div>
+      <div class="bo-success mb-6">{{ actionMsg() }}</div>
     }
 
     @if (loading()) {
-      <div class="text-gray-600 text-sm">Chargement…</div>
+      <div class="bo-card flex items-center justify-center py-16">
+        <div class="flex flex-col items-center gap-3">
+          <div class="bo-spinner"></div>
+          <span class="text-sm text-white/70">Chargement…</span>
+        </div>
+      </div>
     }
 
-    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+    @if (!loading()) {
+      <div class="bo-card overflow-x-auto">
+        <table class="bo-table">
           <thead>
-            <tr class="border-b border-gray-200">
-              <th class="text-left py-2 pr-3 text-primary">Utilisateur</th>
-              <th class="text-left py-2 pr-3 text-primary">Type</th>
-              <th class="text-left py-2 pr-3 text-primary">KYC</th>
-              <th class="text-left py-2 pr-3 text-primary">Wallet</th>
-              <th class="text-right py-2 text-primary">Actions</th>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Type</th>
+              <th>KYC</th>
+              <th>Wallet</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (u of rows(); track u.id) {
-              <tr class="border-b border-gray-100 align-top">
-                <td class="py-3 pr-3">
-                  <div class="font-medium text-primary">{{ u.email }}</div>
-                  <div class="text-xs text-gray-500 font-mono break-all">{{ u.id }}</div>
-                  <div class="text-xs text-gray-500">
-                    Créé: {{ u.createdAt ? (u.createdAt | date:'yyyy-MM-dd HH:mm') : '-' }}
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    Résidence: {{ u.resident === null ? '-' : (u.resident ? 'Tunisien (Résident)' : 'Non-résident') }}
-                  </div>
+              <tr>
+                <td>
+                  <div class="font-medium text-white">{{ u.email }}</div>
+                  <div class="text-xs text-white/50 font-mono break-all">{{ u.id }}</div>
+                  <div class="text-xs text-white/50">Créé: {{ u.createdAt ? (u.createdAt | date:'yyyy-MM-dd HH:mm') : '-' }}</div>
+                  <div class="text-xs text-white/50">Résidence: {{ u.resident === null ? '-' : (u.resident ? 'Tunisien' : 'Non-résident') }}</div>
                 </td>
-                <td class="py-3 pr-3 text-gray-700">
-                  {{ u.type ?? '-' }}
-                </td>
-                <td class="py-3 pr-3">
-                  <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-semibold" [class]="badge(u.kycLevel).cls">
+                <td class="text-white/70">{{ u.type ?? '-' }}</td>
+                <td>
+                  <span class="inline-flex px-2 py-1 rounded-lg text-xs font-semibold" [class]="badge(u.kycLevel).cls">
                     {{ badge(u.kycLevel).label }}
                   </span>
-                  <div class="text-xs text-gray-500 mt-1">
-                    Validé: {{ u.kycValidatedAt ? (u.kycValidatedAt | date:'yyyy-MM-dd HH:mm') : '-' }}
-                  </div>
+                  <div class="text-xs text-white/50 mt-1">Validé: {{ u.kycValidatedAt ? (u.kycValidatedAt | date:'yyyy-MM-dd HH:mm') : '-' }}</div>
                 </td>
-                <td class="py-3 pr-3">
+                <td>
                   @if (u.walletAddress) {
-                    <div class="font-mono text-xs break-all text-gray-700">{{ u.walletAddress }}</div>
+                    <div class="font-mono text-xs break-all text-white/80">{{ u.walletAddress }}</div>
                   } @else {
-                    <div class="text-xs text-gray-500">Non provisionné</div>
+                    <span class="text-xs text-white/50">Non provisionné</span>
                   }
                 </td>
-                <td class="py-3 text-right">
+                <td class="text-right">
                   <div class="inline-flex flex-col gap-2 items-end">
                     <div class="flex items-center gap-2">
                       <input
-                        class="w-20 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-tertiary"
+                        class="w-20 px-2 py-1 rounded text-xs bo-input"
                         [ngModel]="scoreByUserId()[u.id]"
                         (ngModelChange)="onScoreChange(u.id, $event)"
                         placeholder="Score"
                         inputmode="numeric"
                       />
-                      <button
-                        type="button"
-                        class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-900 hover:bg-blue-50 transition text-xs font-medium disabled:opacity-50"
-                        (click)="setScore(u)"
-                        [disabled]="loading() || !u.walletAddress"
-                        title="Pousser InvestorRegistry.setScore"
-                      >
+                      <button type="button" class="bo-btn bo-btn-primary text-xs px-3 py-1.5" (click)="setScore(u)" [disabled]="loading() || !u.walletAddress" title="Pousser setScore">
                         setScore
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-800 hover:bg-gray-50 transition text-xs font-medium disabled:opacity-50"
-                      (click)="setLevel(u, 0)"
-                      [disabled]="loading() || !canSet(u, 0)"
-                    >
-                      Mettre KYC0
-                    </button>
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 rounded-lg border border-yellow-200 text-yellow-900 hover:bg-yellow-50 transition text-xs font-medium disabled:opacity-50"
-                      (click)="setLevel(u, 1)"
-                      [disabled]="loading() || !canSet(u, 1)"
-                    >
-                      Valider KYC1
-                    </button>
-                    <button
-                      type="button"
-                      class="px-3 py-1.5 rounded-lg border border-green-200 text-green-900 hover:bg-green-50 transition text-xs font-medium disabled:opacity-50"
-                      (click)="setLevel(u, 2)"
-                      [disabled]="loading() || !canSet(u, 2)"
-                    >
-                      Valider KYC2
-                    </button>
+                    <div class="flex flex-wrap gap-1 justify-end">
+                      <button type="button" class="bo-btn text-xs px-2 py-1" (click)="setLevel(u, 0)" [disabled]="loading() || !canSet(u, 0)">KYC0</button>
+                      <button type="button" class="bo-btn text-xs px-2 py-1 border-amber-500/50 text-amber-300" (click)="setLevel(u, 1)" [disabled]="loading() || !canSet(u, 1)">KYC1</button>
+                      <button type="button" class="bo-btn text-xs px-2 py-1 border-green-500/50 text-green-300" (click)="setLevel(u, 2)" [disabled]="loading() || !canSet(u, 2)">KYC2</button>
+                    </div>
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="py-10 text-center text-gray-500">
-                  Aucun utilisateur trouvé.
-                </td>
+                <td colspan="5" class="py-10 text-center text-white/50">Aucun utilisateur trouvé.</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
+    }
   </div>
 </div>

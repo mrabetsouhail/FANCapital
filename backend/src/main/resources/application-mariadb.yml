@@ -9,6 +9,8 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
+        # MySQLDialect évite la requête information_schema.sequences (absent en MySQL/MariaDB < 10.6)
+        dialect: org.hibernate.dialect.MySQLDialect
         jdbc:
           time_zone: UTC
 

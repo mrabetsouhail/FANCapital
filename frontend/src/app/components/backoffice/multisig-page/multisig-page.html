@@ -1,71 +1,62 @@
 <div class="min-h-screen fc-premium-bg">
   <app-navbar-client></app-navbar-client>
 
-  <main class="max-w-7xl mx-auto px-4 py-8">
-    <div class="mb-4">
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <div class="mb-8">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
-    <div class="flex items-start justify-between gap-4 mb-6">
+
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-primary">Gouvernance Multi-Sig</h1>
-        <p class="text-sm text-gray-600">Gestion des propositions de transaction du MultiSigCouncil</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Gouvernance Multi-Sig</h1>
+        <p class="text-sm text-white/60 mt-1">Propositions de transaction du MultiSigCouncil</p>
       </div>
       <div class="flex gap-2">
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-          (click)="toggleSubmitForm()"
-          [disabled]="submitting()"
-        >
+        <button type="button" class="bo-btn bo-btn-primary" (click)="toggleSubmitForm()" [disabled]="submitting()">
           {{ showSubmitForm() ? 'Annuler' : 'Nouvelle Proposition' }}
         </button>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg bg-tertiary text-secondary hover:bg-quaternary transition"
-          (click)="refresh()"
-          [disabled]="loading()"
-        >
-          Rafraîchir
-        </button>
+        <button type="button" class="bo-btn" (click)="refresh()" [disabled]="loading()">Rafraîchir</button>
       </div>
-    </div>
+    </header>
 
     @if (error()) {
-      <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        {{ error() }}
-      </div>
+      <div class="bo-error mb-6">{{ error() }}</div>
     }
 
     @if (loading()) {
-      <div class="text-gray-600 text-sm">Chargement…</div>
+      <div class="bo-card flex items-center justify-center py-16">
+        <div class="flex flex-col items-center gap-3">
+          <div class="bo-spinner"></div>
+          <span class="text-sm text-white/70">Chargement…</span>
+        </div>
+      </div>
     }
 
-    @if (info()) {
+    @if (info() && !loading()) {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Adresse Council</div>
-          <div class="font-mono text-sm break-all text-primary">{{ info()!.councilAddress }}</div>
+        <div class="bo-card">
+          <div class="text-xs text-white/50 mb-1">Adresse Council</div>
+          <div class="font-mono text-sm break-all text-white/90">{{ info()!.councilAddress }}</div>
         </div>
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Seuil Requis</div>
-          <div class="text-xl font-bold text-primary">{{ info()!.threshold }} / {{ info()!.totalOwners }}</div>
+        <div class="bo-kpi">
+          <div class="text-xs text-white/50 mb-1">Seuil Requis</div>
+          <div class="text-xl font-bold text-white">{{ info()!.threshold }} / {{ info()!.totalOwners }}</div>
         </div>
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Signataires</div>
-          <div class="text-xl font-bold text-primary">{{ info()!.totalOwners }}</div>
+        <div class="bo-card">
+          <div class="text-xs text-white/50 mb-1">Signataires</div>
+          <div class="text-xl font-bold text-white">{{ info()!.totalOwners }}</div>
         </div>
-        <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
-          <div class="text-xs text-gray-500 mb-1">Total Propositions</div>
-          <div class="text-xl font-bold text-primary">{{ info()!.transactionsCount }}</div>
+        <div class="bo-card">
+          <div class="text-xs text-white/50 mb-1">Total Propositions</div>
+          <div class="text-xl font-bold text-white">{{ info()!.transactionsCount }}</div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4 mb-6">
-        <h2 class="text-lg font-semibold text-primary mb-3">Signataires (Owners)</h2>
+      <div class="bo-card mb-6">
+        <h2 class="text-lg font-semibold text-white mb-3">Signataires (Owners)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
           @for (owner of info()!.owners; track owner) {
-            <div class="font-mono text-sm text-gray-700 bg-gray-50 px-3 py-2 rounded">
+            <div class="font-mono text-sm text-white/80 bg-white/5 px-3 py-2 rounded-lg">
               {{ formatAddress(owner) }}
             </div>
           }
@@ -74,47 +65,23 @@
     }
 
     @if (showSubmitForm()) {
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
-        <h2 class="text-lg font-semibold text-primary mb-4">Soumettre une Nouvelle Proposition</h2>
+      <div class="bo-card mb-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Soumettre une Nouvelle Proposition</h2>
         <form (ngSubmit)="onSubmitTransaction()" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Adresse Destination (to)</label>
-            <input
-              type="text"
-              [(ngModel)]="submitTo"
-              name="submitTo"
-              placeholder="0x..."
-              class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
+            <label class="block text-sm font-medium text-white/70 mb-2">Adresse Destination (to)</label>
+            <input type="text" [(ngModel)]="submitTo" name="submitTo" placeholder="0x..." class="bo-input" required />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Montant (wei)</label>
-            <input
-              type="text"
-              [(ngModel)]="submitValue"
-              name="submitValue"
-              placeholder="0"
-              class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <p class="text-xs text-gray-500 mt-1">1 ETH = 1e18 wei</p>
+            <label class="block text-sm font-medium text-white/70 mb-2">Montant (wei)</label>
+            <input type="text" [(ngModel)]="submitValue" name="submitValue" placeholder="0" class="bo-input" required />
+            <p class="text-xs text-white/40 mt-1">1 ETH = 1e18 wei</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Calldata (hex, optionnel)</label>
-            <textarea
-              [(ngModel)]="submitData"
-              name="submitData"
-              placeholder="0x..."
-              rows="3"
-              class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-            ></textarea>
+            <label class="block text-sm font-medium text-white/70 mb-2">Calldata (hex, optionnel)</label>
+            <textarea [(ngModel)]="submitData" name="submitData" placeholder="0x..." rows="3" class="bo-input font-mono text-sm"></textarea>
           </div>
-          <button
-            type="submit"
-            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            [disabled]="submitting()"
-          >
+          <button type="submit" class="bo-btn bo-btn-primary" [disabled]="submitting()">
             {{ submitting() ? 'Soumission...' : 'Soumettre' }}
           </button>
         </form>
@@ -124,35 +91,28 @@
     <div class="space-y-6">
       @if (pendingTransactions().length > 0) {
         <div>
-          <h2 class="text-lg font-semibold text-primary mb-4">Propositions en Attente ({{ pendingTransactions().length }})</h2>
+          <h2 class="text-lg font-semibold text-white mb-4">Propositions en Attente ({{ pendingTransactions().length }})</h2>
           <div class="space-y-3">
             @for (tx of pendingTransactions(); track tx.txId) {
-              <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4">
+              <div class="bo-card">
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-2">
-                      <span class="font-semibold text-primary">Transaction #{{ tx.txId }}</span>
+                      <span class="font-semibold text-white">Transaction #{{ tx.txId }}</span>
                       @if (tx.canExecute) {
-                        <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">Prête à exécuter</span>
+                        <span class="px-2 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium">Prête à exécuter</span>
                       } @else {
-                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
+                        <span class="px-2 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-xs font-medium">
                           {{ tx.confirmations }} / {{ tx.threshold }} confirmations
                         </span>
                       }
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span class="text-gray-500">Destination:</span>
-                        <span class="font-mono ml-2">{{ formatAddress(tx.to) }}</span>
-                      </div>
-                      <div>
-                        <span class="text-gray-500">Valeur:</span>
-                        <span class="ml-2">{{ fromWei(tx.value) | number:'1.6-6' }} ETH</span>
-                        <span class="text-gray-400 ml-1">({{ tx.value }} wei)</span>
-                      </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-white/80">
+                      <div><span class="text-white/50">Destination:</span> <span class="font-mono ml-2">{{ formatAddress(tx.to) }}</span></div>
+                      <div><span class="text-white/50">Valeur:</span> <span class="ml-2">{{ fromWei(tx.value) | number:'1.6-6' }} ETH</span></div>
                       @if (tx.data && tx.data !== '0x' && tx.data.length > 2) {
                         <div class="md:col-span-2">
-                          <span class="text-gray-500">Data:</span>
+                          <span class="text-white/50">Data:</span>
                           <span class="font-mono ml-2 text-xs break-all">{{ tx.data.substring(0, 66) }}{{ tx.data.length > 66 ? '...' : '' }}</span>
                         </div>
                       }
@@ -160,24 +120,10 @@
                   </div>
                   <div class="flex gap-2">
                     @if (!tx.canExecute) {
-                      <button
-                        type="button"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
-                        (click)="onConfirm(tx.txId)"
-                        [disabled]="submitting()"
-                      >
-                        Confirmer
-                      </button>
+                      <button type="button" class="bo-btn bo-btn-primary text-sm" (click)="onConfirm(tx.txId)" [disabled]="submitting()">Confirmer</button>
                     }
                     @if (tx.canExecute) {
-                      <button
-                        type="button"
-                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-                        (click)="onExecute(tx.txId)"
-                        [disabled]="submitting()"
-                      >
-                        Exécuter
-                      </button>
+                      <button type="button" class="bo-btn bo-btn-success text-sm" (click)="onExecute(tx.txId)" [disabled]="submitting()">Exécuter</button>
                     }
                   </div>
                 </div>
@@ -189,23 +135,17 @@
 
       @if (executedTransactions().length > 0) {
         <div>
-          <h2 class="text-lg font-semibold text-primary mb-4">Transactions Exécutées ({{ executedTransactions().length }})</h2>
+          <h2 class="text-lg font-semibold text-white mb-4">Transactions Exécutées ({{ executedTransactions().length }})</h2>
           <div class="space-y-3">
             @for (tx of executedTransactions(); track tx.txId) {
-              <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <div class="bo-card opacity-75">
                 <div class="flex items-center gap-2 mb-2">
-                  <span class="font-semibold text-gray-700">Transaction #{{ tx.txId }}</span>
-                  <span class="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium">Exécutée</span>
+                  <span class="font-semibold text-white/80">Transaction #{{ tx.txId }}</span>
+                  <span class="px-2 py-1 bg-white/10 text-white/70 rounded-lg text-xs font-medium">Exécutée</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                  <div>
-                    <span class="text-gray-500">Destination:</span>
-                    <span class="font-mono ml-2">{{ formatAddress(tx.to) }}</span>
-                  </div>
-                  <div>
-                    <span class="text-gray-500">Valeur:</span>
-                    <span class="ml-2">{{ fromWei(tx.value) | number:'1.6-6' }} ETH</span>
-                  </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-white/60">
+                  <div><span class="text-white/50">Destination:</span> <span class="font-mono ml-2">{{ formatAddress(tx.to) }}</span></div>
+                  <div><span class="text-white/50">Valeur:</span> <span class="ml-2">{{ fromWei(tx.value) | number:'1.6-6' }} ETH</span></div>
                 </div>
               </div>
             }
@@ -214,11 +154,8 @@
       }
 
       @if (pendingTransactions().length === 0 && executedTransactions().length === 0 && !loading()) {
-        <div class="text-center text-gray-500 py-8">
-          Aucune transaction dans le MultiSigCouncil.
-        </div>
+        <div class="bo-card text-center text-white/50 py-12">Aucune transaction dans le MultiSigCouncil.</div>
       }
-    </div>
     </div>
   </main>
 </div>

@@ -13,7 +13,7 @@ import type { TxRow, TxKind } from '../../../blockchain/models/tx-history.models
   selector: 'app-audit-registry-page',
   imports: [CommonModule, FormsModule, NavbarClient, BackButton, DatePipe],
   templateUrl: './audit-registry-page.html',
-  styleUrl: './audit-registry-page.css',
+  styleUrls: ['./audit-registry-page.css', '../backoffice-theme.css'],
 })
 export class AuditRegistryPage implements OnInit {
   loading = signal<boolean>(false);

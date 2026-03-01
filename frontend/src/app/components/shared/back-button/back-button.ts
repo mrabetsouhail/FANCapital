@@ -14,7 +14,7 @@ import { Router } from '@angular/router';
     <button
       type="button"
       (click)="goBack()"
-      class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white/90 hover:bg-gray-50 text-gray-700 font-medium text-sm transition shadow-sm"
+      class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/10 hover:bg-white/15 text-white font-medium text-sm transition"
     >
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />

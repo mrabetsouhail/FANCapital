@@ -43,6 +43,10 @@ export class NavbarClient implements OnInit {
   // Menu state
   isMenuOpen = signal<boolean>(false);
   isNotificationsSubmenuOpen = signal<boolean>(false);
+  isFinancementMenuOpen = signal<boolean>(false);
+  isBackofficeFinanceOpen = signal<boolean>(false);
+  isBackofficeSecuriteOpen = signal<boolean>(false);
+  isBackofficeMarcheOpen = signal<boolean>(false);
 
   // Language
   lang = signal<AppLang>('fr');
@@ -106,6 +110,12 @@ export class NavbarClient implements OnInit {
     this.lang.set(l);
   }
 
+  private applyCreditCashDisplay(wallet: string, cashBalance: number, creditDebt: number): void {
+    this.creditTracking.syncWithCreditDebt(wallet, creditDebt);
+    this.cashAmount.set(this.creditTracking.getCashDisplay(cashBalance, creditDebt, wallet));
+    this.creditAmount.set(this.creditTracking.getCreditDisplay(cashBalance, creditDebt, wallet));
+  }
+
   private refreshWallet(wallet: string) {
     this.blockchainApi.getPortfolio(wallet as any).subscribe({
       next: (p) => {
@@ -114,10 +124,18 @@ export class NavbarClient implements OnInit {
         this.tokensAlpha.set(atlas ? this.from1e8(atlas.balanceTokens) : 0);
         this.tokensBeta.set(didon ? this.from1e8(didon.balanceTokens) : 0);
         const cashBalance = p.cashBalanceTnd ? this.from1e8(p.cashBalanceTnd) : 0;
-        const creditDebt = (p as any).creditDebtTnd ? this.from1e8((p as any).creditDebtTnd) : 0;
-        this.creditTracking.syncWithCreditDebt(wallet, creditDebt);
-        this.cashAmount.set(this.creditTracking.getCashDisplay(cashBalance, creditDebt, wallet));
-        this.creditAmount.set(this.creditTracking.getCreditDisplay(cashBalance, creditDebt, wallet));
+        let creditDebt = p.creditDebtTnd ? this.from1e8(p.creditDebtTnd) : 0;
+        // Fallback: si creditDebt manquant ou 0 mais solde>0, vérifier avance active (avance doit s'afficher en Credit, pas Cash)
+        if (creditDebt <= 0 && cashBalance > 0) {
+          this.blockchainApi.getActiveAdvance(wallet).subscribe({
+            next: (adv) => {
+              if (adv?.principalTnd) creditDebt = Number(adv.principalTnd) / 1e8;
+              this.applyCreditCashDisplay(wallet, cashBalance, creditDebt);
+            },
+          });
+          return;
+        }
+        this.applyCreditCashDisplay(wallet, cashBalance, creditDebt);
       },
       error: (err) => {
         console.error('[NavbarClient] Error refreshing wallet:', err);
@@ -256,6 +274,50 @@ export class NavbarClient implements OnInit {
     this.isNotificationsSubmenuOpen.set(!this.isNotificationsSubmenuOpen());
   }
 
+  openFinancementMenu() {
+    this.isFinancementMenuOpen.set(true);
+  }
+
+  closeFinancementMenu() {
+    this.isFinancementMenuOpen.set(false);
+  }
+
+  toggleFinancementMenu() {
+    this.isFinancementMenuOpen.update(v => !v);
+  }
+
+  isFinancementActive(): boolean {
+    const url = this.router.url;
+    return url.includes('/credit') || url.includes('/avance-sur-titre');
+  }
+
+  isBackofficeFinanceActive(): boolean {
+    const url = this.router.url;
+    return url.includes('/backoffice/fiscal') || url.includes('/backoffice/fees') || url.includes('/backoffice/compartments') || url.includes('/backoffice/subscriptions');
+  }
+
+  isBackofficeSecuriteActive(): boolean {
+    const url = this.router.url;
+    return url.includes('/backoffice/kyc') || url.includes('/backoffice/multisig') || url.includes('/backoffice/escrow');
+  }
+
+  isBackofficeMarcheActive(): boolean {
+    const url = this.router.url;
+    return url.includes('/acceuil-client') || url.includes('/backoffice/orderbook');
+  }
+
+  openBackofficeFinance() { this.isBackofficeFinanceOpen.set(true); }
+  closeBackofficeFinance() { this.isBackofficeFinanceOpen.set(false); }
+  toggleBackofficeFinance() { this.isBackofficeFinanceOpen.update(v => !v); }
+
+  openBackofficeSecurite() { this.isBackofficeSecuriteOpen.set(true); }
+  closeBackofficeSecurite() { this.isBackofficeSecuriteOpen.set(false); }
+  toggleBackofficeSecurite() { this.isBackofficeSecuriteOpen.update(v => !v); }
+
+  openBackofficeMarche() { this.isBackofficeMarcheOpen.set(true); }
+  closeBackofficeMarche() { this.isBackofficeMarcheOpen.set(false); }
+  toggleBackofficeMarche() { this.isBackofficeMarcheOpen.update(v => !v); }
+
   onPriceAlert() {
     // TODO: Navigate to price alert configuration
     console.log('Alertes de Prix clicked');
@@ -288,6 +350,14 @@ export class NavbarClient implements OnInit {
     if (!target.closest('.menu-container')) {
       this.isMenuOpen.set(false);
       this.isNotificationsSubmenuOpen.set(false);
+    }
+    if (!target.closest('.nav-dropdown-container')) {
+      this.isFinancementMenuOpen.set(false);
+    }
+    if (!target.closest('.nav-dropdown-backoffice')) {
+      this.isBackofficeFinanceOpen.set(false);
+      this.isBackofficeSecuriteOpen.set(false);
+      this.isBackofficeMarcheOpen.set(false);
     }
   }
 }

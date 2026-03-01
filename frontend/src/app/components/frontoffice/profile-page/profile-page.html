@@ -7,10 +7,10 @@
     <div class="mb-4">
       <app-back-button fallbackRoute="/acceuil-client"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-4 sm:p-6">
+    <div class="bo-card p-4 sm:p-6">
     <!-- Header Section -->
     <div class="mb-5">
-      <div class="bg-white rounded-xl shadow-lg p-2 border border-gray-200 relative overflow-hidden">
+      <div class="bo-card p-4 relative overflow-hidden">
         <!-- Decorative background -->
         <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#00204A] opacity-10 rounded-full -mr-32 -mt-32"></div>
         <div class="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#22c55e] opacity-10 rounded-full -ml-24 -mb-24"></div>
@@ -23,7 +23,7 @@
             </div>
             <div>
               <div class="flex items-center gap-3 mb-1">
-                <h1 class="text-3xl font-bold text-primary">
+                <h1 class="text-3xl font-bold text-white">
                   @if (companyName()) {
                     {{ companyName() }}
                   } @else {
@@ -43,19 +43,19 @@
                   </div>
                 </div>
               </div>
-              <p class="text-gray-600">{{ email() }}</p>
+              <p class="text-white/60">{{ email() }}</p>
               <div class="mt-2 flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-semibold" [class]="kycBadgeClass()">
                   KYC: {{ kycLabel() }}
                 </span>
                 @if (investor()) {
-                  <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full border text-xs font-semibold bg-blue-500/20 text-blue-300 border-blue-500/30">
                     Tier: {{ investorTierLabel() }} · Score: {{ investor()!.score }} · Premium: {{ investor()!.subscriptionActive ? 'Oui' : 'Non' }}
                   </span>
                 }
                 <button
                   (click)="refreshProfile()"
-                  class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+                  class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-white/20 text-xs font-medium text-white/80 hover:bg-white/10 transition bo-btn"
                   title="Actualiser le score et le tier">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -68,14 +68,14 @@
 
           <!-- Wallet (Circuit fermé / WaaS) -->
           <div class="w-full md:w-auto">
-            <div class="rounded-xl border border-gray-200 bg-white/70 px-4 py-3">
-              <div class="text-[11px] font-semibold text-primary uppercase tracking-wide">Wallet interne (WaaS)</div>
+            <div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div class="text-[11px] font-semibold text-white uppercase tracking-wide">Wallet interne (WaaS)</div>
               @if (wallet()) {
-                <div class="mt-1 font-mono text-xs text-gray-700 break-all">{{ wallet() }}</div>
+                <div class="mt-1 font-mono text-xs text-white/90 break-all">{{ wallet() }}</div>
               } @else {
-                <div class="mt-1 text-xs text-gray-600">En cours de création…</div>
+                <div class="mt-1 text-xs text-white/60">En cours de création…</div>
               }
-              <div class="mt-2 text-[11px] text-gray-600 max-w-[360px]">
+              <div class="mt-2 text-[11px] text-white/60 max-w-[360px]">
                 Circuit fermé: FAN‑Capital gère le wallet et les clés (chiffrées). MetaMask n’est pas requis pour l’investisseur.
               </div>
             </div>
@@ -88,43 +88,43 @@
       <!-- Left Column: Progress Tracker & Security -->
       <div class="lg:col-span-1 space-y-6">
         <!-- Progress Tracker -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 class="text-xl font-semibold text-primary mb-4">Progression vers {{ nextLevel() || 'Niveau Maximum' }}</h2>
+        <div class="bo-card p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Progression vers {{ nextLevel() || 'Niveau Maximum' }}</h2>
           
           @if (nextLevel()) {
             <div class="space-y-4">
               <div>
                 <div class="flex justify-between items-center mb-2">
-                  <span class="text-sm text-gray-600">Volume actuel</span>
-                  <span class="text-sm font-semibold text-primary">
+                  <span class="text-sm text-white/60">Volume actuel</span>
+                  <span class="text-sm font-semibold text-white">
                     {{ currentVolume() | number:'1.0-0' }} TND
                   </span>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                <div class="w-full bg-white/10 rounded-full h-4 overflow-hidden">
                   <div
                     class="bg-gradient-to-r from-[#00204A] to-[#22c55e] h-4 rounded-full transition-all duration-500 ease-in-out"
                     [style.width.%]="progressPercentage()"
                   ></div>
                 </div>
                 <div class="flex justify-between items-center mt-2">
-                  <span class="text-xs text-gray-500">Objectif: {{ nextLevelVolume() | number:'1.0-0' }} TND</span>
-                  <span class="text-xs font-semibold text-primary">
+                  <span class="text-xs text-white/50">Objectif: {{ nextLevelVolume() | number:'1.0-0' }} TND</span>
+                  <span class="text-xs font-semibold text-white">
                     {{ progressPercentage() | number:'1.1-1' }}%
                   </span>
                 </div>
               </div>
               
-              <div class="bg-gray-50 rounded-lg p-4">
+              <div class="bg-white/5 rounded-lg p-4 border border-white/10">
                 <div class="flex items-center gap-2 mb-2">
                   <svg class="w-5 h-5 text-[#22c55e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
-                  <span class="text-sm font-medium text-primary">Volume restant</span>
+                  <span class="text-sm font-medium text-white">Volume restant</span>
                 </div>
-                <p class="text-2xl font-bold text-[#00204A]">
+                <p class="text-2xl font-bold text-white">
                   {{ remainingVolume() | number:'1.0-0' }} TND
                 </p>
-                <p class="text-xs text-gray-500 mt-1">Pour atteindre le niveau {{ nextLevel() }}</p>
+                <p class="text-xs text-white/50 mt-1">Pour atteindre le niveau {{ nextLevel() }}</p>
               </div>
             </div>
           } @else {
@@ -134,20 +134,20 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               </div>
-              <p class="text-lg font-semibold text-primary">Niveau Maximum Atteint</p>
-              <p class="text-sm text-gray-600 mt-1">Vous êtes au niveau {{ displayedMemberLevel() }}</p>
+              <p class="text-lg font-semibold text-white">Niveau Maximum Atteint</p>
+              <p class="text-sm text-white/60 mt-1">Vous êtes au niveau {{ displayedMemberLevel() }}</p>
             </div>
           }
 
           <!-- Questions fréquentes - Justifications pour l'utilisateur -->
           <details class="mt-4 group">
-            <summary class="cursor-pointer text-sm font-medium text-primary hover:text-[#22c55e] flex items-center gap-2">
+            <summary class="cursor-pointer text-sm font-medium text-white hover:text-[#22c55e] flex items-center gap-2">
               <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
               Comment mon niveau évolue-t-il ?
             </summary>
-            <div class="mt-3 space-y-3 text-sm text-gray-600 border-l-2 border-[#00204A]/20 pl-4">
+            <div class="mt-3 space-y-3 text-sm text-white/60 border-l-2 border-white/20 pl-4">
               <p><strong>Quels montants pour passer au niveau suivant ?</strong> Silver → Gold : 7 000 TND cumulés · Gold → Platinum : 20 000 TND · Platinum → Diamond : 70 000 TND. Seuls les achats comptent (pas les dépôts).</p>
               <p><strong>La progression est-elle automatique ?</strong> Oui. Après chaque achat ou vente, votre score est recalculé et mis à jour sans action de votre part.</p>
               <p><strong>Atteindre le volume suffit-il à monter de niveau ?</strong> Pas toujours. Le niveau affiché dépend aussi de votre score SCI (actifs détenus, KYC, régularité). Le volume aide mais le score fixe la limite réelle.</p>
@@ -156,29 +156,29 @@
         </div>
 
         <!-- Abonnement Premium -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 class="text-xl font-semibold text-primary mb-4">Abonnement Premium</h2>
+        <div class="bo-card p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Abonnement Premium</h2>
           
           @if (investor()?.subscriptionActive) {
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="bo-success p-4">
               <div class="flex items-center gap-2 mb-2">
-                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span class="font-semibold text-green-800">Abonnement Premium actif</span>
+                <span class="font-semibold">Abonnement Premium actif</span>
               </div>
-              <p class="text-sm text-green-700">Vous avez accès aux services avancés (P2P, Avance sur Titres, Gestion de Patrimoine).</p>
+              <p class="text-sm">Vous avez accès aux services avancés (P2P, Avance sur Titres, Gestion de Patrimoine).</p>
             </div>
           } @else {
             <div class="space-y-5">
-              <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h3 class="font-semibold text-amber-900 mb-2 flex items-center gap-2">
+              <div class="bg-amber-500/20 border border-amber-500/30 rounded-lg p-4">
+                <h3 class="font-semibold text-amber-300 mb-2 flex items-center gap-2">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Comment activer votre abonnement Premium
                 </h3>
-                <ol class="list-decimal list-inside text-sm text-gray-700 space-y-2">
+                <ol class="list-decimal list-inside text-sm text-white/80 space-y-2">
                   <li>Alimentez votre <strong>Cash Wallet</strong> (page Passer Ordre) avec un montant minimum de 1 TND.</li>
                   <li>Choisissez la formule adaptée à votre tier (voir grille ci-dessous).</li>
                   <li>Cliquez sur « Activer l'abonnement Premium » — le versement est débité de votre Cash Wallet.</li>
@@ -188,33 +188,33 @@
 
               <!-- Choix de la durée d'abonnement -->
               <div>
-                <h3 class="text-sm font-semibold text-primary mb-3">Choisissez votre formule</h3>
+                <h3 class="text-sm font-semibold text-white mb-3">Choisissez votre formule</h3>
                 @if (premiumPrices()) {
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     @let trim = premiumPrices()!.trimestriel;
                     @let sem = premiumPrices()!.semestriel;
                     @let ann = premiumPrices()!.annuel;
                     <label
-                      [class]="subscriptionDuration() === 'trimestriel' ? 'ring-2 ring-[#00204A] bg-blue-50' : 'hover:bg-gray-50'"
-                      class="flex flex-col p-4 rounded-lg border-2 border-gray-200 cursor-pointer transition">
+                      [class]="subscriptionDuration() === 'trimestriel' ? 'ring-2 ring-[#00204A] bg-white/10' : 'hover:bg-white/5'"
+                      class="flex flex-col p-4 rounded-lg border-2 border-white/10 cursor-pointer transition">
                       <input type="radio" name="subDuration" value="trimestriel" [checked]="subscriptionDuration() === 'trimestriel'"
                         (change)="subscriptionDuration.set('trimestriel')" class="sr-only">
-                      <span class="font-semibold text-primary">Trimestriel</span>
-                      <span class="text-2xl font-bold text-primary mt-1">{{ trim >= 0 ? (trim | number:'1.0-0') + ' TND' : '—' }}</span>
-                      <span class="text-xs text-gray-500 mt-1">3 mois</span>
+                      <span class="font-semibold text-white">Trimestriel</span>
+                      <span class="text-2xl font-bold text-white mt-1">{{ trim >= 0 ? (trim | number:'1.0-0') + ' TND' : '—' }}</span>
+                      <span class="text-xs text-white/50 mt-1">3 mois</span>
                     </label>
                     <label
-                      [class]="subscriptionDuration() === 'semestriel' ? 'ring-2 ring-[#00204A] bg-blue-50' : 'hover:bg-gray-50'"
-                      class="flex flex-col p-4 rounded-lg border-2 border-gray-200 cursor-pointer transition">
+                      [class]="subscriptionDuration() === 'semestriel' ? 'ring-2 ring-[#00204A] bg-white/10' : 'hover:bg-white/5'"
+                      class="flex flex-col p-4 rounded-lg border-2 border-white/10 cursor-pointer transition">
                       <input type="radio" name="subDuration" value="semestriel" [checked]="subscriptionDuration() === 'semestriel'"
                         (change)="subscriptionDuration.set('semestriel')" class="sr-only">
-                      <span class="font-semibold text-primary">Semestriel</span>
-                      <span class="text-2xl font-bold text-primary mt-1">{{ sem >= 0 ? (sem | number:'1.0-0') + ' TND' : '—' }}</span>
-                      <span class="text-xs text-gray-500 mt-1">6 mois</span>
+                      <span class="font-semibold text-white">Semestriel</span>
+                      <span class="text-2xl font-bold text-white mt-1">{{ sem >= 0 ? (sem | number:'1.0-0') + ' TND' : '—' }}</span>
+                      <span class="text-xs text-white/50 mt-1">6 mois</span>
                     </label>
                     <label
-                      [class]="subscriptionDuration() === 'annuel' ? 'ring-2 ring-[#00204A] bg-blue-50' : 'hover:bg-gray-50'"
-                      class="flex flex-col p-4 rounded-lg border-2 border-gray-200 cursor-pointer transition">
+                      [class]="subscriptionDuration() === 'annuel' ? 'ring-2 ring-[#00204A] bg-white/10' : 'hover:bg-white/5'"
+                      class="flex flex-col p-4 rounded-lg border-2 border-white/10 cursor-pointer transition">
                       <input type="radio" name="subDuration" value="annuel" [checked]="subscriptionDuration() === 'annuel'"
                         (change)="subscriptionDuration.set('annuel')" class="sr-only">
                       <span class="font-semibold text-primary">Annuel</span>
@@ -223,47 +223,47 @@
                     </label>
                   </div>
                 } @else {
-                  <p class="text-sm text-gray-500 py-2">Chargement des tarifs…</p>
+                  <p class="text-sm text-white/50 py-2">Chargement des tarifs…</p>
                 }
               </div>
 
               <!-- Grille tarifaire (Spec v4.7) - référence -->
               <div>
-                <h3 class="text-sm font-semibold text-primary mb-2">Grille tarifaire (TND)</h3>
-                <div class="overflow-x-auto rounded-lg border border-gray-200">
-                  <table class="w-full text-sm">
-                    <thead class="bg-gray-50">
+                <h3 class="text-sm font-semibold text-white mb-2">Grille tarifaire (TND)</h3>
+                <div class="overflow-x-auto rounded-lg border border-white/10">
+                  <table class="bo-table w-full text-sm">
+                    <thead>
                       <tr>
-                        <th class="px-3 py-2 text-left font-semibold text-gray-700">Niveau</th>
-                        <th class="px-3 py-2 text-right font-semibold text-gray-700">Trimestriel</th>
-                        <th class="px-3 py-2 text-right font-semibold text-gray-700">Semestriel</th>
-                        <th class="px-3 py-2 text-right font-semibold text-gray-700">Annuel</th>
+                        <th class="px-3 py-2 text-left font-semibold">Niveau</th>
+                        <th class="px-3 py-2 text-right font-semibold">Trimestriel</th>
+                        <th class="px-3 py-2 text-right font-semibold">Semestriel</th>
+                        <th class="px-3 py-2 text-right font-semibold">Annuel</th>
                       </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
-                      <tr class="bg-gray-50"><td class="px-3 py-2 font-medium">BRONZE</td><td class="px-3 py-2 text-right">—</td><td class="px-3 py-2 text-right">—</td><td class="px-3 py-2 text-right">—</td></tr>
+                    <tbody>
+                      <tr><td class="px-3 py-2 font-medium">BRONZE</td><td class="px-3 py-2 text-right">—</td><td class="px-3 py-2 text-right">—</td><td class="px-3 py-2 text-right">—</td></tr>
                       <tr><td class="px-3 py-2 font-medium">SILVER</td><td class="px-3 py-2 text-right">45</td><td class="px-3 py-2 text-right">80</td><td class="px-3 py-2 text-right">150</td></tr>
-                      <tr class="bg-gray-50"><td class="px-3 py-2 font-medium">GOLD</td><td class="px-3 py-2 text-right">75</td><td class="px-3 py-2 text-right">135</td><td class="px-3 py-2 text-right">250</td></tr>
+                      <tr><td class="px-3 py-2 font-medium">GOLD</td><td class="px-3 py-2 text-right">75</td><td class="px-3 py-2 text-right">135</td><td class="px-3 py-2 text-right">250</td></tr>
                       <tr><td class="px-3 py-2 font-medium">PLATINUM</td><td class="px-3 py-2 text-right">150</td><td class="px-3 py-2 text-right">270</td><td class="px-3 py-2 text-right">500</td></tr>
-                      <tr class="bg-gray-50"><td class="px-3 py-2 font-medium">DIAMOND</td><td class="px-3 py-2 text-right">300</td><td class="px-3 py-2 text-right">540</td><td class="px-3 py-2 text-right">1000</td></tr>
+                      <tr><td class="px-3 py-2 font-medium">DIAMOND</td><td class="px-3 py-2 text-right">300</td><td class="px-3 py-2 text-right">540</td><td class="px-3 py-2 text-right">1000</td></tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div class="bg-white/5 rounded-lg p-4 space-y-2 border border-white/10">
                 <div class="flex justify-between text-sm">
-                  <span class="text-gray-600">Votre solde Cash Wallet :</span>
-                  <span class="font-semibold text-primary">{{ cashBalanceTnd() | number:'1.2-2' }} TND</span>
+                  <span class="text-white/60">Votre solde Cash Wallet :</span>
+                  <span class="font-semibold text-white">{{ cashBalanceTnd() | number:'1.2-2' }} TND</span>
                 </div>
                 @if (selectedSubscriptionAmount() > 0) {
                   <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Montant à prélever :</span>
+                    <span class="text-white/60">Montant à prélever :</span>
                     <span class="font-semibold">{{ selectedSubscriptionAmount() | number:'1.0-0' }} TND ({{ subscriptionDuration() }})</span>
                   </div>
                 }
                 @if (!canActivatePremium()) {
-                  <a routerLink="/passer-ordre" class="inline-flex items-center gap-1 text-sm text-[#00204A] font-medium hover:underline mt-2">
+                  <a routerLink="/passer-ordre" class="inline-flex items-center gap-1 text-sm text-[#22c55e] font-medium hover:underline mt-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -276,8 +276,8 @@
                 (click)="onActivatePremium()"
                 [disabled]="premiumActivationLoading() || !canActivatePremium()"
                 [class]="(premiumActivationLoading() || !canActivatePremium())
-                  ? 'w-full px-4 py-3 bg-gray-400 text-white rounded-lg font-medium cursor-not-allowed opacity-60'
-                  : 'w-full px-4 py-3 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150'"
+                  ? 'bo-btn w-full px-4 py-3 opacity-60 cursor-not-allowed'
+                  : 'bo-btn bo-btn-primary w-full px-4 py-3'"
               >
                 @if (premiumActivationLoading()) {
                   <span>Activation en cours…</span>
@@ -288,28 +288,28 @@
                 }
               </button>
               @if (premiumActivationError()) {
-                <p class="text-sm text-red-600">{{ premiumActivationError() }}</p>
+                <p class="bo-error text-sm mt-2">{{ premiumActivationError() }}</p>
               }
             </div>
           }
         </div>
 
         <!-- Security Section -->
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 class="text-xl font-semibold text-primary mb-4">Sécurité</h2>
+        <div class="bo-card p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Sécurité</h2>
           
           <div class="space-y-6">
             <!-- 2FA Toggle -->
-            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
               <div>
-                <h3 class="font-semibold text-primary mb-1">Double Authentification (2FA)</h3>
-                <p class="text-xs text-gray-600">Protégez votre compte avec une authentification à deux facteurs</p>
+                <h3 class="font-semibold text-white mb-1">Double Authentification (2FA)</h3>
+                <p class="text-xs text-white/60">Protégez votre compte avec une authentification à deux facteurs</p>
               </div>
               <button
                 (click)="toggle2FA()"
                 [class]="twoFactorEnabled() 
                   ? 'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[#22c55e] transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2'
-                  : 'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2'"
+                  : 'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-white/20 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent'"
               >
                 <span
                   [class]="twoFactorEnabled() 
@@ -321,62 +321,62 @@
             </div>
 
             @if (twoFactorEnabled()) {
-              <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div class="bo-success p-4">
                 <div class="flex items-center gap-2 mb-2">
-                  <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span class="text-sm font-medium text-green-800">2FA Activée</span>
+                  <span class="text-sm font-medium">2FA Activée</span>
                 </div>
-                <p class="text-xs text-green-700">Votre compte est protégé par l'authentification à deux facteurs</p>
+                <p class="text-xs">Votre compte est protégé par l'authentification à deux facteurs</p>
               </div>
             }
 
             <!-- Change Password -->
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="font-semibold text-primary mb-4">Changer le mot de passe</h3>
+            <div class="border-t border-white/10 pt-6">
+              <h3 class="font-semibold text-white mb-4">Changer le mot de passe</h3>
               
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+                  <label class="block text-sm font-medium text-white/80 mb-2">Mot de passe actuel</label>
                   <input
                     type="password"
                     [ngModel]="currentPassword()"
                     (ngModelChange)="currentPassword.set($event)"
-                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                    class="bo-input w-full"
                     placeholder="••••••••"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                  <label class="block text-sm font-medium text-white/80 mb-2">Nouveau mot de passe</label>
                   <input
                     type="password"
                     [ngModel]="newPassword()"
                     (ngModelChange)="newPassword.set($event)"
-                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                    class="bo-input w-full"
                     placeholder="••••••••"
                   />
-                  <p class="text-xs text-gray-500 mt-1">Minimum 8 caractères</p>
+                  <p class="text-xs text-white/50 mt-1">Minimum 8 caractères</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                  <label class="block text-sm font-medium text-white/80 mb-2">Confirmer le mot de passe</label>
                   <input
                     type="password"
                     [ngModel]="confirmPassword()"
                     (ngModelChange)="confirmPassword.set($event)"
-                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary transition duration-150 ease-in-out"
+                    class="bo-input w-full"
                     placeholder="••••••••"
                   />
                   @if (newPassword() && confirmPassword() && newPassword() !== confirmPassword()) {
-                    <p class="text-xs text-red-500 mt-1">Les mots de passe ne correspondent pas</p>
+                    <p class="text-xs text-red-400 mt-1">Les mots de passe ne correspondent pas</p>
                   }
                 </div>
                 <button
                   (click)="onChangePassword()"
                   [disabled]="!canChangePassword()"
                   [class]="canChangePassword() 
-                    ? 'w-full px-4 py-2 bg-[#00204A] text-white rounded-lg font-medium hover:bg-blue-900 transition duration-150 ease-in-out'
-                    : 'w-full px-4 py-2 bg-gray-400 text-white rounded-lg font-medium cursor-not-allowed opacity-50'"
+                    ? 'bo-btn bo-btn-primary w-full px-4 py-2'
+                    : 'bo-btn w-full px-4 py-2 opacity-50 cursor-not-allowed'"
                 >
                   Changer le mot de passe
                 </button>
@@ -388,18 +388,18 @@
 
       <!-- Right Column: Transaction History -->
       <div class="lg:col-span-2">
-        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <h2 class="text-xl font-semibold text-primary mb-4">Historique Global</h2>
+        <div class="bo-card p-6">
+          <h2 class="text-xl font-semibold text-white mb-4">Historique Global</h2>
           
           <!-- Filters -->
           <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Type Filter -->
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <label class="block text-xs font-medium text-white/80 mb-1">Type</label>
               <select
                 [ngModel]="filterType()"
                 (ngModelChange)="filterType.set($event)"
-                class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary text-sm"
+                class="bo-input w-full text-sm"
               >
                 <option value="all">Tous</option>
                 <option value="achat">Achat</option>
@@ -426,11 +426,11 @@
 
             <!-- Token Type Filter -->
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Token</label>
+              <label class="block text-xs font-medium text-white/80 mb-1">Token</label>
               <select
                 [ngModel]="filterTokenType()"
                 (ngModelChange)="filterTokenType.set($event)"
-                class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-tertiary text-sm"
+                class="bo-input w-full text-sm"
               >
                 <option value="all">Tous</option>
                 <option value="Atlas">Atlas</option>
@@ -454,36 +454,36 @@
           <!-- Transactions Table -->
           <div class="overflow-x-auto">
             @if (historyError()) {
-              <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div class="bo-error mb-4">
                 {{ historyError() }}
               </div>
             }
             @if (historyLoading()) {
-              <div class="text-gray-600 text-sm mb-3">Chargement de l'historique on-chain…</div>
+              <div class="text-white/60 text-sm mb-3">Chargement de l'historique on-chain…</div>
             }
-            <table class="w-full">
+            <table class="bo-table w-full">
               <thead>
-                <tr class="border-b-2 border-gray-200">
-                  <th class="text-left py-3 px-4 text-sm font-semibold text-primary">Date</th>
-                  <th class="text-left py-3 px-4 text-sm font-semibold text-primary">Type</th>
-                  <th class="text-left py-3 px-4 text-sm font-semibold text-primary">Token</th>
-                  <th class="text-right py-3 px-4 text-sm font-semibold text-primary">Montant</th>
-                  <th class="text-center py-3 px-4 text-sm font-semibold text-primary">Statut</th>
+                <tr>
+                  <th class="text-left py-3 px-4 text-sm font-semibold">Date</th>
+                  <th class="text-left py-3 px-4 text-sm font-semibold">Type</th>
+                  <th class="text-left py-3 px-4 text-sm font-semibold">Token</th>
+                  <th class="text-right py-3 px-4 text-sm font-semibold">Montant</th>
+                  <th class="text-center py-3 px-4 text-sm font-semibold">Statut</th>
                 </tr>
               </thead>
               <tbody>
                 @for (transaction of filteredTransactions(); track transaction.id) {
-                  <tr class="border-b border-gray-100 hover:bg-gray-50 transition duration-150">
-                    <td class="py-3 px-4 text-sm text-gray-700">
+                  <tr>
+                    <td class="py-3 px-4 text-sm">
                       {{ transaction.date | date:'short' }}
                     </td>
-                    <td class="py-3 px-4 text-sm text-primary font-medium">
+                    <td class="py-3 px-4 text-sm font-medium">
                       {{ getTransactionTypeLabel(transaction.type) }}
                     </td>
-                    <td class="py-3 px-4 text-sm text-gray-600">
+                    <td class="py-3 px-4 text-sm text-white/80">
                       {{ transaction.tokenType || '-' }}
                     </td>
-                    <td class="py-3 px-4 text-sm text-right font-semibold text-primary">
+                    <td class="py-3 px-4 text-sm text-right font-semibold">
                       {{ transaction.amount | number:'1.2-2' }} TND
                     </td>
                     <td class="py-3 px-4 text-center">
@@ -494,7 +494,7 @@
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="py-12 text-center text-gray-500">
+                    <td colspan="5" class="py-12 text-center text-white/50">
                       Aucune transaction trouvée
                     </td>
                   </tr>
@@ -505,10 +505,10 @@
 
           <!-- Summary -->
           @if (filteredTransactions().length > 0) {
-            <div class="mt-6 pt-4 border-t border-gray-200">
+            <div class="mt-6 pt-4 border-t border-white/10">
               <div class="flex justify-between items-center">
-                <span class="text-sm font-medium text-gray-700">Total des transactions affichées:</span>
-                <span class="text-lg font-bold text-primary">
+                <span class="text-sm font-medium text-white/80">Total des transactions affichées:</span>
+                <span class="text-lg font-bold text-white">
                   {{ getTotalFilteredAmount() | number:'1.2-2' }} TND
                 </span>
               </div>

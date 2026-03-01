@@ -13,7 +13,7 @@ import type { TxResponse } from '../../../backoffice/models/fiscal.models';
   selector: 'app-multisig-page',
   imports: [CommonModule, FormsModule, NavbarClient, BackButton],
   templateUrl: './multisig-page.html',
-  styleUrl: './multisig-page.css',
+  styleUrls: ['./multisig-page.css', '../backoffice-theme.css'],
 })
 export class MultiSigPage implements OnInit {
   info = signal<MultiSigInfo | null>(null);

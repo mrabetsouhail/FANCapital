@@ -11,7 +11,7 @@ import type { FiscalDashboardResponse } from '../../../backoffice/models/fiscal.
   selector: 'app-fiscal-dashboard-page',
   imports: [CommonModule, FormsModule, BackButton],
   templateUrl: './fiscal-dashboard-page.html',
-  styleUrl: './fiscal-dashboard-page.css',
+  styleUrls: ['./fiscal-dashboard-page.css', '../backoffice-theme.css'],
 })
 export class FiscalDashboardPage implements OnInit {
   data = signal<FiscalDashboardResponse | null>(null);

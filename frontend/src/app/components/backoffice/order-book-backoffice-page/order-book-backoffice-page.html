@@ -5,15 +5,15 @@
     <div class="mb-4">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
+    <div class="bo-card">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-primary">Order Book P2P & Fallback</h1>
-          <p class="text-sm text-gray-600">Surveillance du marché hybride : ordres en attente, matching P2P, audit des bascules vers la piscine</p>
+          <h1 class="text-2xl font-bold text-white">Order Book P2P & Fallback</h1>
+          <p class="text-sm text-white/60">Surveillance du marché hybride : ordres en attente, matching P2P, audit des bascules vers la piscine</p>
         </div>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-primary shadow-sm hover:shadow transition"
+          class="bo-btn"
           (click)="refresh()"
           [disabled]="loading()">
           Actualiser
@@ -21,192 +21,186 @@
       </div>
 
       @if (error()) {
-        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {{ error() }}
-        </div>
+        <div class="mt-4 bo-error">{{ error() }}</div>
       }
 
       @if (loading()) {
-        <div class="mt-4 text-sm text-gray-600">Chargement…</div>
+        <div class="mt-4 bo-card flex items-center justify-center py-12">
+          <div class="flex flex-col items-center gap-3">
+            <div class="bo-spinner"></div>
+            <span class="text-sm text-white/60">Chargement…</span>
+          </div>
+        </div>
       }
 
-      <!-- Tabs -->
-      <div class="mt-6 border-b border-gray-200">
-        <nav class="flex gap-4">
+      @if (!loading()) {
+        <!-- Tabs -->
+        <div class="mt-6 bo-tabs">
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'pending'"
-            [class.text-primary]="activeTab() === 'pending'"
-            [class.border-transparent]="activeTab() !== 'pending'"
-            [class.text-gray-500]="activeTab() !== 'pending'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'pending'"
             (click)="setTab('pending')">
             Ordres en attente ({{ pendingOrders().length }}) — TTL
           </button>
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'matched'"
-            [class.text-primary]="activeTab() === 'matched'"
-            [class.border-transparent]="activeTab() !== 'matched'"
-            [class.text-gray-500]="activeTab() !== 'matched'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'matched'"
             (click)="setTab('matched')">
             Log de matching P2P ({{ matchedOrders().length }})
           </button>
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'fallback'"
-            [class.text-primary]="activeTab() === 'fallback'"
-            [class.border-transparent]="activeTab() !== 'fallback'"
-            [class.text-gray-500]="activeTab() !== 'fallback'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'fallback'"
             (click)="setTab('fallback')">
             Audit bascule / Fallback ({{ fallbackOrders().length }})
           </button>
-        </nav>
-      </div>
-
-      <!-- Tab: Pending -->
-      @if (activeTab() === 'pending') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Ordres en attente (Time-to-Live)</h2>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Order ID</th>
-                <th class="text-left py-2 pr-3">Maker</th>
-                <th class="text-left py-2 pr-3">Side</th>
-                <th class="text-left py-2 pr-3">Token</th>
-                <th class="text-right py-2 pr-3">Montant</th>
-                <th class="text-right py-2 pr-3">Prix</th>
-                <th class="text-left py-2 pr-3">Créé</th>
-                <th class="text-right py-2 pr-3">TTL restant</th>
-                <th class="text-left py-2 pr-3">Expire à</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (o of pendingOrders(); track o.orderId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="py-2 pr-3 font-mono text-xs text-gray-700" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
-                  <td class="py-2 pr-3">
-                    <span [class.text-green-600]="o.side === 'BUY'" [class.text-red-600]="o.side === 'SELL'">{{ o.side }}</span>
-                  </td>
-                  <td class="py-2 pr-3 font-medium">{{ o.tokenSymbol }}</td>
-                  <td class="py-2 pr-3 text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 text-right">{{ from1e8(o.pricePerToken) | number:'1.2-2' }} TND</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ o.createdAt | date:'short' }}</td>
-                  <td class="py-2 pr-3 text-right font-semibold" [class.text-amber-600]="(o.ttLSeconds ?? 0) < 3600">{{ formatTtl(o.ttLSeconds) }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ o.deadline * 1000 | date:'short' }}</td>
-                </tr>
-              }
-              @empty {
-                <tr>
-                  <td colspan="9" class="py-8 text-center text-gray-500">Aucun ordre en attente.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
         </div>
-      }
 
-      <!-- Tab: Matched -->
-      @if (activeTab() === 'matched') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Historique des ordres matchés en P2P</h2>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Order ID</th>
-                <th class="text-left py-2 pr-3">Maker</th>
-                <th class="text-left py-2 pr-3">Side</th>
-                <th class="text-left py-2 pr-3">Token</th>
-                <th class="text-right py-2 pr-3">Montant</th>
-                <th class="text-right py-2 pr-3">Matché</th>
-                <th class="text-left py-2 pr-3">Match Order ID</th>
-                <th class="text-left py-2 pr-3">Créé</th>
-                <th class="text-left py-2 pr-3 font-mono text-xs">Tx Hash</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (o of matchedOrders(); track o.orderId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="py-2 pr-3 font-mono text-xs" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
-                  <td class="py-2 pr-3">
-                    <span [class.text-green-600]="o.side === 'BUY'" [class.text-red-600]="o.side === 'SELL'">{{ o.side }}</span>
-                  </td>
-                  <td class="py-2 pr-3 font-medium">{{ o.tokenSymbol }}</td>
-                  <td class="py-2 pr-3 text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 text-right">{{ from1e8(o.filledTokenAmount ?? '0') | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs" [title]="o.matchedOrderId ?? ''">{{ o.matchedOrderId ? (o.matchedOrderId.length > 16 ? o.matchedOrderId.slice(0,8) + '…' + o.matchedOrderId.slice(-4) : o.matchedOrderId) : '—' }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ o.createdAt | date:'short' }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all text-gray-500">{{ o.settlementTxHash || '—' }}</td>
-                </tr>
-              }
-              @empty {
+        <!-- Tab: Pending -->
+        @if (activeTab() === 'pending') {
+          <div class="overflow-x-auto">
+            <h2 class="text-lg font-semibold text-white mb-3">Ordres en attente (Time-to-Live)</h2>
+            <table class="bo-table">
+              <thead>
                 <tr>
-                  <td colspan="9" class="py-8 text-center text-gray-500">Aucun ordre matché en P2P.</td>
+                  <th>Order ID</th>
+                  <th>Maker</th>
+                  <th>Side</th>
+                  <th>Token</th>
+                  <th class="text-right">Montant</th>
+                  <th class="text-right">Prix</th>
+                  <th>Créé</th>
+                  <th class="text-right">TTL restant</th>
+                  <th>Expire à</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+              </thead>
+              <tbody>
+                @for (o of pendingOrders(); track o.orderId) {
+                  <tr>
+                    <td class="font-mono text-xs" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
+                    <td class="font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
+                    <td>
+                      <span [class.text-green-400]="o.side === 'BUY'" [class.text-red-400]="o.side === 'SELL'">{{ o.side }}</span>
+                    </td>
+                    <td class="font-medium">{{ o.tokenSymbol }}</td>
+                    <td class="text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
+                    <td class="text-right">{{ from1e8(o.pricePerToken) | number:'1.2-2' }} TND</td>
+                    <td class="text-white/60">{{ o.createdAt | date:'short' }}</td>
+                    <td class="text-right font-semibold" [class.text-amber-400]="(o.ttLSeconds ?? 0) < 3600">{{ formatTtl(o.ttLSeconds) }}</td>
+                    <td class="text-white/60">{{ o.deadline * 1000 | date:'short' }}</td>
+                  </tr>
+                }
+                @empty {
+                  <tr>
+                    <td colspan="9" class="py-8 text-center text-white/50">Aucun ordre en attente.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
 
-      <!-- Tab: Fallback -->
-      @if (activeTab() === 'fallback') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Audit des ordres transférés vers la piscine</h2>
-          <p class="text-xs text-gray-600 mb-3">Ordres expirés sans matching P2P, exécutés via la piscine de liquidité ou échoués.</p>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Order ID</th>
-                <th class="text-left py-2 pr-3">Maker</th>
-                <th class="text-left py-2 pr-3">Side</th>
-                <th class="text-left py-2 pr-3">Token</th>
-                <th class="text-right py-2 pr-3">Montant</th>
-                <th class="text-left py-2 pr-3">Statut</th>
-                <th class="text-left py-2 pr-3">Résultat Fallback</th>
-                <th class="text-left py-2 pr-3">Créé</th>
-                <th class="text-left py-2 pr-3 font-mono text-xs">Tx Hash</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (o of fallbackOrders(); track o.orderId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="py-2 pr-3 font-mono text-xs" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
-                  <td class="py-2 pr-3">
-                    <span [class.text-green-600]="o.side === 'BUY'" [class.text-red-600]="o.side === 'SELL'">{{ o.side }}</span>
-                  </td>
-                  <td class="py-2 pr-3 font-medium">{{ o.tokenSymbol }}</td>
-                  <td class="py-2 pr-3 text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3">
-                    <span [class.text-green-600]="o.status === 'SETTLED'" [class.text-red-600]="o.status === 'EXPIRED'">{{ o.status }}</span>
-                  </td>
-                  <td class="py-2 pr-3">
-                    @if (o.fallbackSuccess === true) {
-                      <span class="text-green-600 font-medium">Exécuté (piscine)</span>
-                    } @else if (o.fallbackSuccess === false) {
-                      <span class="text-red-600 font-medium">Échoué</span>
-                    } @else {
-                      <span class="text-gray-400">—</span>
-                    }
-                  </td>
-                  <td class="py-2 pr-3 text-gray-600">{{ o.createdAt | date:'short' }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs break-all text-gray-500">{{ o.settlementTxHash || '—' }}</td>
-                </tr>
-              }
-              @empty {
+        <!-- Tab: Matched -->
+        @if (activeTab() === 'matched') {
+          <div class="overflow-x-auto">
+            <h2 class="text-lg font-semibold text-white mb-3">Historique des ordres matchés en P2P</h2>
+            <table class="bo-table">
+              <thead>
                 <tr>
-                  <td colspan="9" class="py-8 text-center text-gray-500">Aucun ordre basculé vers la piscine.</td>
+                  <th>Order ID</th>
+                  <th>Maker</th>
+                  <th>Side</th>
+                  <th>Token</th>
+                  <th class="text-right">Montant</th>
+                  <th class="text-right">Matché</th>
+                  <th>Match Order ID</th>
+                  <th>Créé</th>
+                  <th class="font-mono text-xs">Tx Hash</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (o of matchedOrders(); track o.orderId) {
+                  <tr>
+                    <td class="font-mono text-xs" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
+                    <td class="font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
+                    <td>
+                      <span [class.text-green-400]="o.side === 'BUY'" [class.text-red-400]="o.side === 'SELL'">{{ o.side }}</span>
+                    </td>
+                    <td class="font-medium">{{ o.tokenSymbol }}</td>
+                    <td class="text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
+                    <td class="text-right">{{ from1e8(o.filledTokenAmount ?? '0') | number:'1.2-2' }}</td>
+                    <td class="font-mono text-xs" [title]="o.matchedOrderId ?? ''">{{ o.matchedOrderId ? (o.matchedOrderId.length > 16 ? o.matchedOrderId.slice(0,8) + '…' + o.matchedOrderId.slice(-4) : o.matchedOrderId) : '—' }}</td>
+                    <td class="text-white/60">{{ o.createdAt | date:'short' }}</td>
+                    <td class="font-mono text-xs break-all text-white/50">{{ o.settlementTxHash || '—' }}</td>
+                  </tr>
+                }
+                @empty {
+                  <tr>
+                    <td colspan="9" class="py-8 text-center text-white/50">Aucun ordre matché en P2P.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- Tab: Fallback -->
+        @if (activeTab() === 'fallback') {
+          <div class="overflow-x-auto">
+            <h2 class="text-lg font-semibold text-white mb-3">Audit des ordres transférés vers la piscine</h2>
+            <p class="text-xs text-white/50 mb-3">Ordres expirés sans matching P2P, exécutés via la piscine de liquidité ou échoués.</p>
+            <table class="bo-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Maker</th>
+                  <th>Side</th>
+                  <th>Token</th>
+                  <th class="text-right">Montant</th>
+                  <th>Statut</th>
+                  <th>Résultat Fallback</th>
+                  <th>Créé</th>
+                  <th class="font-mono text-xs">Tx Hash</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (o of fallbackOrders(); track o.orderId) {
+                  <tr>
+                    <td class="font-mono text-xs" [title]="o.orderId">{{ o.orderId.length > 16 ? o.orderId.slice(0,8) + '…' + o.orderId.slice(-4) : o.orderId }}</td>
+                    <td class="font-mono text-xs break-all">{{ formatAddress(o.maker) }}</td>
+                    <td>
+                      <span [class.text-green-400]="o.side === 'BUY'" [class.text-red-400]="o.side === 'SELL'">{{ o.side }}</span>
+                    </td>
+                    <td class="font-medium">{{ o.tokenSymbol }}</td>
+                    <td class="text-right">{{ from1e8(o.tokenAmount) | number:'1.2-2' }}</td>
+                    <td>
+                      <span [class.text-green-400]="o.status === 'SETTLED'" [class.text-red-400]="o.status === 'EXPIRED'">{{ o.status }}</span>
+                    </td>
+                    <td>
+                      @if (o.fallbackSuccess === true) {
+                        <span class="text-green-400 font-medium">Exécuté (piscine)</span>
+                      } @else if (o.fallbackSuccess === false) {
+                        <span class="text-red-400 font-medium">Échoué</span>
+                      } @else {
+                        <span class="text-white/40">—</span>
+                      }
+                    </td>
+                    <td class="text-white/60">{{ o.createdAt | date:'short' }}</td>
+                    <td class="font-mono text-xs break-all text-white/50">{{ o.settlementTxHash || '—' }}</td>
+                  </tr>
+                }
+                @empty {
+                  <tr>
+                    <td colspan="9" class="py-8 text-center text-white/50">Aucun ordre basculé vers la piscine.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
     </div>
   </main>

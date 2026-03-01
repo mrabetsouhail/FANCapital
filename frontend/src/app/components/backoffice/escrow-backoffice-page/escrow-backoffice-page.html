@@ -5,15 +5,15 @@
     <div class="mb-4">
       <app-back-button fallbackRoute="/backoffice/audit"></app-back-button>
     </div>
-    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] ring-1 ring-white/30 p-6">
+    <div class="bo-card">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-primary">Escrow & Libération au Prorata</h1>
-          <p class="text-sm text-gray-600">Registre des actifs bloqués (tokens isLocked) et suivi des remboursements (calendrier 3/4/5 mois, déblocage progressif)</p>
+          <h1 class="text-2xl font-bold text-white">Escrow & Libération au Prorata</h1>
+          <p class="text-sm text-white/60">Registre des actifs bloqués (tokens isLocked) et suivi des remboursements (calendrier 3/4/5 mois, déblocage progressif)</p>
         </div>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-primary shadow-sm hover:shadow transition"
+          class="bo-btn"
           (click)="refresh()"
           [disabled]="loading()">
           Actualiser
@@ -21,121 +21,118 @@
       </div>
 
       @if (error()) {
-        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {{ error() }}
-        </div>
+        <div class="mt-4 bo-error">{{ error() }}</div>
       }
 
       @if (loading()) {
-        <div class="mt-4 text-sm text-gray-600">Chargement…</div>
+        <div class="mt-4 bo-card flex items-center justify-center py-12">
+          <div class="flex flex-col items-center gap-3">
+            <div class="bo-spinner"></div>
+            <span class="text-sm text-white/60">Chargement…</span>
+          </div>
+        </div>
       }
 
-      <!-- Tabs -->
-      <div class="mt-6 border-b border-gray-200">
-        <nav class="flex gap-4">
+      @if (!loading()) {
+        <!-- Tabs -->
+        <div class="mt-6 bo-tabs">
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'locked'"
-            [class.text-primary]="activeTab() === 'locked'"
-            [class.border-transparent]="activeTab() !== 'locked'"
-            [class.text-gray-500]="activeTab() !== 'locked'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'locked'"
             (click)="setTab('locked')">
             Registre des actifs bloqués ({{ lockedAssets().length }})
           </button>
           <button
             type="button"
-            class="pb-3 px-1 border-b-2 text-sm font-medium transition"
-            [class.border-primary]="activeTab() === 'repayments'"
-            [class.text-primary]="activeTab() === 'repayments'"
-            [class.border-transparent]="activeTab() !== 'repayments'"
-            [class.text-gray-500]="activeTab() !== 'repayments'"
+            class="bo-tab"
+            [class.bo-tab-active]="activeTab() === 'repayments'"
             (click)="setTab('repayments')">
             Suivi des remboursements ({{ repaymentTracking().length }})
           </button>
-        </nav>
-      </div>
-
-      <!-- Tab: Registre des actifs bloqués -->
-      @if (activeTab() === 'locked') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Tokens marqués isLocked sur Hyperledger Besu</h2>
-          <p class="text-xs text-gray-600 mb-3">Visualisation par utilisateur des montants Atlas et Didon en séquestre (escrowLockedAmount).</p>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Utilisateur</th>
-                <th class="text-left py-2 pr-3">Email</th>
-                <th class="text-left py-2 pr-3">Wallet</th>
-                <th class="text-right py-2 pr-3">Atlas bloqué</th>
-                <th class="text-right py-2 pr-3">Didon bloqué</th>
-                <th class="text-right py-2 pr-3">Atlas total</th>
-                <th class="text-right py-2 pr-3">Didon total</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of lockedAssets(); track r.userId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="py-2 pr-3 font-medium">{{ r.fullName || r.email }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ r.email }}</td>
-                  <td class="py-2 pr-3 font-mono text-xs" [title]="r.walletAddress">{{ formatAddress(r.walletAddress) }}</td>
-                  <td class="py-2 pr-3 text-right font-medium">{{ from1e8(r.atlasLocked1e8) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 text-right font-medium">{{ from1e8(r.didonLocked1e8) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 text-right text-gray-600">{{ from1e8(r.atlasBalance1e8) | number:'1.2-2' }}</td>
-                  <td class="py-2 pr-3 text-right text-gray-600">{{ from1e8(r.didonBalance1e8) | number:'1.2-2' }}</td>
-                </tr>
-              }
-              @empty {
-                <tr>
-                  <td colspan="7" class="py-8 text-center text-gray-500">Aucun actif bloqué.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
         </div>
-      }
 
-      <!-- Tab: Suivi des remboursements -->
-      @if (activeTab() === 'repayments') {
-        <div class="mt-6 overflow-x-auto">
-          <h2 class="text-lg font-semibold text-primary mb-3">Calendriers de remboursement et déblocage progressif</h2>
-          <p class="text-xs text-gray-600 mb-3">État d'avancement des prêts actifs : % remboursé vs % collatéral libéré. Calendrier 3, 4 ou 5 mois selon le niveau.</p>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-primary">
-                <th class="text-left py-2 pr-3">Prêt</th>
-                <th class="text-left py-2 pr-3">Utilisateur</th>
-                <th class="text-left py-2 pr-3">Token</th>
-                <th class="text-left py-2 pr-3">Calendrier</th>
-                <th class="text-left py-2 pr-3">Début</th>
-                <th class="text-right py-2 pr-3">Collatéral libéré</th>
-                <th class="text-right py-2 pr-3">Remboursé</th>
-                <th class="text-left py-2 pr-3">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of repaymentTracking(); track r.loanId) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                  <td class="py-2 pr-3 font-mono text-xs" [title]="r.loanId">{{ r.loanId.length > 12 ? r.loanId.slice(0, 8) + '…' : r.loanId }}</td>
-                  <td class="py-2 pr-3 font-medium">{{ r.userFullName || r.userEmail }}</td>
-                  <td class="py-2 pr-3">{{ r.tokenSymbol }}</td>
-                  <td class="py-2 pr-3">{{ r.scheduleLabel }}</td>
-                  <td class="py-2 pr-3 text-gray-600">{{ formatStartAt(r.startAt) }}</td>
-                  <td class="py-2 pr-3 text-right font-semibold text-green-600">{{ r.collateralReleasedPercent }}%</td>
-                  <td class="py-2 pr-3 text-right font-semibold">{{ r.repaidPercent }}%</td>
-                  <td class="py-2 pr-3">
-                    <span [class.text-green-600]="r.status === 0" [class.text-gray-500]="r.status === 1">{{ statusLabel(r.status) }}</span>
-                  </td>
-                </tr>
-              }
-              @empty {
+        <!-- Tab: Registre des actifs bloqués -->
+        @if (activeTab() === 'locked') {
+          <div class="overflow-x-auto">
+            <h2 class="text-lg font-semibold text-white mb-3">Tokens marqués isLocked sur Hyperledger Besu</h2>
+            <p class="text-xs text-white/50 mb-3">Visualisation par utilisateur des montants Atlas et Didon en séquestre (escrowLockedAmount).</p>
+            <table class="bo-table">
+              <thead>
                 <tr>
-                  <td colspan="8" class="py-8 text-center text-gray-500">Aucun prêt actif avec séquestre.</td>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Wallet</th>
+                  <th class="text-right">Atlas bloqué</th>
+                  <th class="text-right">Didon bloqué</th>
+                  <th class="text-right">Atlas total</th>
+                  <th class="text-right">Didon total</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (r of lockedAssets(); track r.userId) {
+                  <tr>
+                    <td class="font-medium">{{ r.fullName || r.email }}</td>
+                    <td class="text-white/60">{{ r.email }}</td>
+                    <td class="font-mono text-xs" [title]="r.walletAddress">{{ formatAddress(r.walletAddress) }}</td>
+                    <td class="text-right font-medium">{{ from1e8(r.atlasLocked1e8) | number:'1.2-2' }}</td>
+                    <td class="text-right font-medium">{{ from1e8(r.didonLocked1e8) | number:'1.2-2' }}</td>
+                    <td class="text-right text-white/60">{{ from1e8(r.atlasBalance1e8) | number:'1.2-2' }}</td>
+                    <td class="text-right text-white/60">{{ from1e8(r.didonBalance1e8) | number:'1.2-2' }}</td>
+                  </tr>
+                }
+                @empty {
+                  <tr>
+                    <td colspan="7" class="py-8 text-center text-white/50">Aucun actif bloqué.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <!-- Tab: Suivi des remboursements -->
+        @if (activeTab() === 'repayments') {
+          <div class="overflow-x-auto">
+            <h2 class="text-lg font-semibold text-white mb-3">Calendriers de remboursement et déblocage progressif</h2>
+            <p class="text-xs text-white/50 mb-3">État d'avancement des prêts actifs : % remboursé vs % collatéral libéré. Calendrier 3, 4 ou 5 mois selon le niveau.</p>
+            <table class="bo-table">
+              <thead>
+                <tr>
+                  <th>Prêt</th>
+                  <th>Utilisateur</th>
+                  <th>Token</th>
+                  <th>Calendrier</th>
+                  <th>Début</th>
+                  <th class="text-right">Collatéral libéré</th>
+                  <th class="text-right">Remboursé</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of repaymentTracking(); track r.loanId) {
+                  <tr>
+                    <td class="font-mono text-xs" [title]="r.loanId">{{ r.loanId.length > 12 ? r.loanId.slice(0, 8) + '…' : r.loanId }}</td>
+                    <td class="font-medium">{{ r.userFullName || r.userEmail }}</td>
+                    <td>{{ r.tokenSymbol }}</td>
+                    <td>{{ r.scheduleLabel }}</td>
+                    <td class="text-white/60">{{ formatStartAt(r.startAt) }}</td>
+                    <td class="text-right font-semibold text-green-400">{{ r.collateralReleasedPercent }}%</td>
+                    <td class="text-right font-semibold">{{ r.repaidPercent }}%</td>
+                    <td>
+                      <span [class.text-green-400]="r.status === 0" [class.text-white/50]="r.status === 1">{{ statusLabel(r.status) }}</span>
+                    </td>
+                  </tr>
+                }
+                @empty {
+                  <tr>
+                    <td colspan="8" class="py-8 text-center text-white/50">Aucun prêt actif avec séquestre.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
     </div>
   </main>

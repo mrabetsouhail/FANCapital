@@ -14,29 +14,153 @@
 
       <!-- Nav Links - center, hidden on mobile -->
       <div class="hidden md:flex items-center gap-1">
-        <a 
-          routerLink="/acceuil-client" 
-          routerLinkActive="nav-link-active"
-          [routerLinkActiveOptions]="{exact: true}"
-          class="nav-link"
-        >
-          {{ 'NAV.MARKET' | translate }}
-        </a>
-        @if (isBackofficeAdmin() || backofficeRole() === 'ADMIN' || backofficeRole() === 'COMPLIANCE' || backofficeRole() === 'REGULATOR') {
-          <a routerLink="/backoffice/audit" routerLinkActive="nav-link-active" class="nav-link">Registre Audit</a>
-          @if (isBackofficeAdmin() || backofficeRole() === 'ADMIN') {
-            <a routerLink="/backoffice/fiscal" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.BACKOFFICE_FISCAL' | translate }}</a>
-            <a routerLink="/backoffice/fees" routerLinkActive="nav-link-active" class="nav-link">Frais Plateforme</a>
-            <a routerLink="/backoffice/kyc" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.BACKOFFICE_KYC' | translate }}</a>
-            <a routerLink="/backoffice/multisig" routerLinkActive="nav-link-active" class="nav-link">Multi-Sig</a>
-            <a routerLink="/backoffice/orderbook" routerLinkActive="nav-link-active" class="nav-link">Order Book P2P</a>
-            <a routerLink="/backoffice/subscriptions" routerLinkActive="nav-link-active" class="nav-link">Abonnements</a>
-            <a routerLink="/backoffice/escrow" routerLinkActive="nav-link-active" class="nav-link">Escrow</a>
-          }
+        @if (isBackofficeAdmin() || backofficeRole() === 'ADMIN') {
+          <!-- Marché (dropdown) : Marché + Order Book P2P -->
+          <div class="relative nav-dropdown-backoffice" (mouseenter)="openBackofficeMarche()" (mouseleave)="closeBackofficeMarche()">
+            <button
+              type="button"
+              (click)="toggleBackofficeMarche()"
+              class="nav-link flex items-center gap-1.5 cursor-pointer border-0 bg-transparent"
+              [class.nav-link-active]="isBackofficeMarcheActive()"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              {{ 'NAV.MARKET' | translate }}
+              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="isBackofficeMarcheOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            @if (isBackofficeMarcheOpen()) {
+              <div class="absolute left-0 top-full mt-0.5 min-w-[180px] bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-1 z-50">
+                <a routerLink="/acceuil-client" (click)="closeBackofficeMarche()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: true}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                  {{ 'NAV.MARKET' | translate }}
+                </a>
+                <a routerLink="/backoffice/orderbook" (click)="closeBackofficeMarche()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  Order Book P2P
+                </a>
+              </div>
+            }
+          </div>
+          <!-- Registre Audit (loupe) -->
+          <a routerLink="/backoffice/audit" routerLinkActive="nav-link-active" class="nav-link flex items-center gap-1.5">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Registre Audit
+          </a>
+          <!-- Finance (dropdown) : Dashboard Fiscal, Frais Plateforme, Matrice, Abonnements -->
+          <div class="relative nav-dropdown-backoffice" (mouseenter)="openBackofficeFinance()" (mouseleave)="closeBackofficeFinance()">
+            <button
+              type="button"
+              (click)="toggleBackofficeFinance()"
+              class="nav-link flex items-center gap-1.5 cursor-pointer border-0 bg-transparent"
+              [class.nav-link-active]="isBackofficeFinanceActive()"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Finance
+              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="isBackofficeFinanceOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            @if (isBackofficeFinanceOpen()) {
+              <div class="absolute left-0 top-full mt-0.5 min-w-[180px] bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-1 z-50">
+                <a routerLink="/backoffice/fiscal" (click)="closeBackofficeFinance()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  {{ 'NAV.BACKOFFICE_FISCAL' | translate }}
+                </a>
+                <a routerLink="/backoffice/fees" (click)="closeBackofficeFinance()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                  Frais Plateforme
+                </a>
+                <a routerLink="/backoffice/compartments" (click)="closeBackofficeFinance()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16V9m0-2V5" /></svg>
+                  Matrice
+                </a>
+                <a routerLink="/backoffice/subscriptions" (click)="closeBackofficeFinance()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>
+                  Abonnements
+                </a>
+              </div>
+            }
+          </div>
+          <!-- Sécurité (dropdown) : KYC, Multi-Sig, Escrow -->
+          <div class="relative nav-dropdown-backoffice" (mouseenter)="openBackofficeSecurite()" (mouseleave)="closeBackofficeSecurite()">
+            <button
+              type="button"
+              (click)="toggleBackofficeSecurite()"
+              class="nav-link flex items-center gap-1.5 cursor-pointer border-0 bg-transparent"
+              [class.nav-link-active]="isBackofficeSecuriteActive()"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Sécurité
+              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="isBackofficeSecuriteOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            @if (isBackofficeSecuriteOpen()) {
+              <div class="absolute left-0 top-full mt-0.5 min-w-[180px] bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-1 z-50">
+                <a routerLink="/backoffice/kyc" (click)="closeBackofficeSecurite()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  {{ 'NAV.BACKOFFICE_KYC' | translate }}
+                </a>
+                <a routerLink="/backoffice/multisig" (click)="closeBackofficeSecurite()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  Multi-Sig
+                </a>
+                <a routerLink="/backoffice/escrow" (click)="closeBackofficeSecurite()" class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16V9m0-2V5" /></svg>
+                  Escrow
+                </a>
+              </div>
+            }
+          </div>
+        } @else if (backofficeRole() === 'COMPLIANCE' || backofficeRole() === 'REGULATOR') {
+          <!-- COMPLIANCE/REGULATOR : Marché + Registre Audit uniquement -->
+          <a routerLink="/acceuil-client" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{exact: true}" class="nav-link flex items-center gap-1.5">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            {{ 'NAV.MARKET' | translate }}
+          </a>
+          <a routerLink="/backoffice/audit" routerLinkActive="nav-link-active" class="nav-link flex items-center gap-1.5">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Registre Audit
+          </a>
         } @else {
+          <a routerLink="/acceuil-client" routerLinkActive="nav-link-active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">
+            {{ 'NAV.MARKET' | translate }}
+          </a>
           <a routerLink="/portefeuille" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.PORTFOLIO' | translate }}</a>
-          <a routerLink="/credit" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.CREDIT' | translate }}</a>
-          <a routerLink="/avance-sur-titre" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.ADVANCE' | translate }}</a>
+          <div class="relative nav-dropdown-container" (mouseenter)="openFinancementMenu()" (mouseleave)="closeFinancementMenu()">
+            <button
+              type="button"
+              (click)="toggleFinancementMenu()"
+              class="nav-link flex items-center gap-1 cursor-pointer border-0 bg-transparent"
+              [class.nav-link-active]="isFinancementActive()"
+            >
+              {{ 'NAV.FINANCEMENT' | translate }}
+              <svg class="w-4 h-4 transition-transform" [class.rotate-180]="isFinancementMenuOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            @if (isFinancementMenuOpen()) {
+              <div class="absolute left-0 top-full mt-0.5 min-w-[180px] bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 py-1 z-50">
+                <a routerLink="/credit" (click)="closeFinancementMenu()" class="block px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  {{ 'NAV.CREDIT' | translate }}
+                </a>
+                <a routerLink="/avance-sur-titre" (click)="closeFinancementMenu()" class="block px-4 py-2.5 text-sm font-medium text-primary hover:bg-gray-100 transition rounded-lg mx-1" routerLinkActive="bg-gray-100" [routerLinkActiveOptions]="{exact: false}">
+                  {{ 'NAV.ADVANCE' | translate }}
+                </a>
+              </div>
+            }
+          </div>
           <a routerLink="/profil" routerLinkActive="nav-link-active" class="nav-link">{{ 'NAV.PROFILE' | translate }}</a>
         }
       </div>
@@ -204,7 +328,7 @@
       <!-- Left Side - Wallets -->
       <div class="flex items-center gap-4 flex-1 overflow-x-auto pr-3 mb-0">
         <!-- Tokens Wallet -->
-        <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
+        <div class="bg-secondary border-2 border-tertiary rounded-2xl p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.TOKENS_WALLET' | translate }}</p>
@@ -224,7 +348,7 @@
         </div>
 
         <!-- Cash Wallet -->
-        <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
+        <div class="bg-secondary border-2 border-tertiary rounded-2xl p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.CASH_WALLET' | translate }}</p>
@@ -242,7 +366,7 @@
         </div>
 
         <!-- Credit Wallet = avance créditée (AST). Vide (0) si pas d'avance en cours. -->
-        <div class="bg-secondary border-2 border-tertiary rounded-lg p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200" title="Avance sur titres créditée (0 si aucune avance)">
+        <div class="bg-secondary border-2 border-tertiary rounded-2xl p-1.5 min-w-[120px] shadow-md hover:shadow-lg transition-shadow duration-200" title="Avance sur titres créditée (0 si aucune avance)">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-[9px] text-primary opacity-90 uppercase tracking-wide mb-0.5">{{ 'NAV.CREDIT_WALLET' | translate }}</p>
